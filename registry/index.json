@@ -1,0 +1,394 @@
+{
+  "packages": {
+    "aria-args": {
+      "latest": "0.2.0",
+      "description": "CLI argument parsing for Aria \u2014 reads /proc/self/cmdline and provides flag/value query functions",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-ascii": {
+      "latest": "0.2.0",
+      "description": "ASCII character classification and conversion: is_upper/lower/digit/hex, to_lower/upper, digit_val, hex_val",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-audio": {
+      "latest": "0.2.0",
+      "description": "Software audio synthesis for Aria virtual console \u2014 4-channel mixing, waveform generation via C shim",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-base64": {
+      "latest": "0.1.0",
+      "description": "Base64 encoding and decoding for Aria",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-bits": {
+      "latest": "0.2.0",
+      "description": "Bit manipulation utilities for uint64: test/set/clear/flip, nibble extraction, byte popcount",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-buf": {
+      "latest": "0.2.0",
+      "description": "Byte and word packing/unpacking operations for uint64 buffers (little-endian)",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-clamp": {
+      "latest": "0.2.0",
+      "description": "Min, max, clamp, abs, and sign for int64 and uint64",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-color": {
+      "latest": "0.2.0",
+      "description": "RGBA color packing, unpacking, and pixel transforms for Aria",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-console": {
+      "latest": "0.2.0",
+      "description": "Virtual 8-bit console address map and frame scheduler \u2014 16-bit memory-mapped address space, pure Aria",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-conv": {
+      "latest": "0.2.0",
+      "description": "Saturating numeric narrowing and float/int conversion utilities",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-csv": {
+      "latest": "0.2.2",
+      "description": "CSV parser and writer for Aria \u2014 RFC 4180 compliant",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-datetime": {
+      "latest": "0.2.2",
+      "description": "Date and time library for Aria \u2014 timestamps, formatting, components",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-decision-t": {
+      "latest": "0.2.0",
+      "description": "DecisionGradientT \u2014 two-axis gradient decision construct with time-axis snapshot history",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-display": {
+      "latest": "0.2.0",
+      "description": "Cross-platform terminal display library \u2014 ANSI/termios TUI primitives, cursor control, raw mode via C shim",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-endian": {
+      "latest": "0.2.0",
+      "description": "Byte-swap and rotation utilities \u2014 endian conversion, circular bit shifts on uint64",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-entangled": {
+      "latest": "0.2.0",
+      "description": "EntangledPair \u2014 two coupled DecisionGradients with tilt-axis propagation and joint crystallization",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-fixed": {
+      "latest": "0.2.0",
+      "description": "Q32.32 fixed-point arithmetic on uint64: from_int, to_int, frac_bits, add, sub, mul, half, double, gt, eq",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-freq": {
+      "latest": "0.2.0",
+      "description": "Frequency/period integer arithmetic: hz_to_ns, ns_to_hz, mhz/hz conversions, baud timing, ms/ns conversions",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-fs": {
+      "latest": "0.1.0",
+      "description": "Filesystem utilities for Aria",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-gradient-field": {
+      "latest": "0.2.0",
+      "description": "GradientField \u2014 spatial decision field driven by a single DGT emitter (LIB-27)",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-gtk4": {
+      "latest": "0.2.2",
+      "description": "Aria bindings for GTK4 \u2014 native desktop GUI toolkit",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-hash": {
+      "latest": "0.2.0",
+      "description": "Non-cryptographic hash functions \u2014 FNV-1a, djb2, bit-mixing for hash tables, checksums, and seeding",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-http": {
+      "latest": "0.2.2",
+      "description": "HTTP client library for Aria \u2014 GET, POST, headers, status codes via libcurl",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-input": {
+      "latest": "0.2.0",
+      "description": "Raw keyboard input for Aria virtual console \u2014 key detection with SNES-style button mapping via C shim",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-json": {
+      "latest": "0.2.0",
+      "description": "JSON tokeniser for Aria \u2014 byte-level scanning with malloc/free for zero-copy token-type arrays",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-log": {
+      "latest": "0.2.2",
+      "description": "Structured logging library for Aria \u2014 levels, timestamps, formatted output",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-math": {
+      "latest": "0.2.0",
+      "description": "Mathematical functions for Aria \u2014 trig, exponential, logarithm, rounding, and more via C libm",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-mux": {
+      "latest": "0.2.0",
+      "description": "Bit-select, field insert/extract, conditional mux, mask operations, and blend for register-map and FSM patterns",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-rand": {
+      "latest": "0.2.0",
+      "description": "xorshift64 pseudo-random number generator for Aria",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-raylib": {
+      "latest": "0.2.2",
+      "description": "Raylib bindings for Aria \u2014 windowing, 2D drawing, input, and text rendering via C shim",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-regex": {
+      "latest": "0.2.2",
+      "description": "Regular expression library for Aria \u2014 POSIX extended regex",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-resource-mem": {
+      "latest": "0.2.0",
+      "description": "Consumable expiring memory cells \u2014 configurable read/write/TTL limits with Result-style access",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-sdl2": {
+      "latest": "0.2.2",
+      "description": "Aria bindings for SDL2 \u2014 windowing, 2D rendering, events, and input",
+      "versions": {
+        "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-socket": {
+      "latest": "0.1.0",
+      "description": "TCP and UDP socket abstractions for Aria",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-str": {
+      "latest": "0.2.0",
+      "description": "High-level string manipulation library for Aria",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-test": {
+      "latest": "0.1.0",
+      "description": "Lightweight test framework for Aria programs",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-uuid": {
+      "latest": "0.2.0",
+      "description": "128-bit UUID arithmetic utilities \u2014 pack/unpack, hi/lo split, comparison, and version extraction",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-vec": {
+      "latest": "0.2.0",
+      "description": "2D and 3D float64 vector math: dot, cross, and length-squared operations",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-zigzag": {
+      "latest": "0.2.0",
+      "description": "Zigzag encoding/decoding \u2014 maps signed integers to unsigned for efficient varint serialization",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    }
+  }
+}
