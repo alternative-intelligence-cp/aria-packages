@@ -1,0 +1,11 @@
+[package]
+name = "aria-env"
+version = "0.2.6"
+description = "Environment variable management for Aria"
+license = "MIT"
+repository = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_env_shim"]

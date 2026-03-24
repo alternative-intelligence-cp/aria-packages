@@ -1,0 +1,25 @@
+// aria_env.aria — Environment variable library for Aria
+
+extern "aria_env_shim" {
+    func:aria_env_get    = string(string:name);
+    func:aria_env_set    = int32(string:name, string:value);
+    func:aria_env_unset  = int32(string:name);
+    func:aria_env_has    = int32(string:name);
+    func:aria_env_get_or = string(string:name, string:default_val);
+    func:aria_env_count  = int32();
+    func:aria_env_home   = string();
+    func:aria_env_path   = string();
+    func:aria_env_user   = string();
+    func:aria_env_shell  = string();
+}
+
+pub func:get = string(string:name) { pass(aria_env_get(name)); };
+pub func:set = int32(string:name, string:value) { pass(aria_env_set(name, value)); };
+pub func:unset = int32(string:name) { pass(aria_env_unset(name)); };
+pub func:has = int32(string:name) { pass(aria_env_has(name)); };
+pub func:get_or = string(string:name, string:default_val) { pass(aria_env_get_or(name, default_val)); };
+pub func:count = int32() { pass(aria_env_count()); };
+pub func:home = string() { pass(aria_env_home()); };
+pub func:path = string() { pass(aria_env_path()); };
+pub func:user = string() { pass(aria_env_user()); };
+pub func:shell = string() { pass(aria_env_shell()); };

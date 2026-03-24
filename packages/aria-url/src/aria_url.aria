@@ -1,0 +1,49 @@
+// aria_url.aria — URL parsing and encoding library for Aria
+
+extern "aria_url_shim" {
+    func:aria_url_parse        = int32(string:url);
+    func:aria_url_get_scheme   = string();
+    func:aria_url_get_host     = string();
+    func:aria_url_get_port     = int32();
+    func:aria_url_get_path     = string();
+    func:aria_url_get_query    = string();
+    func:aria_url_get_fragment = string();
+    func:aria_url_encode       = string(string:input);
+    func:aria_url_decode       = string(string:input);
+}
+
+pub func:parse = int32(string:url) {
+    pass(aria_url_parse(url));
+};
+
+pub func:get_scheme = string() {
+    pass(aria_url_get_scheme());
+};
+
+pub func:get_host = string() {
+    pass(aria_url_get_host());
+};
+
+pub func:get_port = int32() {
+    pass(aria_url_get_port());
+};
+
+pub func:get_path = string() {
+    pass(aria_url_get_path());
+};
+
+pub func:get_query = string() {
+    pass(aria_url_get_query());
+};
+
+pub func:get_fragment = string() {
+    pass(aria_url_get_fragment());
+};
+
+pub func:encode = string(string:input) {
+    pass(aria_url_encode(input));
+};
+
+pub func:decode = string(string:input) {
+    pass(aria_url_decode(input));
+};

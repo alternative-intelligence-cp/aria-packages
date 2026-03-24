@@ -1,0 +1,13 @@
+[package]
+name            = "aria-yaml"
+version         = "0.2.6"
+description     = "YAML configuration parser — load, query, and modify YAML key-value pairs with dotted-path access"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+keywords        = ["yaml", "config", "parser", "serialization"]
+categories      = ["data-formats", "parsing"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_yaml_shim"]

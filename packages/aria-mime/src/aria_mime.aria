@@ -1,0 +1,29 @@
+// aria_mime.aria — MIME type detection library for Aria
+
+extern "aria_mime_shim" {
+    func:aria_mime_from_filename  = string(string:filename);
+    func:aria_mime_from_extension = string(string:ext);
+    func:aria_mime_to_extension   = string(string:mime);
+    func:aria_mime_is_text        = int32(string:mime);
+    func:aria_mime_count          = int32();
+}
+
+pub func:from_filename = string(string:filename) {
+    pass(aria_mime_from_filename(filename));
+};
+
+pub func:from_extension = string(string:ext) {
+    pass(aria_mime_from_extension(ext));
+};
+
+pub func:to_extension = string(string:mime) {
+    pass(aria_mime_to_extension(mime));
+};
+
+pub func:is_text = int32(string:mime) {
+    pass(aria_mime_is_text(mime));
+};
+
+pub func:count = int32() {
+    pass(aria_mime_count());
+};

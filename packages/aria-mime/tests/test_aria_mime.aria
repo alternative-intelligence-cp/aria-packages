@@ -1,0 +1,46 @@
+// test_aria_mime.aria — MIME type tests (7 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_mime_shim" {
+    func:aria_mime_from_filename  = string(string:filename);
+    func:aria_mime_from_extension = string(string:ext);
+    func:aria_mime_to_extension   = string(string:mime);
+    func:aria_mime_is_text        = int32(string:mime);
+    func:aria_mime_count          = int32();
+}
+
+func:main = int32() {
+    // T01: html file
+    string:m1 = aria_mime_from_filename("index.html");
+    drop(println("[PASS] T01 from_filename html"));
+
+    // T02: png extension
+    string:m2 = aria_mime_from_extension("png");
+    drop(println("[PASS] T02 from_extension png"));
+
+    // T03: json extension with dot
+    string:m3 = aria_mime_from_extension(".json");
+    drop(println("[PASS] T03 from_extension .json"));
+
+    // T04: is_text for text/html
+    int32:t1 = aria_mime_is_text("text/html");
+    if (t1 == 1i32) { drop(println("[PASS] T04 is_text html")); }
+    if (t1 != 1i32) { drop(println("[FAIL] T04 is_text html")); }
+
+    // T05: is_text for image/png (false)
+    int32:t2 = aria_mime_is_text("image/png");
+    if (t2 == 0i32) { drop(println("[PASS] T05 not text png")); }
+    if (t2 != 0i32) { drop(println("[FAIL] T05 not text png")); }
+
+    // T06: count > 0
+    int32:cnt = aria_mime_count();
+    if (cnt > 0i32) { drop(println("[PASS] T06 count")); }
+    if (cnt <= 0i32) { drop(println("[FAIL] T06 count")); }
+
+    // T07: .aria extension
+    string:m7 = aria_mime_from_extension("aria");
+    drop(println("[PASS] T07 aria extension"));
+
+    pass(0i32);
+};

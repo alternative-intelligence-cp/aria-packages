@@ -1,0 +1,44 @@
+// test_aria_crypto.aria — Crypto tests (6 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_crypto_shim" {
+    func:aria_crypto_sha256        = string(string:data);
+    func:aria_crypto_md5           = string(string:data);
+    func:aria_crypto_hmac_sha256   = string(string:key, string:data);
+    func:aria_crypto_sha256_verify = int32(string:data, string:expected);
+    func:aria_crypto_md5_verify    = int32(string:data, string:expected);
+}
+
+func:main = int32() {
+    // T01: SHA-256 of empty string = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    int32:v1 = aria_crypto_sha256_verify("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    if (v1 == 1i32) { drop(println("[PASS] T01 sha256 empty")); }
+    if (v1 != 1i32) { drop(println("[FAIL] T01 sha256 empty")); }
+
+    // T02: SHA-256 of "hello"
+    int32:v2 = aria_crypto_sha256_verify("hello", "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    if (v2 == 1i32) { drop(println("[PASS] T02 sha256 hello")); }
+    if (v2 != 1i32) { drop(println("[FAIL] T02 sha256 hello")); }
+
+    // T03: MD5 of empty string = d41d8cd98f00b204e9800998ecf8427e
+    int32:v3 = aria_crypto_md5_verify("", "d41d8cd98f00b204e9800998ecf8427e");
+    if (v3 == 1i32) { drop(println("[PASS] T03 md5 empty")); }
+    if (v3 != 1i32) { drop(println("[FAIL] T03 md5 empty")); }
+
+    // T04: MD5 of "hello" = 5d41402abc4b2a76b9719d911017c592
+    int32:v4 = aria_crypto_md5_verify("hello", "5d41402abc4b2a76b9719d911017c592");
+    if (v4 == 1i32) { drop(println("[PASS] T04 md5 hello")); }
+    if (v4 != 1i32) { drop(println("[FAIL] T04 md5 hello")); }
+
+    // T05: HMAC-SHA256 returns something
+    string:hmac = aria_crypto_hmac_sha256("secret", "message");
+    drop(println("[PASS] T05 hmac_sha256"));
+
+    // T06: SHA-256 verify fails on wrong hash
+    int32:v6 = aria_crypto_sha256_verify("hello", "0000000000000000000000000000000000000000000000000000000000000000");
+    if (v6 == 0i32) { drop(println("[PASS] T06 sha256 verify fail")); }
+    if (v6 != 0i32) { drop(println("[FAIL] T06 sha256 verify fail")); }
+
+    pass(0i32);
+};

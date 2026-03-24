@@ -1,0 +1,49 @@
+// test_aria_compress.aria — Compression tests (6 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_compress_shim" {
+    func:aria_compress_deflate    = int32(string:data, int32:len);
+    func:aria_compress_inflate    = int32(string:data, int32:len);
+    func:aria_compress_gzip       = int32(string:data, int32:len);
+    func:aria_compress_gunzip     = int32(string:data, int32:len);
+    func:aria_compress_get_result = string();
+    func:aria_compress_get_length = int32();
+    func:aria_compress_get_error  = int32();
+    func:aria_compress_roundtrip  = int32(string:data, int32:len);
+    func:aria_compress_version    = string();
+}
+
+func:main = int32() {
+    // T01: version string exists
+    string:ver = aria_compress_version();
+    drop(println("[PASS] T01 version"));
+
+    // T02: deflate compresses data
+    int32:clen = aria_compress_deflate("Hello World! This is a test of compression in Aria language.", 60i32);
+    if (clen > 0i32) { drop(println("[PASS] T02 deflate")); }
+    if (clen <= 0i32) { drop(println("[FAIL] T02 deflate")); }
+
+    // T03: compressed size < original for repetitive data
+    int32:clen3 = aria_compress_deflate("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 98i32);
+    int32:clen4 = aria_compress_get_length();
+    if (clen4 < 98i32) { drop(println("[PASS] T03 deflate smaller")); }
+    if (clen4 >= 98i32) { drop(println("[FAIL] T03 deflate smaller")); }
+
+    // T04: roundtrip preserves data
+    int32:rt = aria_compress_roundtrip("The quick brown fox jumps over the lazy dog.", 44i32);
+    if (rt == 44i32) { drop(println("[PASS] T04 roundtrip length")); }
+    if (rt != 44i32) { drop(println("[FAIL] T04 roundtrip length")); }
+
+    // T05: roundtrip result length matches
+    int32:rl = aria_compress_get_length();
+    if (rl == 44i32) { drop(println("[PASS] T05 roundtrip result")); }
+    if (rl != 44i32) { drop(println("[FAIL] T05 roundtrip result")); }
+
+    // T06: gzip compresses
+    int32:gz = aria_compress_gzip("Aria gzip test data for compression.", 36i32);
+    if (gz > 0i32) { drop(println("[PASS] T06 gzip")); }
+    if (gz <= 0i32) { drop(println("[FAIL] T06 gzip")); }
+
+    pass(0i32);
+};

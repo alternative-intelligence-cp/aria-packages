@@ -1,0 +1,13 @@
+[package]
+name            = "aria-toml"
+version         = "0.2.6"
+description     = "TOML configuration file parser — load, query, and modify TOML key-value pairs"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+keywords        = ["toml", "config", "parser", "serialization"]
+categories      = ["data-formats", "parsing"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_toml_shim"]

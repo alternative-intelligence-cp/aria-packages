@@ -1,0 +1,49 @@
+// aria_compress.aria — Compression/decompression library for Aria
+
+extern "aria_compress_shim" {
+    func:aria_compress_deflate   = int32(string:data, int32:len);
+    func:aria_compress_inflate   = int32(string:data, int32:len);
+    func:aria_compress_gzip      = int32(string:data, int32:len);
+    func:aria_compress_gunzip    = int32(string:data, int32:len);
+    func:aria_compress_get_result = string();
+    func:aria_compress_get_length = int32();
+    func:aria_compress_get_error  = int32();
+    func:aria_compress_roundtrip  = int32(string:data, int32:len);
+    func:aria_compress_version    = string();
+}
+
+pub func:deflate = int32(string:data, int32:len) {
+    pass(aria_compress_deflate(data, len));
+};
+
+pub func:inflate = int32(string:data, int32:len) {
+    pass(aria_compress_inflate(data, len));
+};
+
+pub func:gzip = int32(string:data, int32:len) {
+    pass(aria_compress_gzip(data, len));
+};
+
+pub func:gunzip = int32(string:data, int32:len) {
+    pass(aria_compress_gunzip(data, len));
+};
+
+pub func:get_result = string() {
+    pass(aria_compress_get_result());
+};
+
+pub func:get_length = int32() {
+    pass(aria_compress_get_length());
+};
+
+pub func:get_error = int32() {
+    pass(aria_compress_get_error());
+};
+
+pub func:roundtrip = int32(string:data, int32:len) {
+    pass(aria_compress_roundtrip(data, len));
+};
+
+pub func:version = string() {
+    pass(aria_compress_version());
+};

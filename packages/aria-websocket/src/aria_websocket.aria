@@ -1,0 +1,118 @@
+// aria_websocket.aria — WebSocket client and server for Aria
+//
+// Connect to WebSocket servers, run your own WebSocket server,
+// send/receive text messages, broadcast, ping/pong.
+// Requires: libaria_websocket_shim.so (no external deps beyond libc)
+//
+// Client usage:
+//   int32:conn = ws_connect("echo.example.com", 8080i32, "/ws");
+//   drop(ws_send(conn, "Hello!"));
+//   int32:r = ws_recv(conn, 5000i32);
+//   string:msg = ws_message();
+//   ws_close(conn);
+//
+// Server usage:
+//   int32:srv = ws_listen("0.0.0.0", 9001i32, 5i32);
+//   int32:client = ws_accept(srv, 10000i32);
+//   int32:r = ws_recv(client, 5000i32);
+//   string:msg = ws_message();
+//   drop(ws_send(client, "Echo: "));
+//   ws_close(client);
+//   ws_close_listener(srv);
+
+// ── extern declarations (C shim) ────────────────────────────────────
+
+extern "aria_websocket_shim" {
+    func:aria_ws_error            = string();
+    func:aria_ws_last_message     = string();
+    func:aria_ws_last_message_len = int32();
+
+    // client
+    func:aria_ws_connect          = int32(string:host, int32:port, string:path);
+
+    // server
+    func:aria_ws_listen           = int32(string:bind_addr, int32:port, int32:backlog);
+    func:aria_ws_accept           = int32(int32:listen_fd, int32:timeout_ms);
+
+    // messaging
+    func:aria_ws_send             = int32(int32:conn_id, string:msg);
+    func:aria_ws_recv             = int32(int32:conn_id, int32:timeout_ms);
+    func:aria_ws_broadcast        = int32(string:msg);
+    func:aria_ws_ping             = int32(int32:conn_id);
+
+    // lifecycle
+    func:aria_ws_close            = void(int32:conn_id);
+    func:aria_ws_close_listener   = void(int32:listen_fd);
+    func:aria_ws_connection_count = int32();
+}
+
+// ── public API: error / message access ──────────────────────────────
+
+pub func:ws_error = string() {
+    pass(aria_ws_error());
+};
+
+pub func:ws_message = string() {
+    pass(aria_ws_last_message());
+};
+
+pub func:ws_message_len = int32() {
+    pass(aria_ws_last_message_len());
+};
+
+// ── public API: client ──────────────────────────────────────────────
+
+pub func:ws_connect = int32(string:host, int32:port, string:path) {
+    int32:r = aria_ws_connect(host, port, path);
+    pass(r);
+};
+
+// ── public API: server ──────────────────────────────────────────────
+
+pub func:ws_listen = int32(string:bind_addr, int32:port, int32:backlog) {
+    int32:r = aria_ws_listen(bind_addr, port, backlog);
+    pass(r);
+};
+
+pub func:ws_accept = int32(int32:listen_fd, int32:timeout_ms) {
+    int32:r = aria_ws_accept(listen_fd, timeout_ms);
+    pass(r);
+};
+
+// ── public API: messaging ───────────────────────────────────────────
+
+pub func:ws_send = int32(int32:conn_id, string:msg) {
+    int32:r = aria_ws_send(conn_id, msg);
+    pass(r);
+};
+
+pub func:ws_recv = int32(int32:conn_id, int32:timeout_ms) {
+    int32:r = aria_ws_recv(conn_id, timeout_ms);
+    pass(r);
+};
+
+pub func:ws_broadcast = int32(string:msg) {
+    int32:r = aria_ws_broadcast(msg);
+    pass(r);
+};
+
+pub func:ws_ping = int32(int32:conn_id) {
+    int32:r = aria_ws_ping(conn_id);
+    pass(r);
+};
+
+// ── public API: lifecycle ───────────────────────────────────────────
+
+pub func:ws_close = NIL(int32:conn_id) {
+    aria_ws_close(conn_id);
+    pass(NIL);
+};
+
+pub func:ws_close_listener = NIL(int32:listen_fd) {
+    aria_ws_close_listener(listen_fd);
+    pass(NIL);
+};
+
+pub func:ws_connection_count = int32() {
+    pass(aria_ws_connection_count());
+};

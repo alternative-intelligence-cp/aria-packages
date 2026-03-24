@@ -441,6 +441,126 @@
           "aria_version": ">=0.2.0"
         }
       }
+    },
+    "aria-websocket": {
+      "latest": "0.2.6",
+      "description": "WebSocket client/server for Aria — RFC 6455 compliant with pure POSIX sockets",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-toml": {
+      "latest": "0.2.6",
+      "description": "TOML configuration file parsing with dotted-key lookup, type-safe getters, and serialization",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-yaml": {
+      "latest": "0.2.6",
+      "description": "YAML configuration parsing with indentation-based nesting and dotted-key lookup",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-compress": {
+      "latest": "0.2.6",
+      "description": "Compression and decompression (gzip/deflate) via zlib for Aria",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-crypto": {
+      "latest": "0.2.6",
+      "description": "Cryptographic hashing — SHA-256, MD5, HMAC-SHA256 with hex output",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-url": {
+      "latest": "0.2.6",
+      "description": "URL parsing, percent-encoding/decoding, and component extraction",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-mime": {
+      "latest": "0.2.6",
+      "description": "MIME type detection from file extensions with 70+ registered types",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-semver": {
+      "latest": "0.2.6",
+      "description": "Semantic versioning — parse, compare, satisfy constraints, and bump versions",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-template": {
+      "latest": "0.2.6",
+      "description": "String template engine with {{variable}} substitution",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-cli": {
+      "latest": "0.2.6",
+      "description": "Rich CLI output — ANSI colors, bold/italic/underline, progress bars, and banners",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-env": {
+      "latest": "0.2.6",
+      "description": "Environment variable management — get, set, unset, with convenience accessors",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-xml": {
+      "latest": "0.2.6",
+      "description": "XML parsing with tag lookup, attribute extraction, path queries, and element counting",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
     }
   }
 }

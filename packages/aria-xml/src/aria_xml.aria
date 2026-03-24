@@ -1,0 +1,21 @@
+// aria_xml.aria — XML parsing library for Aria
+
+extern "aria_xml_shim" {
+    func:aria_xml_parse      = int32(string:xml);
+    func:aria_xml_get_text   = string(string:tag);
+    func:aria_xml_get_attr   = string(string:tag, string:attr_name);
+    func:aria_xml_count_tag  = int32(string:tag);
+    func:aria_xml_has_tag    = int32(string:tag);
+    func:aria_xml_node_count = int32();
+    func:aria_xml_clear      = void();
+    func:aria_xml_get_path   = string(string:path);
+}
+
+pub func:parse = int32(string:xml) { pass(aria_xml_parse(xml)); };
+pub func:get_text = string(string:tag) { pass(aria_xml_get_text(tag)); };
+pub func:get_attr = string(string:tag, string:attr_name) { pass(aria_xml_get_attr(tag, attr_name)); };
+pub func:count_tag = int32(string:tag) { pass(aria_xml_count_tag(tag)); };
+pub func:has_tag = int32(string:tag) { pass(aria_xml_has_tag(tag)); };
+pub func:node_count = int32() { pass(aria_xml_node_count()); };
+pub func:clear = void() { aria_xml_clear(); };
+pub func:get_path = string(string:path) { pass(aria_xml_get_path(path)); };

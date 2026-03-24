@@ -1,0 +1,11 @@
+[package]
+name = "aria-compress"
+version = "0.2.6"
+description = "Compression and decompression (gzip/deflate) for Aria"
+license = "MIT"
+repository = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_compress_shim"]

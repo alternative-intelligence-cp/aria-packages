@@ -1,0 +1,39 @@
+// aria_template.aria — String template engine for Aria
+
+extern "aria_template_shim" {
+    func:aria_template_set    = int32(string:key, string:value);
+    func:aria_template_get    = string(string:key);
+    func:aria_template_render = string(string:tmpl);
+    func:aria_template_clear  = void();
+    func:aria_template_count  = int32();
+    func:aria_template_has    = int32(string:key);
+    func:aria_template_remove = int32(string:key);
+}
+
+pub func:set = int32(string:key, string:value) {
+    pass(aria_template_set(key, value));
+};
+
+pub func:get = string(string:key) {
+    pass(aria_template_get(key));
+};
+
+pub func:render = string(string:tmpl) {
+    pass(aria_template_render(tmpl));
+};
+
+pub func:clear = void() {
+    aria_template_clear();
+};
+
+pub func:count = int32() {
+    pass(aria_template_count());
+};
+
+pub func:has = int32(string:key) {
+    pass(aria_template_has(key));
+};
+
+pub func:remove = int32(string:key) {
+    pass(aria_template_remove(key));
+};

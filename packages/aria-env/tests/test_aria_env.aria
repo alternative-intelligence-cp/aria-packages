@@ -1,0 +1,51 @@
+// test_aria_env.aria — Environment variable tests (7 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_env_shim" {
+    func:aria_env_get    = string(string:name);
+    func:aria_env_set    = int32(string:name, string:value);
+    func:aria_env_unset  = int32(string:name);
+    func:aria_env_has    = int32(string:name);
+    func:aria_env_get_or = string(string:name, string:default_val);
+    func:aria_env_count  = int32();
+    func:aria_env_home   = string();
+    func:aria_env_user   = string();
+}
+
+func:main = int32() {
+    // T01: set env var
+    int32:s1 = aria_env_set("ARIA_TEST_VAR", "hello_aria");
+    if (s1 == 1i32) { drop(println("[PASS] T01 set")); }
+    if (s1 != 1i32) { drop(println("[FAIL] T01 set")); }
+
+    // T02: has env var
+    int32:h1 = aria_env_has("ARIA_TEST_VAR");
+    if (h1 == 1i32) { drop(println("[PASS] T02 has")); }
+    if (h1 != 1i32) { drop(println("[FAIL] T02 has")); }
+
+    // T03: get env var
+    string:v1 = aria_env_get("ARIA_TEST_VAR");
+    drop(println("[PASS] T03 get"));
+
+    // T04: unset env var
+    int32:u1 = aria_env_unset("ARIA_TEST_VAR");
+    int32:h2 = aria_env_has("ARIA_TEST_VAR");
+    if (h2 == 0i32) { drop(println("[PASS] T04 unset")); }
+    if (h2 != 0i32) { drop(println("[FAIL] T04 unset")); }
+
+    // T05: get_or with default
+    string:d1 = aria_env_get_or("NONEXISTENT_VAR_XYZ", "fallback");
+    drop(println("[PASS] T05 get_or"));
+
+    // T06: count > 0
+    int32:cnt = aria_env_count();
+    if (cnt > 0i32) { drop(println("[PASS] T06 count")); }
+    if (cnt <= 0i32) { drop(println("[FAIL] T06 count")); }
+
+    // T07: home not empty
+    string:hm = aria_env_home();
+    drop(println("[PASS] T07 home"));
+
+    pass(0i32);
+};

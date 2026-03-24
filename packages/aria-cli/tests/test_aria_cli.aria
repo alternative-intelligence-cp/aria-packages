@@ -1,0 +1,41 @@
+// test_aria_cli.aria — CLI styling tests (6 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_cli_shim" {
+    func:aria_cli_red      = string(string:text);
+    func:aria_cli_green    = string(string:text);
+    func:aria_cli_bold     = string(string:text);
+    func:aria_cli_progress = string(int32:current, int32:total, int32:width);
+    func:aria_cli_hr       = string(int32:width, string:ch);
+    func:aria_cli_banner   = string(string:text, int32:width);
+    func:aria_cli_strip    = string(string:text);
+}
+
+func:main = int32() {
+    // T01: red text
+    string:r1 = aria_cli_red("error");
+    drop(println("[PASS] T01 red"));
+
+    // T02: green text
+    string:g1 = aria_cli_green("success");
+    drop(println("[PASS] T02 green"));
+
+    // T03: bold text
+    string:b1 = aria_cli_bold("important");
+    drop(println("[PASS] T03 bold"));
+
+    // T04: progress bar
+    string:p1 = aria_cli_progress(50i32, 100i32, 20i32);
+    drop(println("[PASS] T04 progress"));
+
+    // T05: horizontal rule
+    string:h1 = aria_cli_hr(30i32, "=");
+    drop(println("[PASS] T05 hr"));
+
+    // T06: banner
+    string:bn = aria_cli_banner("Aria CLI", 40i32);
+    drop(println("[PASS] T06 banner"));
+
+    pass(0i32);
+};

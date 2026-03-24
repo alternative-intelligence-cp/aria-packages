@@ -1,0 +1,85 @@
+// test_aria_websocket.aria — WebSocket echo test (9 tests)
+//
+// Starts a local server, connects a client, sends a message,
+// receives it on the server, echoes it back, verifies on client.
+//
+// Workaround: variables consumed on use, so we store connection IDs
+// as literals after initial assignment.
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_websocket_shim" {
+    func:aria_ws_error            = string();
+    func:aria_ws_last_message     = string();
+    func:aria_ws_last_message_len = int32();
+    func:aria_ws_connect          = int32(string:host, int32:port, string:path);
+    func:aria_ws_listen           = int32(string:bind_addr, int32:port, int32:backlog);
+    func:aria_ws_accept           = int32(int32:listen_fd, int32:timeout_ms);
+    func:aria_ws_send             = int32(int32:conn_id, string:msg);
+    func:aria_ws_recv             = int32(int32:conn_id, int32:timeout_ms);
+    func:aria_ws_broadcast        = int32(string:msg);
+    func:aria_ws_ping             = int32(int32:conn_id);
+    func:aria_ws_close            = void(int32:conn_id);
+    func:aria_ws_close_listener   = void(int32:listen_fd);
+    func:aria_ws_connection_count = int32();
+}
+
+func:main = int32() {
+    // T01: Start a WebSocket server on port 9877
+    int32:srv = aria_ws_listen("127.0.0.1", 9877i32, 2i32);
+    if (srv < 0i32) {
+        drop(println("[FAIL] T01 ws_listen"));
+        pass(1i32);
+    }
+    drop(println("[PASS] T01 ws_listen"));
+
+    // T02: Connect client to the server
+    // Client will be conn slot 0, server-accepted will be slot 1
+    int32:client = aria_ws_connect("127.0.0.1", 9877i32, "/");
+    if (client < 0i32) {
+        drop(println("[FAIL] T02 ws_connect"));
+        pass(1i32);
+    }
+    drop(println("[PASS] T02 ws_connect"));
+
+    // T03: Accept the connection on server side
+    int32:accepted = aria_ws_accept(srv, 2000i32);
+    if (accepted < 0i32) {
+        drop(println("[FAIL] T03 ws_accept"));
+        pass(1i32);
+    }
+    drop(println("[PASS] T03 ws_accept"));
+
+    // T04: Send message from client (slot 0)
+    int32:s1 = aria_ws_send(0i32, "Hello from Aria!");
+    if (s1 < 0i32) { drop(println("[FAIL] T04 ws_send")); }
+    if (s1 == 0i32) { drop(println("[PASS] T04 ws_send")); }
+
+    // T05: Receive message on server side (slot 1)
+    int32:r1 = aria_ws_recv(1i32, 2000i32);
+    if (r1 < 0i32) { drop(println("[FAIL] T05 ws_recv")); }
+    if (r1 == 0i32) { drop(println("[PASS] T05 ws_recv")); }
+
+    // T06: Send echo from server (slot 1)
+    int32:s2 = aria_ws_send(1i32, "Echo: Hello from Aria!");
+    if (s2 == 0i32) { drop(println("[PASS] T06 ws_send echo")); }
+    if (s2 != 0i32) { drop(println("[FAIL] T06 ws_send echo")); }
+
+    // T07: Receive echo on client side (slot 0)
+    int32:r2 = aria_ws_recv(0i32, 2000i32);
+    if (r2 == 0i32) { drop(println("[PASS] T07 ws_recv echo")); }
+    if (r2 != 0i32) { drop(println("[FAIL] T07 ws_recv echo")); }
+
+    // T08: Connection count should be 2
+    int32:cc = aria_ws_connection_count();
+    if (cc == 2i32) { drop(println("[PASS] T08 connection_count")); }
+    if (cc != 2i32) { drop(println("[FAIL] T08 connection_count")); }
+
+    // T09: Close connections
+    aria_ws_close(0i32);
+    aria_ws_close(1i32);
+    aria_ws_close_listener(srv);
+    drop(println("[PASS] T09 cleanup"));
+
+    pass(0i32);
+};

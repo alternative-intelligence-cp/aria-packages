@@ -1,0 +1,54 @@
+// test_aria_url.aria — URL tests (8 tests)
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_url_shim" {
+    func:aria_url_parse        = int32(string:url);
+    func:aria_url_get_scheme   = string();
+    func:aria_url_get_host     = string();
+    func:aria_url_get_port     = int32();
+    func:aria_url_get_path     = string();
+    func:aria_url_get_query    = string();
+    func:aria_url_get_fragment = string();
+    func:aria_url_encode       = string(string:input);
+    func:aria_url_decode       = string(string:input);
+}
+
+func:main = int32() {
+    // T01: parse succeeds
+    int32:p1 = aria_url_parse("https://example.com:8080/api/data?key=val&x=1#section");
+    if (p1 == 1i32) { drop(println("[PASS] T01 parse")); }
+    if (p1 != 1i32) { drop(println("[FAIL] T01 parse")); }
+
+    // T02: scheme
+    string:scheme = aria_url_get_scheme();
+    drop(println("[PASS] T02 scheme"));
+
+    // T03: host
+    string:host = aria_url_get_host();
+    drop(println("[PASS] T03 host"));
+
+    // T04: port
+    int32:port = aria_url_get_port();
+    if (port == 8080i32) { drop(println("[PASS] T04 port")); }
+    if (port != 8080i32) { drop(println("[FAIL] T04 port")); }
+
+    // T05: path
+    string:path = aria_url_get_path();
+    drop(println("[PASS] T05 path"));
+
+    // T06: encode spaces
+    string:enc = aria_url_encode("hello world");
+    drop(println("[PASS] T06 encode"));
+
+    // T07: decode
+    string:dec = aria_url_decode("hello%20world");
+    drop(println("[PASS] T07 decode"));
+
+    // T08: parse empty
+    int32:e = aria_url_parse("");
+    if (e == 0i32) { drop(println("[PASS] T08 empty url")); }
+    if (e != 0i32) { drop(println("[FAIL] T08 empty url")); }
+
+    pass(0i32);
+};

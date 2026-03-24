@@ -1,0 +1,29 @@
+// aria_crypto.aria — Cryptographic hashing library for Aria
+
+extern "aria_crypto_shim" {
+    func:aria_crypto_sha256        = string(string:data);
+    func:aria_crypto_md5           = string(string:data);
+    func:aria_crypto_hmac_sha256   = string(string:key, string:data);
+    func:aria_crypto_sha256_verify = int32(string:data, string:expected);
+    func:aria_crypto_md5_verify    = int32(string:data, string:expected);
+}
+
+pub func:sha256 = string(string:data) {
+    pass(aria_crypto_sha256(data));
+};
+
+pub func:md5 = string(string:data) {
+    pass(aria_crypto_md5(data));
+};
+
+pub func:hmac_sha256 = string(string:key, string:data) {
+    pass(aria_crypto_hmac_sha256(key, data));
+};
+
+pub func:sha256_verify = int32(string:data, string:expected) {
+    pass(aria_crypto_sha256_verify(data, expected));
+};
+
+pub func:md5_verify = int32(string:data, string:expected) {
+    pass(aria_crypto_md5_verify(data, expected));
+};
