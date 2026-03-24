@@ -1,0 +1,374 @@
+func:failsafe = NIL(int32:code) { pass(NIL); };
+// test_aria_redis.aria — Comprehensive Redis tests
+//
+// 40+ tests: connect, GET/SET, DEL, EXISTS, EXPIRE/TTL,
+//            INCR, lists (LPUSH/RPUSH/LPOP/RPOP/LRANGE),
+//            hashes (HSET/HGET/HDEL), sets (SADD/SREM/SISMEMBER),
+//            PING, SELECT DB, generic command
+
+extern "aria_redis_shim" {
+    func:aria_redis_connect    = int32(string:host, int32:port);
+    func:aria_redis_disconnect = int32(int32:conn_id);
+    func:aria_redis_last_conn  = int32();
+
+    func:aria_redis_set    = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_set_ex = int32(int32:conn_id, string:key, string:value, int32:seconds);
+    func:aria_redis_get    = int32(int32:conn_id, string:key);
+    func:aria_redis_del    = int32(int32:conn_id, string:key);
+    func:aria_redis_exists = int32(int32:conn_id, string:key);
+    func:aria_redis_expire = int32(int32:conn_id, string:key, int32:seconds);
+    func:aria_redis_ttl    = int64(int32:conn_id, string:key);
+    func:aria_redis_incr   = int32(int32:conn_id, string:key);
+    func:aria_redis_incrby = int32(int32:conn_id, string:key, int64:amount);
+
+    func:aria_redis_reply_int = int64(int32:conn_id);
+
+    func:aria_redis_lpush  = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_rpush  = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_lpop   = int32(int32:conn_id, string:key);
+    func:aria_redis_rpop   = int32(int32:conn_id, string:key);
+    func:aria_redis_llen   = int64(int32:conn_id, string:key);
+    func:aria_redis_lrange = int32(int32:conn_id, string:key, int32:start, int32:stop);
+    func:aria_redis_list_count = int32(int32:conn_id);
+
+    func:aria_redis_hset    = int32(int32:conn_id, string:key, string:field, string:value);
+    func:aria_redis_hget    = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hdel    = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hexists = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hlen    = int64(int32:conn_id, string:key);
+
+    func:aria_redis_sadd      = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_srem      = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_sismember = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_scard     = int64(int32:conn_id, string:key);
+
+    func:aria_redis_command   = int32(int32:conn_id, string:cmd);
+    func:aria_redis_ping      = int32(int32:conn_id);
+    func:aria_redis_dbsize    = int64(int32:conn_id);
+    func:aria_redis_flushdb   = int32(int32:conn_id);
+    func:aria_redis_select_db = int32(int32:conn_id, int32:db);
+
+    // assertion helpers
+    func:aria_redis_assert_true     = void(bool:val, string:msg);
+    func:aria_redis_assert_int_eq   = void(int64:actual, int64:expected, string:msg);
+    func:aria_redis_assert_reply_eq = void(int32:conn_id, string:expected, string:msg);
+    func:aria_redis_assert_list_element_eq = void(int32:conn_id, int32:idx, string:expected, string:msg);
+    func:aria_redis_test_summary    = void();
+}
+
+// ── Phase 1: connect, ping, select db 15, flushdb ───────────────
+
+func:test_phase1 = NIL() {
+    // T01 — connect
+    int32:conn = aria_redis_connect("127.0.0.1", 6379i32);
+    int32:c = aria_redis_last_conn();
+    aria_redis_assert_true(c >= 0i32, "T01 connect to Redis");
+
+    // T02 — ping
+    int32:c2 = aria_redis_last_conn();
+    int32:p = aria_redis_ping(c2);
+    aria_redis_assert_true(p == 1i32, "T02 PING returns PONG");
+
+    // T03 — select db 15 (test db)
+    int32:c3 = aria_redis_last_conn();
+    int32:s = aria_redis_select_db(c3, 15i32);
+    aria_redis_assert_true(s == 1i32, "T03 SELECT db 15");
+
+    // T04 — flush db for clean state
+    int32:c4 = aria_redis_last_conn();
+    int32:f = aria_redis_flushdb(c4);
+    aria_redis_assert_true(f == 1i32, "T04 FLUSHDB");
+
+    // T05 — dbsize == 0 after flush
+    int32:c5 = aria_redis_last_conn();
+    int64:sz = aria_redis_dbsize(c5);
+    aria_redis_assert_int_eq(sz, 0i64, "T05 DBSIZE == 0 after flush");
+
+    pass(NIL);
+};
+
+// ── Phase 2: SET, GET, DEL, EXISTS ──────────────────────────────
+
+func:test_phase2 = NIL() {
+    // T06 — SET
+    int32:c1 = aria_redis_last_conn();
+    int32:s = aria_redis_set(c1, "name", "Alice");
+    aria_redis_assert_true(s == 1i32, "T06 SET name Alice");
+
+    // T07 — GET
+    int32:c2 = aria_redis_last_conn();
+    int32:g = aria_redis_get(c2, "name");
+    aria_redis_assert_true(g == 1i32, "T07 GET name returns 1 (found)");
+
+    // T08 — verify value
+    int32:c3 = aria_redis_last_conn();
+    aria_redis_assert_reply_eq(c3, "Alice", "T08 GET name == Alice");
+
+    // T09 — EXISTS
+    int32:c4 = aria_redis_last_conn();
+    int32:e = aria_redis_exists(c4, "name");
+    aria_redis_assert_true(e == 1i32, "T09 EXISTS name == 1");
+
+    // T10 — GET non-existent key
+    int32:c5 = aria_redis_last_conn();
+    int32:g2 = aria_redis_get(c5, "nonexistent");
+    aria_redis_assert_true(g2 == 2i32, "T10 GET nonexistent returns 2 (nil)");
+
+    // T11 — DEL
+    int32:c6 = aria_redis_last_conn();
+    int32:d = aria_redis_del(c6, "name");
+    aria_redis_assert_true(d == 1i32, "T11 DEL name returns 1");
+
+    // T12 — EXISTS after DEL
+    int32:c7 = aria_redis_last_conn();
+    int32:e2 = aria_redis_exists(c7, "name");
+    aria_redis_assert_true(e2 == 0i32, "T12 EXISTS name == 0 after DEL");
+
+    pass(NIL);
+};
+
+// ── Phase 3: INCR, INCRBY, SET_EX, EXPIRE, TTL ──────────────────
+
+func:test_phase3 = NIL() {
+    // T13 — SET counter
+    int32:c1 = aria_redis_last_conn();
+    aria_redis_set(c1, "counter", "10");
+
+    // T14 — INCR
+    int32:c2 = aria_redis_last_conn();
+    int32:r = aria_redis_incr(c2, "counter");
+    aria_redis_assert_true(r == 1i32, "T13 INCR counter succeeds");
+
+    // T15 — verify counter value
+    int32:c3 = aria_redis_last_conn();
+    int64:val = aria_redis_reply_int(c3);
+    aria_redis_assert_int_eq(val, 11i64, "T14 counter == 11 after INCR");
+
+    // T16 — INCRBY
+    int32:c4 = aria_redis_last_conn();
+    aria_redis_incrby(c4, "counter", 5i64);
+    int32:c5 = aria_redis_last_conn();
+    int64:val2 = aria_redis_reply_int(c5);
+    aria_redis_assert_int_eq(val2, 16i64, "T15 counter == 16 after INCRBY 5");
+
+    // T17 — SET with EX (expiry)
+    int32:c6 = aria_redis_last_conn();
+    int32:se = aria_redis_set_ex(c6, "temp", "value", 3600i32);
+    aria_redis_assert_true(se == 1i32, "T16 SET_EX temp with 3600s TTL");
+
+    // T18 — TTL
+    int32:c7 = aria_redis_last_conn();
+    int64:ttl = aria_redis_ttl(c7, "temp");
+    aria_redis_assert_true(ttl > 0i64, "T17 TTL temp > 0");
+
+    // T19 — EXPIRE on existing key
+    int32:c8 = aria_redis_last_conn();
+    int32:ex = aria_redis_expire(c8, "counter", 60i32);
+    aria_redis_assert_true(ex == 1i32, "T18 EXPIRE counter 60s");
+
+    // T20 — TTL on key without expiry → -1 not valid now, check TTL > 0
+    int32:c9 = aria_redis_last_conn();
+    int64:ttl2 = aria_redis_ttl(c9, "counter");
+    aria_redis_assert_true(ttl2 > 0i64, "T19 TTL counter > 0 after EXPIRE");
+
+    pass(NIL);
+};
+
+// ── Phase 4: Lists ──────────────────────────────────────────────
+
+func:test_phase4 = NIL() {
+    // T21 — RPUSH (builds list: a, b, c)
+    int32:c1 = aria_redis_last_conn();
+    int32:r1 = aria_redis_rpush(c1, "mylist", "a");
+    aria_redis_assert_true(r1 == 1i32, "T20 RPUSH mylist a (len=1)");
+
+    int32:c2 = aria_redis_last_conn();
+    int32:r2 = aria_redis_rpush(c2, "mylist", "b");
+    aria_redis_assert_true(r2 == 2i32, "T21 RPUSH mylist b (len=2)");
+
+    int32:c3 = aria_redis_last_conn();
+    int32:r3 = aria_redis_rpush(c3, "mylist", "c");
+    aria_redis_assert_true(r3 == 3i32, "T22 RPUSH mylist c (len=3)");
+
+    // T24 — LLEN
+    int32:c4 = aria_redis_last_conn();
+    int64:len = aria_redis_llen(c4, "mylist");
+    aria_redis_assert_int_eq(len, 3i64, "T23 LLEN mylist == 3");
+
+    // T25 — LPUSH (prepend)
+    int32:c5 = aria_redis_last_conn();
+    int32:r4 = aria_redis_lpush(c5, "mylist", "z");
+    aria_redis_assert_true(r4 == 4i32, "T24 LPUSH mylist z (len=4)");
+
+    // T26 — LRANGE 0 -1 (all)
+    int32:c6 = aria_redis_last_conn();
+    int32:cnt = aria_redis_lrange(c6, "mylist", 0i32, -1i32);
+    aria_redis_assert_true(cnt == 4i32, "T25 LRANGE returns 4 elements");
+
+    // T27 — verify elements
+    int32:c7 = aria_redis_last_conn();
+    aria_redis_assert_list_element_eq(c7, 0i32, "z", "T26 list[0] == z");
+
+    int32:c8 = aria_redis_last_conn();
+    aria_redis_assert_list_element_eq(c8, 1i32, "a", "T27 list[1] == a");
+
+    int32:c9 = aria_redis_last_conn();
+    aria_redis_assert_list_element_eq(c9, 3i32, "c", "T28 list[3] == c");
+
+    pass(NIL);
+};
+
+// ── Phase 5: LPOP, RPOP ─────────────────────────────────────────
+
+func:test_phase5 = NIL() {
+    // T30 — LPOP
+    int32:c1 = aria_redis_last_conn();
+    int32:lp = aria_redis_lpop(c1, "mylist");
+    aria_redis_assert_true(lp == 1i32, "T29 LPOP mylist returns value");
+
+    int32:c2 = aria_redis_last_conn();
+    aria_redis_assert_reply_eq(c2, "z", "T30 LPOP value == z");
+
+    // T32 — RPOP
+    int32:c3 = aria_redis_last_conn();
+    int32:rp = aria_redis_rpop(c3, "mylist");
+    aria_redis_assert_true(rp == 1i32, "T31 RPOP mylist returns value");
+
+    int32:c4 = aria_redis_last_conn();
+    aria_redis_assert_reply_eq(c4, "c", "T32 RPOP value == c");
+
+    // T34 — LLEN after pops
+    int32:c5 = aria_redis_last_conn();
+    int64:len = aria_redis_llen(c5, "mylist");
+    aria_redis_assert_int_eq(len, 2i64, "T33 LLEN == 2 after LPOP+RPOP");
+
+    pass(NIL);
+};
+
+// ── Phase 6: Hashes ─────────────────────────────────────────────
+
+func:test_phase6 = NIL() {
+    // T35 — HSET
+    int32:c1 = aria_redis_last_conn();
+    int32:h1 = aria_redis_hset(c1, "user:1", "name", "Alice");
+    aria_redis_assert_true(h1 == 1i32, "T34 HSET user:1 name Alice (new)");
+
+    int32:c2 = aria_redis_last_conn();
+    int32:h2 = aria_redis_hset(c2, "user:1", "age", "30");
+    aria_redis_assert_true(h2 == 1i32, "T35 HSET user:1 age 30 (new)");
+
+    // T37 — HGET
+    int32:c3 = aria_redis_last_conn();
+    int32:hg = aria_redis_hget(c3, "user:1", "name");
+    aria_redis_assert_true(hg == 1i32, "T36 HGET user:1 name found");
+
+    int32:c4 = aria_redis_last_conn();
+    aria_redis_assert_reply_eq(c4, "Alice", "T37 HGET name == Alice");
+
+    // T39 — HEXISTS
+    int32:c5 = aria_redis_last_conn();
+    int32:he = aria_redis_hexists(c5, "user:1", "name");
+    aria_redis_assert_true(he == 1i32, "T38 HEXISTS user:1 name == 1");
+
+    // T40 — HLEN
+    int32:c6 = aria_redis_last_conn();
+    int64:hl = aria_redis_hlen(c6, "user:1");
+    aria_redis_assert_int_eq(hl, 2i64, "T39 HLEN user:1 == 2");
+
+    // T41 — HDEL
+    int32:c7 = aria_redis_last_conn();
+    int32:hd = aria_redis_hdel(c7, "user:1", "age");
+    aria_redis_assert_true(hd == 1i32, "T40 HDEL user:1 age returns 1");
+
+    // T42 — HLEN after HDEL
+    int32:c8 = aria_redis_last_conn();
+    int64:hl2 = aria_redis_hlen(c8, "user:1");
+    aria_redis_assert_int_eq(hl2, 1i64, "T41 HLEN user:1 == 1 after HDEL");
+
+    pass(NIL);
+};
+
+// ── Phase 7: Sets ───────────────────────────────────────────────
+
+func:test_phase7 = NIL() {
+    // T43 — SADD
+    int32:c1 = aria_redis_last_conn();
+    int32:s1 = aria_redis_sadd(c1, "myset", "apple");
+    aria_redis_assert_true(s1 == 1i32, "T42 SADD myset apple (new)");
+
+    int32:c2 = aria_redis_last_conn();
+    int32:s2 = aria_redis_sadd(c2, "myset", "banana");
+    aria_redis_assert_true(s2 == 1i32, "T43 SADD myset banana (new)");
+
+    int32:c3 = aria_redis_last_conn();
+    int32:s3 = aria_redis_sadd(c3, "myset", "apple");
+    aria_redis_assert_true(s3 == 0i32, "T44 SADD myset apple (dup, returns 0)");
+
+    // T46 — SCARD
+    int32:c4 = aria_redis_last_conn();
+    int64:sc = aria_redis_scard(c4, "myset");
+    aria_redis_assert_int_eq(sc, 2i64, "T45 SCARD myset == 2");
+
+    // T47 — SISMEMBER
+    int32:c5 = aria_redis_last_conn();
+    int32:sm = aria_redis_sismember(c5, "myset", "apple");
+    aria_redis_assert_true(sm == 1i32, "T46 SISMEMBER apple == 1");
+
+    int32:c6 = aria_redis_last_conn();
+    int32:sm2 = aria_redis_sismember(c6, "myset", "cherry");
+    aria_redis_assert_true(sm2 == 0i32, "T47 SISMEMBER cherry == 0");
+
+    // T49 — SREM
+    int32:c7 = aria_redis_last_conn();
+    int32:sr = aria_redis_srem(c7, "myset", "banana");
+    aria_redis_assert_true(sr == 1i32, "T48 SREM banana returns 1");
+
+    int32:c8 = aria_redis_last_conn();
+    int64:sc2 = aria_redis_scard(c8, "myset");
+    aria_redis_assert_int_eq(sc2, 1i64, "T49 SCARD == 1 after SREM");
+
+    pass(NIL);
+};
+
+// ── Phase 8: generic command, cleanup, disconnect ────────────────
+
+func:test_phase8 = NIL() {
+    // T50 — generic command
+    int32:c1 = aria_redis_last_conn();
+    int32:gc = aria_redis_command(c1, "SET generic_key generic_value");
+    aria_redis_assert_true(gc == 1i32, "T50 generic command SET");
+
+    // T51 — verify via GET
+    int32:c2 = aria_redis_last_conn();
+    int32:gv = aria_redis_get(c2, "generic_key");
+    aria_redis_assert_true(gv == 1i32, "T51 GET generic_key found");
+
+    int32:c3 = aria_redis_last_conn();
+    aria_redis_assert_reply_eq(c3, "generic_value", "T52 GET == generic_value");
+
+    // T53 — flush and disconnect
+    int32:c4 = aria_redis_last_conn();
+    aria_redis_flushdb(c4);
+
+    int32:c5 = aria_redis_last_conn();
+    int32:dc = aria_redis_disconnect(c5);
+    aria_redis_assert_true(dc == 1i32, "T53 disconnect");
+
+    pass(NIL);
+};
+
+// ── main ────────────────────────────────────────────────────────
+
+func:main = int32() {
+    drop(test_phase1());
+    drop(test_phase2());
+    drop(test_phase3());
+    drop(test_phase4());
+    drop(test_phase5());
+    drop(test_phase6());
+    drop(test_phase7());
+    drop(test_phase8());
+
+    aria_redis_test_summary();
+    pass(0i32);
+};

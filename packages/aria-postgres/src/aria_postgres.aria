@@ -1,0 +1,230 @@
+// aria_postgres.aria — Idiomatic Aria PostgreSQL database client
+//
+// Connect to PostgreSQL, execute SQL, run parameterized queries, iterate results.
+// Requires: libaria_postgres_shim.so + libpq
+//
+// Usage:
+//   int32:conn = raw(pg_connect("host=localhost port=5433 dbname=mydb"));
+//   drop(pg_exec(conn, "CREATE TABLE t(id SERIAL PRIMARY KEY, name TEXT)"));
+//   drop(pg_param_add_text("Alice"));
+//   int32:c = pg_conn();
+//   drop(pg_execute(c, "INSERT INTO t(name) VALUES($1)"));
+//   drop(pg_disconnect(conn));
+
+// ── extern declarations (C shim) ────────────────────────────────────
+
+extern "aria_postgres_shim" {
+    // connect / disconnect
+    func:aria_postgres_connect    = int32(string:conninfo);
+    func:aria_postgres_disconnect = int32(int32:conn_id);
+    func:aria_postgres_last_conn  = int32();
+
+    // execute (no result set)
+    func:aria_postgres_exec = int32(int32:conn_id, string:sql);
+
+    // parameter staging
+    func:aria_postgres_param_clear      = int32();
+    func:aria_postgres_param_add_text   = int32(string:val);
+    func:aria_postgres_param_add_int    = int32(int64:val);
+    func:aria_postgres_param_add_double = int32(float64:val);
+    func:aria_postgres_param_add_null   = int32();
+
+    // parameterized query / execute
+    func:aria_postgres_query   = int32(int32:conn_id, string:sql);
+    func:aria_postgres_execute = int32(int32:conn_id, string:sql);
+
+    // result navigation
+    func:aria_postgres_next_row     = int32(int32:conn_id);
+    func:aria_postgres_row_count    = int32(int32:conn_id);
+    func:aria_postgres_column_count = int32(int32:conn_id);
+
+    // column accessors
+    func:aria_postgres_column_int     = int64(int32:conn_id, int32:col);
+    func:aria_postgres_column_double  = float64(int32:conn_id, int32:col);
+    func:aria_postgres_column_is_null = int32(int32:conn_id, int32:col);
+
+    // result management
+    func:aria_postgres_clear_result = int32(int32:conn_id);
+    func:aria_postgres_affected_rows = int64(int32:conn_id);
+
+    // transactions
+    func:aria_postgres_begin    = int32(int32:conn_id);
+    func:aria_postgres_commit   = int32(int32:conn_id);
+    func:aria_postgres_rollback = int32(int32:conn_id);
+
+    // utility
+    func:aria_postgres_status = int32(int32:conn_id);
+
+    // LISTEN / NOTIFY
+    func:aria_postgres_listen = int32(int32:conn_id, string:channel);
+    func:aria_postgres_notify = int32(int32:conn_id, string:channel, string:payload);
+}
+
+// ── public API: connect / disconnect ────────────────────────────────
+
+pub func:pg_connect = int32(string:conninfo) {
+    int32:conn = aria_postgres_connect(conninfo);
+    if (conn < 0i32) {
+        fail(1i32);
+    }
+    pass(conn);
+};
+
+pub func:pg_disconnect = int32(int32:conn_id) {
+    aria_postgres_disconnect(conn_id);
+    pass(1i32);
+};
+
+pub func:pg_conn = int32() {
+    int32:c = aria_postgres_last_conn();
+    pass(c);
+};
+
+// ── public API: execute (no params, no result set) ──────────────────
+
+pub func:pg_exec = int32(int32:conn_id, string:sql) {
+    int32:r = aria_postgres_exec(conn_id, sql);
+    if (r == 0i32) {
+        fail(2i32);
+    }
+    pass(r);
+};
+
+// ── public API: parameter staging ───────────────────────────────────
+
+pub func:pg_param_clear = int32() {
+    aria_postgres_param_clear();
+    pass(1i32);
+};
+
+pub func:pg_param_add_text = int32(string:val) {
+    aria_postgres_param_add_text(val);
+    pass(1i32);
+};
+
+pub func:pg_param_add_int = int32(int64:val) {
+    aria_postgres_param_add_int(val);
+    pass(1i32);
+};
+
+pub func:pg_param_add_double = int32(float64:val) {
+    aria_postgres_param_add_double(val);
+    pass(1i32);
+};
+
+pub func:pg_param_add_null = int32() {
+    aria_postgres_param_add_null();
+    pass(1i32);
+};
+
+// ── public API: parameterized query / execute ───────────────────────
+
+pub func:pg_query = int32(int32:conn_id, string:sql) {
+    int32:r = aria_postgres_query(conn_id, sql);
+    if (r == 0i32) {
+        fail(3i32);
+    }
+    pass(r);
+};
+
+pub func:pg_execute = int32(int32:conn_id, string:sql) {
+    int32:r = aria_postgres_execute(conn_id, sql);
+    if (r == 0i32) {
+        fail(3i32);
+    }
+    pass(r);
+};
+
+// ── public API: result navigation ───────────────────────────────────
+
+pub func:pg_next_row = int32(int32:conn_id) {
+    int32:r = aria_postgres_next_row(conn_id);
+    pass(r);
+};
+
+pub func:pg_row_count = int32(int32:conn_id) {
+    int32:r = aria_postgres_row_count(conn_id);
+    pass(r);
+};
+
+pub func:pg_column_count = int32(int32:conn_id) {
+    int32:r = aria_postgres_column_count(conn_id);
+    pass(r);
+};
+
+// ── public API: column accessors ────────────────────────────────────
+
+pub func:pg_column_int = int64(int32:conn_id, int32:col) {
+    int64:r = aria_postgres_column_int(conn_id, col);
+    pass(r);
+};
+
+pub func:pg_column_double = float64(int32:conn_id, int32:col) {
+    float64:r = aria_postgres_column_double(conn_id, col);
+    pass(r);
+};
+
+pub func:pg_column_is_null = int32(int32:conn_id, int32:col) {
+    int32:r = aria_postgres_column_is_null(conn_id, col);
+    pass(r);
+};
+
+// ── public API: result management ───────────────────────────────────
+
+pub func:pg_clear_result = int32(int32:conn_id) {
+    aria_postgres_clear_result(conn_id);
+    pass(1i32);
+};
+
+pub func:pg_affected_rows = int64(int32:conn_id) {
+    int64:r = aria_postgres_affected_rows(conn_id);
+    pass(r);
+};
+
+// ── public API: transactions ────────────────────────────────────────
+
+pub func:pg_begin = int32(int32:conn_id) {
+    int32:r = aria_postgres_begin(conn_id);
+    if (r == 0i32) {
+        fail(4i32);
+    }
+    pass(r);
+};
+
+pub func:pg_commit = int32(int32:conn_id) {
+    int32:r = aria_postgres_commit(conn_id);
+    if (r == 0i32) {
+        fail(5i32);
+    }
+    pass(r);
+};
+
+pub func:pg_rollback = int32(int32:conn_id) {
+    int32:r = aria_postgres_rollback(conn_id);
+    pass(r);
+};
+
+// ── public API: utility ─────────────────────────────────────────────
+
+pub func:pg_status = int32(int32:conn_id) {
+    int32:r = aria_postgres_status(conn_id);
+    pass(r);
+};
+
+// ── public API: LISTEN / NOTIFY ─────────────────────────────────────
+
+pub func:pg_listen = int32(int32:conn_id, string:channel) {
+    int32:r = aria_postgres_listen(conn_id, channel);
+    if (r == 0i32) {
+        fail(6i32);
+    }
+    pass(r);
+};
+
+pub func:pg_notify = int32(int32:conn_id, string:channel, string:payload) {
+    int32:r = aria_postgres_notify(conn_id, channel, payload);
+    if (r == 0i32) {
+        fail(7i32);
+    }
+    pass(r);
+};

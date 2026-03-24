@@ -280,6 +280,32 @@
         }
       }
     },
+    "aria-mysql": {
+      "latest": "0.1.0",
+      "description": "MySQL client library for Aria \u2014 SQL database via C shim wrapping libmysqlclient",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.2",
+          "system_libs": [
+            "mysqlclient"
+          ]
+        }
+      }
+    },
+    "aria-postgres": {
+      "latest": "0.1.0",
+      "description": "PostgreSQL client library for Aria \u2014 SQL database via C shim wrapping libpq",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.2",
+          "system_libs": [
+            "pq"
+          ]
+        }
+      }
+    },
     "aria-rand": {
       "latest": "0.2.0",
       "description": "xorshift64 pseudo-random number generator for Aria",
@@ -297,6 +323,19 @@
         "0.2.2": {
           "depends": [],
           "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-redis": {
+      "latest": "0.1.0",
+      "description": "Redis client library for Aria \u2014 key-value store via C shim wrapping hiredis",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.2",
+          "system_libs": [
+            "hiredis"
+          ]
         }
       }
     },
@@ -337,6 +376,19 @@
         "0.1.0": {
           "depends": [],
           "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-sqlite": {
+      "latest": "0.1.0",
+      "description": "SQLite3 client library for Aria \u2014 embedded SQL database via C shim wrapping libsqlite3",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.2",
+          "system_libs": [
+            "sqlite3"
+          ]
         }
       }
     },

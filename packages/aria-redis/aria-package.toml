@@ -1,0 +1,11 @@
+[package]
+name = "aria-redis"
+version = "0.1.0"
+description = "Redis client library for Aria via hiredis"
+authors = ["Randy <randy@ariax.org>"]
+
+[dependencies]
+
+[build]
+shim = "shim/aria_redis_shim.c"
+link_libraries = ["aria_redis_shim", "hiredis"]

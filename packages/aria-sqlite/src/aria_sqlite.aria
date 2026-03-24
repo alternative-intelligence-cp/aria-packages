@@ -1,0 +1,199 @@
+// aria_sqlite.aria — Idiomatic Aria SQLite3 database client
+//
+// Open databases, execute SQL, run parameterized queries, iterate results.
+// Requires: libaria_sqlite_shim.so + libsqlite3
+//
+// Usage:
+//   drop(sqlite_open(":memory:"));
+//   int32:db = sqlite_db();
+//   drop(sqlite_exec(db, "CREATE TABLE t(id INTEGER PRIMARY KEY, name TEXT)"));
+//   int32:db2 = sqlite_db();
+//   int32:stmt = raw(sqlite_prepare(db2, "INSERT INTO t(name) VALUES(?1)"));
+//   drop(sqlite_bind_text(stmt, 1i32, "Alice"));
+//   int32:s = sqlite_stmt();
+//   drop(sqlite_step(s));
+//   int32:s2 = sqlite_stmt();
+//   drop(sqlite_end_stmt(s2));
+//   int32:db3 = sqlite_db();
+//   drop(sqlite_disconnect(db3));
+
+// ── extern declarations (C shim) ────────────────────────────────────
+
+extern "aria_sqlite_shim" {
+    func:aria_sqlite_open       = int32(string:path);
+    func:aria_sqlite_disconnect = int32(int32:db_id);
+    func:aria_sqlite_exec       = int32(int32:db_id, string:sql);
+    func:aria_sqlite_prepare    = int32(int32:db_id, string:sql);
+    func:aria_sqlite_finalize   = int32(int32:stmt_id);
+    func:aria_sqlite_reset      = int32(int32:stmt_id);
+
+    func:aria_sqlite_bind_int    = int32(int32:stmt_id, int32:idx, int64:val);
+    func:aria_sqlite_bind_double = int32(int32:stmt_id, int32:idx, float64:val);
+    func:aria_sqlite_bind_text   = int32(int32:stmt_id, int32:idx, string:val);
+    func:aria_sqlite_bind_null   = int32(int32:stmt_id, int32:idx);
+
+    func:aria_sqlite_step           = int32(int32:stmt_id);
+    func:aria_sqlite_column_count   = int32();
+    func:aria_sqlite_column_type    = int32(int32:col);
+    func:aria_sqlite_column_int     = int64(int32:col);
+    func:aria_sqlite_column_double  = float64(int32:col);
+    func:aria_sqlite_column_is_null = int32(int32:col);
+
+    func:aria_sqlite_begin    = int32(int32:db_id);
+    func:aria_sqlite_commit   = int32(int32:db_id);
+    func:aria_sqlite_rollback = int32(int32:db_id);
+
+    func:aria_sqlite_last_insert_id = int64(int32:db_id);
+    func:aria_sqlite_changes        = int32(int32:db_id);
+
+    func:aria_sqlite_last_db   = int32();
+    func:aria_sqlite_last_stmt = int32();
+}
+
+// ── public API: open / close ────────────────────────────────────────
+
+pub func:sqlite_open = int32(string:path) {
+    int32:db = aria_sqlite_open(path);
+    if (db < 0i32) {
+        fail(1i32);
+    }
+    pass(db);
+};
+
+pub func:sqlite_disconnect = int32(int32:db_id) {
+    int32:r = aria_sqlite_disconnect(db_id);
+    pass(r);
+};
+
+// ── public API: handle retrieval ────────────────────────────────────
+
+pub func:sqlite_db = int32() {
+    int32:r = aria_sqlite_last_db();
+    pass(r);
+};
+
+pub func:sqlite_stmt = int32() {
+    int32:r = aria_sqlite_last_stmt();
+    pass(r);
+};
+
+// ── public API: execute ─────────────────────────────────────────────
+
+pub func:sqlite_exec = int32(int32:db_id, string:sql) {
+    int32:r = aria_sqlite_exec(db_id, sql);
+    if (r == 0i32) {
+        fail(2i32);
+    }
+    pass(r);
+};
+
+// ── public API: prepared statements ─────────────────────────────────
+
+pub func:sqlite_prepare = int32(int32:db_id, string:sql) {
+    int32:stmt = aria_sqlite_prepare(db_id, sql);
+    if (stmt < 0i32) {
+        fail(3i32);
+    }
+    pass(stmt);
+};
+
+pub func:sqlite_end_stmt = int32(int32:stmt_id) {
+    int32:r = aria_sqlite_finalize(stmt_id);
+    pass(r);
+};
+
+pub func:sqlite_reset = int32(int32:stmt_id) {
+    int32:r = aria_sqlite_reset(stmt_id);
+    pass(r);
+};
+
+// ── public API: bind parameters ─────────────────────────────────────
+
+pub func:sqlite_bind_int = int32(int32:stmt_id, int32:idx, int64:val) {
+    int32:r = aria_sqlite_bind_int(stmt_id, idx, val);
+    pass(r);
+};
+
+pub func:sqlite_bind_double = int32(int32:stmt_id, int32:idx, float64:val) {
+    int32:r = aria_sqlite_bind_double(stmt_id, idx, val);
+    pass(r);
+};
+
+pub func:sqlite_bind_text = int32(int32:stmt_id, int32:idx, string:val) {
+    int32:r = aria_sqlite_bind_text(stmt_id, idx, val);
+    pass(r);
+};
+
+pub func:sqlite_bind_null = int32(int32:stmt_id, int32:idx) {
+    int32:r = aria_sqlite_bind_null(stmt_id, idx);
+    pass(r);
+};
+
+// ── public API: step / fetch ────────────────────────────────────────
+
+pub func:sqlite_step = int32(int32:stmt_id) {
+    int32:r = aria_sqlite_step(stmt_id);
+    pass(r);
+};
+
+// ── public API: column accessors ────────────────────────────────────
+
+pub func:sqlite_column_count = int32() {
+    int32:r = aria_sqlite_column_count();
+    pass(r);
+};
+
+pub func:sqlite_column_type = int32(int32:col) {
+    int32:r = aria_sqlite_column_type(col);
+    pass(r);
+};
+
+pub func:sqlite_column_int = int64(int32:col) {
+    int64:r = aria_sqlite_column_int(col);
+    pass(r);
+};
+
+pub func:sqlite_column_double = float64(int32:col) {
+    float64:r = aria_sqlite_column_double(col);
+    pass(r);
+};
+
+pub func:sqlite_column_is_null = int32(int32:col) {
+    int32:r = aria_sqlite_column_is_null(col);
+    pass(r);
+};
+
+// ── public API: transactions ────────────────────────────────────────
+
+pub func:sqlite_begin = int32(int32:db_id) {
+    int32:r = aria_sqlite_begin(db_id);
+    if (r == 0i32) {
+        fail(4i32);
+    }
+    pass(r);
+};
+
+pub func:sqlite_commit = int32(int32:db_id) {
+    int32:r = aria_sqlite_commit(db_id);
+    if (r == 0i32) {
+        fail(5i32);
+    }
+    pass(r);
+};
+
+pub func:sqlite_rollback = int32(int32:db_id) {
+    int32:r = aria_sqlite_rollback(db_id);
+    pass(r);
+};
+
+// ── public API: utility ─────────────────────────────────────────────
+
+pub func:sqlite_last_insert_id = int64(int32:db_id) {
+    int64:r = aria_sqlite_last_insert_id(db_id);
+    pass(r);
+};
+
+pub func:sqlite_changes = int32(int32:db_id) {
+    int32:r = aria_sqlite_changes(db_id);
+    pass(r);
+};

@@ -1,0 +1,243 @@
+// aria_redis.aria — Redis client library for Aria via hiredis
+//
+// Provides idiomatic Aria wrapper around the C shim.
+// Uses redis_* prefix for all public functions.
+
+extern "aria_redis_shim" {
+    func:aria_redis_connect    = int32(string:host, int32:port);
+    func:aria_redis_connect_auth = int32(string:host, int32:port, string:password);
+    func:aria_redis_disconnect = int32(int32:conn_id);
+    func:aria_redis_last_conn  = int32();
+
+    // Core key-value
+    func:aria_redis_set    = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_set_ex = int32(int32:conn_id, string:key, string:value, int32:seconds);
+    func:aria_redis_get    = int32(int32:conn_id, string:key);
+    func:aria_redis_del    = int32(int32:conn_id, string:key);
+    func:aria_redis_exists = int32(int32:conn_id, string:key);
+    func:aria_redis_expire = int32(int32:conn_id, string:key, int32:seconds);
+    func:aria_redis_ttl    = int64(int32:conn_id, string:key);
+    func:aria_redis_incr   = int32(int32:conn_id, string:key);
+    func:aria_redis_incrby = int32(int32:conn_id, string:key, int64:amount);
+
+    // Reply accessors
+    func:aria_redis_reply_int = int64(int32:conn_id);
+
+    // Lists
+    func:aria_redis_lpush  = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_rpush  = int32(int32:conn_id, string:key, string:value);
+    func:aria_redis_lpop   = int32(int32:conn_id, string:key);
+    func:aria_redis_rpop   = int32(int32:conn_id, string:key);
+    func:aria_redis_llen   = int64(int32:conn_id, string:key);
+    func:aria_redis_lrange = int32(int32:conn_id, string:key, int32:start, int32:stop);
+    func:aria_redis_list_count = int32(int32:conn_id);
+
+    // Hashes
+    func:aria_redis_hset    = int32(int32:conn_id, string:key, string:field, string:value);
+    func:aria_redis_hget    = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hdel    = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hexists = int32(int32:conn_id, string:key, string:field);
+    func:aria_redis_hlen   = int64(int32:conn_id, string:key);
+
+    // Sets
+    func:aria_redis_sadd      = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_srem      = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_sismember = int32(int32:conn_id, string:key, string:member);
+    func:aria_redis_scard     = int64(int32:conn_id, string:key);
+
+    // Generic + utility
+    func:aria_redis_command   = int32(int32:conn_id, string:cmd);
+    func:aria_redis_ping      = int32(int32:conn_id);
+    func:aria_redis_dbsize    = int64(int32:conn_id);
+    func:aria_redis_flushdb   = int32(int32:conn_id);
+    func:aria_redis_select_db = int32(int32:conn_id, int32:db);
+}
+
+// ── Connection ──────────────────────────────────────────────────
+
+func:redis_connect = int32(string:host, int32:port) {
+    int32:r = aria_redis_connect(host, port);
+    pass(r);
+};
+
+func:redis_connect_auth = int32(string:host, int32:port, string:password) {
+    int32:r = aria_redis_connect_auth(host, port, password);
+    pass(r);
+};
+
+func:redis_disconnect = int32(int32:conn_id) {
+    int32:r = aria_redis_disconnect(conn_id);
+    pass(r);
+};
+
+func:redis_conn = int32() {
+    int32:r = aria_redis_last_conn();
+    pass(r);
+};
+
+// ── Key-Value ───────────────────────────────────────────────────
+
+func:redis_set = int32(int32:conn_id, string:key, string:value) {
+    int32:r = aria_redis_set(conn_id, key, value);
+    pass(r);
+};
+
+func:redis_set_ex = int32(int32:conn_id, string:key, string:value, int32:seconds) {
+    int32:r = aria_redis_set_ex(conn_id, key, value, seconds);
+    pass(r);
+};
+
+func:redis_get = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_get(conn_id, key);
+    pass(r);
+};
+
+func:redis_del = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_del(conn_id, key);
+    pass(r);
+};
+
+func:redis_exists = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_exists(conn_id, key);
+    pass(r);
+};
+
+func:redis_expire = int32(int32:conn_id, string:key, int32:seconds) {
+    int32:r = aria_redis_expire(conn_id, key, seconds);
+    pass(r);
+};
+
+func:redis_ttl = int64(int32:conn_id, string:key) {
+    int64:r = aria_redis_ttl(conn_id, key);
+    pass(r);
+};
+
+func:redis_incr = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_incr(conn_id, key);
+    pass(r);
+};
+
+func:redis_incrby = int32(int32:conn_id, string:key, int64:amount) {
+    int32:r = aria_redis_incrby(conn_id, key, amount);
+    pass(r);
+};
+
+// ── Reply ───────────────────────────────────────────────────────
+
+func:redis_reply_int = int64(int32:conn_id) {
+    int64:r = aria_redis_reply_int(conn_id);
+    pass(r);
+};
+
+// ── Lists ───────────────────────────────────────────────────────
+
+func:redis_lpush = int32(int32:conn_id, string:key, string:value) {
+    int32:r = aria_redis_lpush(conn_id, key, value);
+    pass(r);
+};
+
+func:redis_rpush = int32(int32:conn_id, string:key, string:value) {
+    int32:r = aria_redis_rpush(conn_id, key, value);
+    pass(r);
+};
+
+func:redis_lpop = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_lpop(conn_id, key);
+    pass(r);
+};
+
+func:redis_rpop = int32(int32:conn_id, string:key) {
+    int32:r = aria_redis_rpop(conn_id, key);
+    pass(r);
+};
+
+func:redis_llen = int64(int32:conn_id, string:key) {
+    int64:r = aria_redis_llen(conn_id, key);
+    pass(r);
+};
+
+func:redis_lrange = int32(int32:conn_id, string:key, int32:start, int32:stop) {
+    int32:r = aria_redis_lrange(conn_id, key, start, stop);
+    pass(r);
+};
+
+func:redis_list_count = int32(int32:conn_id) {
+    int32:r = aria_redis_list_count(conn_id);
+    pass(r);
+};
+
+// ── Hashes ──────────────────────────────────────────────────────
+
+func:redis_hset = int32(int32:conn_id, string:key, string:field, string:value) {
+    int32:r = aria_redis_hset(conn_id, key, field, value);
+    pass(r);
+};
+
+func:redis_hget = int32(int32:conn_id, string:key, string:field) {
+    int32:r = aria_redis_hget(conn_id, key, field);
+    pass(r);
+};
+
+func:redis_hdel = int32(int32:conn_id, string:key, string:field) {
+    int32:r = aria_redis_hdel(conn_id, key, field);
+    pass(r);
+};
+
+func:redis_hexists = int32(int32:conn_id, string:key, string:field) {
+    int32:r = aria_redis_hexists(conn_id, key, field);
+    pass(r);
+};
+
+func:redis_hlen = int64(int32:conn_id, string:key) {
+    int64:r = aria_redis_hlen(conn_id, key);
+    pass(r);
+};
+
+// ── Sets ────────────────────────────────────────────────────────
+
+func:redis_sadd = int32(int32:conn_id, string:key, string:member) {
+    int32:r = aria_redis_sadd(conn_id, key, member);
+    pass(r);
+};
+
+func:redis_srem = int32(int32:conn_id, string:key, string:member) {
+    int32:r = aria_redis_srem(conn_id, key, member);
+    pass(r);
+};
+
+func:redis_sismember = int32(int32:conn_id, string:key, string:member) {
+    int32:r = aria_redis_sismember(conn_id, key, member);
+    pass(r);
+};
+
+func:redis_scard = int64(int32:conn_id, string:key) {
+    int64:r = aria_redis_scard(conn_id, key);
+    pass(r);
+};
+
+// ── Utility ─────────────────────────────────────────────────────
+
+func:redis_command = int32(int32:conn_id, string:cmd) {
+    int32:r = aria_redis_command(conn_id, cmd);
+    pass(r);
+};
+
+func:redis_ping = int32(int32:conn_id) {
+    int32:r = aria_redis_ping(conn_id);
+    pass(r);
+};
+
+func:redis_dbsize = int64(int32:conn_id) {
+    int64:r = aria_redis_dbsize(conn_id);
+    pass(r);
+};
+
+func:redis_flushdb = int32(int32:conn_id) {
+    int32:r = aria_redis_flushdb(conn_id);
+    pass(r);
+};
+
+func:redis_select_db = int32(int32:conn_id, int32:db) {
+    int32:r = aria_redis_select_db(conn_id, db);
+    pass(r);
+};

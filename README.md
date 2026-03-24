@@ -34,12 +34,16 @@ Ecosystem package libraries for the [Aria programming language](https://github.c
 | aria-log | Logging framework |
 | aria-math | Extended math operations |
 | aria-mux | Multiplexer/router |
+| aria-mysql | MySQL database client (libmysqlclient) |
+| aria-postgres | PostgreSQL database client (libpq) |
 | aria-rand | Random number generation |
 | aria-raylib | Raylib game library bindings |
+| aria-redis | Redis key-value store client (hiredis) |
 | aria-regex | Regular expression support |
 | aria-resource-mem | Memory resource management |
 | aria-sdl2 | SDL2 multimedia bindings |
 | aria-socket | Network socket operations |
+| aria-sqlite | SQLite3 embedded database client |
 | aria-str | String manipulation utilities |
 | aria-test | Testing framework |
 | aria-uuid | UUID generation |

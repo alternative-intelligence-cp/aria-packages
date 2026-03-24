@@ -1,0 +1,415 @@
+// test_aria_mysql.aria — Comprehensive MySQL tests
+//
+// 35+ tests: connect, CRUD, parameterized queries (?),
+//            transactions, column accessors, error handling,
+//            SQL injection safety
+//
+// Workarounds for known compiler bugs:
+//   - Variables consumed on use: last_conn() for fresh handles
+//   - "close" in function names: renamed to "disconnect"
+//   - String returns corrupt: column assertions done in C helpers
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_mysql_shim" {
+    func:aria_mysql_connect    = int32(string:host, string:user, string:passwd, string:db, int32:port);
+    func:aria_mysql_disconnect = int32(int32:conn_id);
+    func:aria_mysql_last_conn  = int32();
+
+    func:aria_mysql_exec = int32(int32:conn_id, string:sql);
+
+    func:aria_mysql_param_clear      = int32();
+    func:aria_mysql_param_add_text   = int32(string:val);
+    func:aria_mysql_param_add_int    = int32(int64:val);
+    func:aria_mysql_param_add_double = int32(float64:val);
+    func:aria_mysql_param_add_null   = int32();
+
+    func:aria_mysql_execute      = int32(int32:conn_id, string:sql);
+    func:aria_mysql_select       = int32(int32:conn_id, string:sql);
+    func:aria_mysql_simple_query = int32(int32:conn_id, string:sql);
+
+    func:aria_mysql_next_row     = int32(int32:conn_id);
+    func:aria_mysql_row_count    = int32(int32:conn_id);
+    func:aria_mysql_column_count = int32(int32:conn_id);
+    func:aria_mysql_column_int   = int64(int32:conn_id, int32:col);
+    func:aria_mysql_column_is_null = int32(int32:conn_id, int32:col);
+    func:aria_mysql_clear_result = int32(int32:conn_id);
+    func:aria_mysql_affected_rows = int64(int32:conn_id);
+    func:aria_mysql_last_insert_id = int64(int32:conn_id);
+
+    func:aria_mysql_begin    = int32(int32:conn_id);
+    func:aria_mysql_commit   = int32(int32:conn_id);
+    func:aria_mysql_rollback = int32(int32:conn_id);
+
+    func:aria_mysql_status = int32(int32:conn_id);
+
+    // test assertion helpers (C-side)
+    func:aria_mysql_assert_int_eq   = void(int64:actual, int64:expected, string:msg);
+    func:aria_mysql_assert_true     = void(bool:val, string:msg);
+    func:aria_mysql_assert_col_text_eq = void(int32:conn_id, int32:col, string:expected, string:msg);
+    func:aria_mysql_assert_col_int_eq  = void(int32:conn_id, int32:col, int64:expected, string:msg);
+    func:aria_mysql_assert_col_is_null = void(int32:conn_id, int32:col, string:msg);
+    func:aria_mysql_assert_version_ok  = void(int32:conn_id, string:msg);
+    func:aria_mysql_assert_affected_eq = void(int32:conn_id, int64:expected, string:msg);
+    func:aria_mysql_test_summary    = void();
+}
+
+// ── Phase 1: connect, version, create table, insert ─────────────────
+
+func:test_phase1 = NIL() {
+    // T01 — connect
+    int32:conn = aria_mysql_connect("localhost", "randy", "aria_test_pw", "aria_test", 3306i32);
+    int32:c = aria_mysql_last_conn();
+    aria_mysql_assert_true(c >= 0i32, "T01 connect to aria_test");
+
+    // T02 — server version
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_assert_version_ok(c2, "T02 server version available");
+
+    // T03 — connection status (ping)
+    int32:c3 = aria_mysql_last_conn();
+    int32:st = aria_mysql_status(c3);
+    aria_mysql_assert_true(st == 1i32, "T03 connection status OK");
+
+    // T04 — drop table if exists
+    int32:c4 = aria_mysql_last_conn();
+    int32:d = aria_mysql_exec(c4, "DROP TABLE IF EXISTS users");
+    aria_mysql_assert_true(d == 1i32, "T04 DROP TABLE IF EXISTS");
+
+    // T05 — create table
+    int32:c5 = aria_mysql_last_conn();
+    int32:ct = aria_mysql_exec(c5, "CREATE TABLE users(id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, age INT, email VARCHAR(255))");
+    aria_mysql_assert_true(ct == 1i32, "T05 CREATE TABLE users");
+
+    // T06 — insert with exec
+    int32:c6 = aria_mysql_last_conn();
+    int32:ins = aria_mysql_exec(c6, "INSERT INTO users(name, age, email) VALUES('Alice', 30, 'alice@example.com')");
+    aria_mysql_assert_true(ins == 1i32, "T06 INSERT Alice via exec");
+
+    pass(NIL);
+};
+
+// ── Phase 2: parameterized insert, affected rows, last_insert_id ────
+
+func:test_phase2 = NIL() {
+    // T07 — param insert Bob
+    aria_mysql_param_add_text("Bob");
+    aria_mysql_param_add_int(25i64);
+    aria_mysql_param_add_text("bob@example.com");
+    int32:c1 = aria_mysql_last_conn();
+    int32:r1 = aria_mysql_execute(c1, "INSERT INTO users(name, age, email) VALUES(?, ?, ?)");
+    aria_mysql_assert_true(r1 == 1i32, "T07 parameterized INSERT Bob");
+
+    // T08 — affected rows
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_assert_affected_eq(c2, 1i64, "T08 affected_rows == 1");
+
+    // T09 — last insert id
+    int32:c3 = aria_mysql_last_conn();
+    int64:lid = aria_mysql_last_insert_id(c3);
+    aria_mysql_assert_true(lid >= 1i64, "T09 last_insert_id >= 1");
+
+    // T10 — param insert Charlie
+    aria_mysql_param_add_text("Charlie");
+    aria_mysql_param_add_int(35i64);
+    aria_mysql_param_add_text("charlie@example.com");
+    int32:c4 = aria_mysql_last_conn();
+    int32:r2 = aria_mysql_execute(c4, "INSERT INTO users(name, age, email) VALUES(?, ?, ?)");
+    aria_mysql_assert_true(r2 == 1i32, "T10 parameterized INSERT Charlie");
+
+    pass(NIL);
+};
+
+// ── Phase 3a: SELECT with simple_query (no params) ──────────────────
+
+func:test_phase3a = NIL() {
+    // T11 — simple query (no params)
+    int32:c1 = aria_mysql_last_conn();
+    int32:q = aria_mysql_simple_query(c1, "SELECT id, name, age, email FROM users ORDER BY id");
+    aria_mysql_assert_true(q == 1i32, "T11 simple_query SELECT all users");
+
+    // T12 — column count
+    int32:c2 = aria_mysql_last_conn();
+    int32:cc = aria_mysql_column_count(c2);
+    aria_mysql_assert_true(cc == 4i32, "T12 column_count == 4");
+
+    // T13 — first row (Alice)
+    int32:c3 = aria_mysql_last_conn();
+    int32:nr = aria_mysql_next_row(c3);
+    aria_mysql_assert_true(nr == 1i32, "T13 next_row returns row 1");
+
+    // T14 — column text (name)
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_assert_col_text_eq(c4, 1i32, "Alice", "T14 row 1 name == Alice");
+
+    // T15 — column int (age)
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_assert_col_int_eq(c5, 2i32, 30i64, "T15 row 1 age == 30");
+
+    pass(NIL);
+};
+
+// ── Phase 3b: more rows ─────────────────────────────────────────────
+
+func:test_phase3b = NIL() {
+    // T16 — row 2 (Bob)
+    int32:c1 = aria_mysql_last_conn();
+    int32:nr1 = aria_mysql_next_row(c1);
+    aria_mysql_assert_true(nr1 == 1i32, "T16 next_row returns row 2");
+
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_assert_col_text_eq(c2, 1i32, "Bob", "T17 row 2 name == Bob");
+
+    int32:c3 = aria_mysql_last_conn();
+    aria_mysql_assert_col_int_eq(c3, 2i32, 25i64, "T18 row 2 age == 25");
+
+    // T19 — row 3 (Charlie)
+    int32:c4 = aria_mysql_last_conn();
+    int32:nr2 = aria_mysql_next_row(c4);
+    aria_mysql_assert_true(nr2 == 1i32, "T19 next_row returns row 3");
+
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_assert_col_text_eq(c5, 1i32, "Charlie", "T20 row 3 name == Charlie");
+
+    // T21 — no more rows
+    int32:c6 = aria_mysql_last_conn();
+    int32:nr3 = aria_mysql_next_row(c6);
+    aria_mysql_assert_true(nr3 == 0i32, "T21 no more rows");
+
+    // clear result
+    int32:c7 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c7);
+
+    pass(NIL);
+};
+
+// ── Phase 4: parameterized SELECT ───────────────────────────────────
+
+func:test_phase4 = NIL() {
+    // T22 — SELECT with param
+    aria_mysql_param_add_text("Bob");
+    int32:c1 = aria_mysql_last_conn();
+    int32:q = aria_mysql_select(c1, "SELECT name, age FROM users WHERE name = ?");
+    aria_mysql_assert_true(q == 1i32, "T22 parameterized SELECT Bob");
+
+    // T23 — row count
+    int32:c2 = aria_mysql_last_conn();
+    int32:rc = aria_mysql_row_count(c2);
+    aria_mysql_assert_true(rc == 1i32, "T23 row_count == 1");
+
+    // T24 — fetch and check
+    int32:c3 = aria_mysql_last_conn();
+    int32:nr = aria_mysql_next_row(c3);
+    aria_mysql_assert_true(nr == 1i32, "T24a next_row returns row");
+
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_assert_col_text_eq(c4, 0i32, "Bob", "T24b name == Bob");
+
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_assert_col_int_eq(c5, 1i32, 25i64, "T24c age == 25");
+
+    int32:c6 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c6);
+
+    pass(NIL);
+};
+
+// ── Phase 5a: transaction rollback ──────────────────────────────────
+
+func:test_phase5a = NIL() {
+    // T25 — begin, insert, rollback
+    int32:c1 = aria_mysql_last_conn();
+    int32:b = aria_mysql_begin(c1);
+    aria_mysql_assert_true(b == 1i32, "T25a BEGIN transaction");
+
+    aria_mysql_param_add_text("RollbackUser");
+    aria_mysql_param_add_int(99i64);
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_execute(c2, "INSERT INTO users(name, age) VALUES(?, ?)");
+
+    int32:c3 = aria_mysql_last_conn();
+    int32:rb = aria_mysql_rollback(c3);
+    aria_mysql_assert_true(rb == 1i32, "T25b ROLLBACK");
+
+    // verify row not present
+    aria_mysql_param_add_text("RollbackUser");
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_select(c4, "SELECT id FROM users WHERE name = ?");
+
+    int32:c5 = aria_mysql_last_conn();
+    int32:rc = aria_mysql_row_count(c5);
+    aria_mysql_assert_true(rc == 0i32, "T25c rollback user absent");
+
+    int32:c6 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c6);
+
+    pass(NIL);
+};
+
+// ── Phase 5b: transaction commit ────────────────────────────────────
+
+func:test_phase5b = NIL() {
+    // T26 — begin, insert, commit
+    int32:c1 = aria_mysql_last_conn();
+    int32:b = aria_mysql_begin(c1);
+    aria_mysql_assert_true(b == 1i32, "T26a BEGIN transaction");
+
+    aria_mysql_param_add_text("CommitUser");
+    aria_mysql_param_add_int(40i64);
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_execute(c2, "INSERT INTO users(name, age) VALUES(?, ?)");
+
+    int32:c3 = aria_mysql_last_conn();
+    int32:cm = aria_mysql_commit(c3);
+    aria_mysql_assert_true(cm == 1i32, "T26b COMMIT");
+
+    // verify row present
+    aria_mysql_param_add_text("CommitUser");
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_select(c4, "SELECT id FROM users WHERE name = ?");
+
+    int32:c5 = aria_mysql_last_conn();
+    int32:rc = aria_mysql_row_count(c5);
+    aria_mysql_assert_true(rc == 1i32, "T26c commit user present");
+
+    int32:c6 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c6);
+
+    pass(NIL);
+};
+
+// ── Phase 6a: SQL injection safety ──────────────────────────────────
+
+func:test_phase6a = NIL() {
+    // T27 — inject via parameterized query
+    aria_mysql_param_add_text("'; DROP TABLE users; --");
+    aria_mysql_param_add_int(0i64);
+    int32:c1 = aria_mysql_last_conn();
+    int32:r = aria_mysql_execute(c1, "INSERT INTO users(name, age) VALUES(?, ?)");
+    aria_mysql_assert_true(r == 1i32, "T27a injection string inserted safely");
+
+    // verify table still exists
+    int32:c2 = aria_mysql_last_conn();
+    int32:q = aria_mysql_simple_query(c2, "SELECT count(*) FROM users");
+    aria_mysql_assert_true(q == 1i32, "T27b table survived injection");
+
+    int32:c3 = aria_mysql_last_conn();
+    aria_mysql_next_row(c3);
+    int32:c4 = aria_mysql_last_conn();
+    int64:cnt = aria_mysql_column_int(c4, 0i32);
+    aria_mysql_assert_true(cnt >= 4i64, "T27c rows >= 4 after injection attempt");
+
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c5);
+
+    pass(NIL);
+};
+
+// ── Phase 6b: NULL handling ─────────────────────────────────────────
+
+func:test_phase6b = NIL() {
+    // T28 — insert with NULL email
+    aria_mysql_param_add_text("NullUser");
+    aria_mysql_param_add_int(50i64);
+    aria_mysql_param_add_null();
+    int32:c1 = aria_mysql_last_conn();
+    aria_mysql_execute(c1, "INSERT INTO users(name, age, email) VALUES(?, ?, ?)");
+
+    // query and check null
+    aria_mysql_param_add_text("NullUser");
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_select(c2, "SELECT name, age, email FROM users WHERE name = ?");
+
+    int32:c3 = aria_mysql_last_conn();
+    int32:nr = aria_mysql_next_row(c3);
+
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_assert_col_is_null(c4, 2i32, "T28 email is NULL");
+
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c5);
+
+    pass(NIL);
+};
+
+// ── Phase 6c: UPDATE + DELETE ───────────────────────────────────────
+
+func:test_phase6c = NIL() {
+    // T29 — UPDATE
+    aria_mysql_param_add_int(31i64);
+    aria_mysql_param_add_text("Alice");
+    int32:c1 = aria_mysql_last_conn();
+    int32:u = aria_mysql_execute(c1, "UPDATE users SET age = ? WHERE name = ?");
+    aria_mysql_assert_true(u == 1i32, "T29a UPDATE Alice age");
+
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_assert_affected_eq(c2, 1i64, "T29b affected_rows == 1 after UPDATE");
+
+    // verify
+    aria_mysql_param_add_text("Alice");
+    int32:c3 = aria_mysql_last_conn();
+    aria_mysql_select(c3, "SELECT age FROM users WHERE name = ?");
+    int32:c4 = aria_mysql_last_conn();
+    aria_mysql_next_row(c4);
+    int32:c5 = aria_mysql_last_conn();
+    aria_mysql_assert_col_int_eq(c5, 0i32, 31i64, "T29c Alice age == 31 after UPDATE");
+
+    int32:c6 = aria_mysql_last_conn();
+    aria_mysql_clear_result(c6);
+
+    pass(NIL);
+};
+
+func:test_phase6d = NIL() {
+    // T30 — DELETE
+    aria_mysql_param_add_text("NullUser");
+    int32:c1 = aria_mysql_last_conn();
+    int32:dl = aria_mysql_execute(c1, "DELETE FROM users WHERE name = ?");
+    aria_mysql_assert_true(dl == 1i32, "T30a DELETE NullUser");
+
+    int32:c2 = aria_mysql_last_conn();
+    aria_mysql_assert_affected_eq(c2, 1i64, "T30b affected_rows == 1 after DELETE");
+
+    pass(NIL);
+};
+
+// ── Phase 7: error handling + cleanup ───────────────────────────────
+
+func:test_phase7 = NIL() {
+    // T31 — bad SQL returns error
+    int32:c1 = aria_mysql_last_conn();
+    int32:bad = aria_mysql_exec(c1, "SELEKT * FORM nonexistent");
+    aria_mysql_assert_true(bad == 0i32, "T31 bad SQL returns 0 (error)");
+
+    // T32 — cleanup: drop table
+    int32:c2 = aria_mysql_last_conn();
+    int32:dr = aria_mysql_exec(c2, "DROP TABLE users");
+    aria_mysql_assert_true(dr == 1i32, "T32 DROP TABLE users");
+
+    // T33 — disconnect
+    int32:c3 = aria_mysql_last_conn();
+    int32:dc = aria_mysql_disconnect(c3);
+    aria_mysql_assert_true(dc == 1i32, "T33 disconnect");
+
+    pass(NIL);
+};
+
+// ── main ────────────────────────────────────────────────────────────
+
+func:main = int32() {
+    drop(test_phase1());
+    drop(test_phase2());
+    drop(test_phase3a());
+    drop(test_phase3b());
+    drop(test_phase4());
+    drop(test_phase5a());
+    drop(test_phase5b());
+    drop(test_phase6a());
+    drop(test_phase6b());
+    drop(test_phase6c());
+    drop(test_phase6d());
+    drop(test_phase7());
+
+    aria_mysql_test_summary();
+    pass(0i32);
+};
