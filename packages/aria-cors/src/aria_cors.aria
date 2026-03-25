@@ -1,0 +1,88 @@
+// aria_cors.aria — CORS header generation for Aria HTTP servers
+// LIB-CORS: Configure and generate Cross-Origin Resource Sharing headers.
+//
+// Usage:
+//   cors_allow_origin("https://example.com");
+//   cors_allow_origin("https://other.com");
+//   cors_allow_methods("GET, POST, OPTIONS");
+//   cors_allow_headers("Content-Type, Authorization, X-Custom");
+//   cors_credentials(1i32);
+//   cors_max_age(3600i32);
+//
+//   // In request handler:
+//   string:origin = server_req_header("Origin");
+//   string:hdrs   = cors_headers(origin);
+//   server_respond_headers(client, 200i32, "OK", "application/json", hdrs, body);
+//
+//   // For OPTIONS preflight:
+//   string:pf = cors_preflight(origin);
+//   server_respond_headers(client, 204i32, "No Content", "", pf, "");
+
+extern "aria_cors_shim" {
+    func:aria_cors_reset             = void();
+    func:aria_cors_allow_origin      = void(string:origin);
+    func:aria_cors_allow_methods     = void(string:methods);
+    func:aria_cors_allow_headers     = void(string:headers);
+    func:aria_cors_expose_headers    = void(string:headers);
+    func:aria_cors_allow_credentials = void(int32:allow);
+    func:aria_cors_max_age           = void(int32:seconds);
+    func:aria_cors_is_allowed        = int32(string:origin);
+    func:aria_cors_headers           = string(string:origin);
+    func:aria_cors_preflight         = string(string:origin);
+    func:aria_cors_is_preflight      = int32(string:method);
+}
+
+pub func:cors_reset = NIL() {
+    aria_cors_reset();
+    pass(NIL);
+};
+
+pub func:cors_allow_origin = NIL(string:origin) {
+    aria_cors_allow_origin(origin);
+    pass(NIL);
+};
+
+pub func:cors_allow_methods = NIL(string:methods) {
+    aria_cors_allow_methods(methods);
+    pass(NIL);
+};
+
+pub func:cors_allow_headers = NIL(string:headers) {
+    aria_cors_allow_headers(headers);
+    pass(NIL);
+};
+
+pub func:cors_expose_headers = NIL(string:headers) {
+    aria_cors_expose_headers(headers);
+    pass(NIL);
+};
+
+pub func:cors_credentials = NIL(int32:allow) {
+    aria_cors_allow_credentials(allow);
+    pass(NIL);
+};
+
+pub func:cors_max_age = NIL(int32:seconds) {
+    aria_cors_max_age(seconds);
+    pass(NIL);
+};
+
+pub func:cors_is_allowed = int32(string:origin) {
+    int32:r = aria_cors_is_allowed(origin);
+    pass(r);
+};
+
+pub func:cors_headers = string(string:origin) {
+    string:r = aria_cors_headers(origin);
+    pass(r);
+};
+
+pub func:cors_preflight = string(string:origin) {
+    string:r = aria_cors_preflight(origin);
+    pass(r);
+};
+
+pub func:cors_is_preflight = int32(string:method) {
+    int32:r = aria_cors_is_preflight(method);
+    pass(r);
+};

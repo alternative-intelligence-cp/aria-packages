@@ -1,0 +1,124 @@
+// aria_session.aria — In-memory session management for Aria HTTP servers
+// LIB-SESSION: Create, load, and manage user sessions with key/value data.
+//
+// Usage:
+//   // Create a new session
+//   string:sid = session_create();
+//   string:hdr = session_cookie_header();  // Set-Cookie header to send
+//
+//   // In subsequent requests, load from cookie
+//   string:cookie_sid = cookie_get("aria_sid");
+//   int32:ok = session_load(cookie_sid);
+//
+//   // Store/retrieve data
+//   session_set("username", "alice");
+//   string:user = session_get("username");
+//
+//   // Logout
+//   session_destroy();
+//   string:clr = session_clear_cookie();   // Set-Cookie to clear
+
+extern "aria_session_shim" {
+    func:aria_session_set_max_age     = void(int32:seconds);
+    func:aria_session_set_cookie_name = void(string:name);
+    func:aria_session_get_cookie_name = string();
+    func:aria_session_create          = string();
+    func:aria_session_load            = int32(string:id);
+    func:aria_session_destroy         = void();
+    func:aria_session_destroy_id      = void(string:id);
+    func:aria_session_id              = string();
+    func:aria_session_set             = void(string:key, string:value);
+    func:aria_session_get             = string(string:key);
+    func:aria_session_has             = int32(string:key);
+    func:aria_session_remove          = void(string:key);
+    func:aria_session_var_count       = int32();
+    func:aria_session_count           = int32();
+    func:aria_session_cookie_header   = string();
+    func:aria_session_clear_cookie    = string();
+    func:aria_session_reset           = void();
+}
+
+pub func:session_max_age = NIL(int32:seconds) {
+    aria_session_set_max_age(seconds);
+    pass(NIL);
+};
+
+pub func:session_cookie_name = NIL(string:name) {
+    aria_session_set_cookie_name(name);
+    pass(NIL);
+};
+
+pub func:session_get_cookie_name = string() {
+    string:r = aria_session_get_cookie_name();
+    pass(r);
+};
+
+pub func:session_create = string() {
+    string:r = aria_session_create();
+    pass(r);
+};
+
+pub func:session_load = int32(string:id) {
+    int32:r = aria_session_load(id);
+    pass(r);
+};
+
+pub func:session_destroy = NIL() {
+    aria_session_destroy();
+    pass(NIL);
+};
+
+pub func:session_destroy_id = NIL(string:id) {
+    aria_session_destroy_id(id);
+    pass(NIL);
+};
+
+pub func:session_id = string() {
+    string:r = aria_session_id();
+    pass(r);
+};
+
+pub func:session_set = NIL(string:key, string:value) {
+    aria_session_set(key, value);
+    pass(NIL);
+};
+
+pub func:session_get = string(string:key) {
+    string:r = aria_session_get(key);
+    pass(r);
+};
+
+pub func:session_has = int32(string:key) {
+    int32:r = aria_session_has(key);
+    pass(r);
+};
+
+pub func:session_remove = NIL(string:key) {
+    aria_session_remove(key);
+    pass(NIL);
+};
+
+pub func:session_var_count = int32() {
+    int32:r = aria_session_var_count();
+    pass(r);
+};
+
+pub func:session_active_count = int32() {
+    int32:r = aria_session_count();
+    pass(r);
+};
+
+pub func:session_cookie_header = string() {
+    string:r = aria_session_cookie_header();
+    pass(r);
+};
+
+pub func:session_clear_cookie = string() {
+    string:r = aria_session_clear_cookie();
+    pass(r);
+};
+
+pub func:session_reset = NIL() {
+    aria_session_reset();
+    pass(NIL);
+};

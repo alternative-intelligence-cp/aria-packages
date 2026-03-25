@@ -1,0 +1,8 @@
+[package]
+name = "aria-server"
+version = "0.2.9"
+description = "HTTP server for Aria — listen, accept, parse requests, send responses"
+license = "Apache-2.0"
+
+[dependencies]
+link_libraries = ["aria_server_shim"]

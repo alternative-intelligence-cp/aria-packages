@@ -1,0 +1,90 @@
+// demo_api.aria — Mini REST API using aria-server + aria-router
+// Demonstrates: routing, path params, method dispatch, JSON responses.
+//
+// Run:
+//   ariac demo_api.aria -o demo_api \
+//     -L../aria-server/shim -laria_server_shim \
+//     -L../aria-router/shim -laria_router_shim
+//   LD_LIBRARY_PATH=../aria-server/shim:../aria-router/shim ./demo_api
+//
+// Then:
+//   curl http://localhost:8080/
+//   curl http://localhost:8080/api/users
+//   curl http://localhost:8080/api/users/42
+//   curl -X POST -d '{"name":"aria"}' http://localhost:8080/api/users
+//   curl http://localhost:8080/health
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_server_shim" {
+    func:aria_server_listen  = int32(string:addr, int32:port, int32:backlog);
+    func:aria_server_accept  = int32(int32:fd, int32:timeout_ms);
+    func:aria_server_req_method = string();
+    func:aria_server_req_path   = string();
+    func:aria_server_req_body   = string();
+    func:aria_server_respond = int64(int32:cfd, int32:status, string:st, string:ct, string:body);
+}
+
+extern "aria_router_shim" {
+    func:aria_router_add   = void(string:method, string:pattern, int32:hid);
+    func:aria_router_match = int32(string:method, string:path);
+    func:aria_router_param = string(string:name);
+}
+
+func:main = int32() {
+    // Define routes
+    aria_router_add("GET",    "/",             1i32);
+    aria_router_add("GET",    "/health",       2i32);
+    aria_router_add("GET",    "/api/users",    10i32);
+    aria_router_add("GET",    "/api/users/:id", 11i32);
+    aria_router_add("POST",   "/api/users",    12i32);
+
+    // Start server
+    int32:fd = aria_server_listen("127.0.0.1", 8080i32, 128i32);
+    println("aria-server listening on http://127.0.0.1:8080");
+
+    // Accept loop — handle 5 requests then exit
+    loop(0, 5, 1) {
+        int32:client = aria_server_accept(fd, 30000i32);
+
+        string:method = aria_server_req_method();
+        string:path   = aria_server_req_path();
+        string:body   = aria_server_req_body();
+
+        int32:handler = aria_router_match(method, path);
+
+        pick(handler) {
+            (1) {
+                int64:s = aria_server_respond(client, 200i32, "OK", "text/html",
+                    "<h1>Welcome to Aria</h1><p>REST API at /api/users</p>");
+            },
+            (2) {
+                int64:s = aria_server_respond(client, 200i32, "OK", "application/json",
+                    "{\"status\":\"ok\"}");
+            },
+            (10) {
+                int64:s = aria_server_respond(client, 200i32, "OK", "application/json",
+                    "[{\"id\":1,\"name\":\"Alice\"},{\"id\":2,\"name\":\"Bob\"}]");
+            },
+            (11) {
+                string:uid = aria_router_param("id");
+                stdout_write("GET /api/users/");
+                println(uid);
+                int64:s = aria_server_respond(client, 200i32, "OK", "application/json",
+                    "{\"id\":\"param\",\"name\":\"User\"}");
+            },
+            (12) {
+                stdout_write("POST body: ");
+                println(body);
+                int64:s = aria_server_respond(client, 201i32, "Created", "application/json",
+                    "{\"id\":99,\"created\":true}");
+            },
+            (*) {
+                int64:s = aria_server_respond(client, 404i32, "Not Found", "application/json",
+                    "{\"error\":\"not found\"}");
+            }
+        }
+    }
+
+    pass(0i32);
+};

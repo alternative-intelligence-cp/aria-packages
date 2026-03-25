@@ -1,0 +1,95 @@
+// aria_static.aria — Static file serving for Aria HTTP servers
+// LIB-STATIC: Serve static files with MIME type detection and path safety.
+//
+// Usage:
+//   static_set_root("/var/www/html");
+//
+//   // In request handler:
+//   string:url_path = server_req_path();
+//   int32:found = static_resolve(url_path);
+//   pick(found) {
+//       (1i32) {
+//           int32:size = static_read();
+//           string:mime = static_mime();
+//           string:body = static_content();
+//           server_respond_headers(fd, 200i32, "OK", mime, "", body);
+//       },
+//       (*) {
+//           server_respond(fd, 404i32, "text/plain", "Not Found");
+//       }
+//   }
+
+extern "aria_static_shim" {
+    func:aria_static_set_root      = void(string:root);
+    func:aria_static_get_root      = string();
+    func:aria_static_set_index     = void(string:filename);
+    func:aria_static_resolve       = int32(string:url_path);
+    func:aria_static_mime_type     = string();
+    func:aria_static_read          = int32();
+    func:aria_static_content       = string();
+    func:aria_static_length        = int32();
+    func:aria_static_resolved_path = string();
+    func:aria_static_detect_mime   = string(string:path);
+    func:aria_static_error         = string();
+    func:aria_static_reset         = void();
+}
+
+pub func:static_set_root = NIL(string:root) {
+    aria_static_set_root(root);
+    pass(NIL);
+};
+
+pub func:static_get_root = string() {
+    string:r = aria_static_get_root();
+    pass(r);
+};
+
+pub func:static_set_index = NIL(string:filename) {
+    aria_static_set_index(filename);
+    pass(NIL);
+};
+
+pub func:static_resolve = int32(string:url_path) {
+    int32:r = aria_static_resolve(url_path);
+    pass(r);
+};
+
+pub func:static_mime = string() {
+    string:r = aria_static_mime_type();
+    pass(r);
+};
+
+pub func:static_read = int32() {
+    int32:r = aria_static_read();
+    pass(r);
+};
+
+pub func:static_content = string() {
+    string:r = aria_static_content();
+    pass(r);
+};
+
+pub func:static_length = int32() {
+    int32:r = aria_static_length();
+    pass(r);
+};
+
+pub func:static_resolved_path = string() {
+    string:r = aria_static_resolved_path();
+    pass(r);
+};
+
+pub func:static_detect_mime = string(string:path) {
+    string:r = aria_static_detect_mime(path);
+    pass(r);
+};
+
+pub func:static_error = string() {
+    string:r = aria_static_error();
+    pass(r);
+};
+
+pub func:static_file_reset = NIL() {
+    aria_static_reset();
+    pass(NIL);
+};

@@ -1,0 +1,128 @@
+// aria_cookie.aria — HTTP cookie parsing and Set-Cookie generation
+// LIB-COOKIE: Parse Cookie headers and build Set-Cookie response headers.
+//
+// Parsing (from Cookie request header):
+//   int32:n = cookie_parse("sid=abc123; theme=dark");
+//   string:sid = cookie_get("sid");    // "abc123"
+//
+// Building (Set-Cookie response header):
+//   cookie_build_reset();
+//   cookie_build_name("sid");
+//   cookie_build_value("abc123");
+//   cookie_build_path("/");
+//   cookie_build_httponly(1i32);
+//   cookie_build_secure(1i32);
+//   cookie_build_samesite("Strict");
+//   string:hdr = cookie_build();
+//   // → "Set-Cookie: sid=abc123; Path=/; HttpOnly; Secure; SameSite=Strict\r\n"
+
+extern "aria_cookie_shim" {
+    func:aria_cookie_parse            = int32(string:cookie_header);
+    func:aria_cookie_get              = string(string:name);
+    func:aria_cookie_has              = int32(string:name);
+    func:aria_cookie_count            = int32();
+    func:aria_cookie_name             = string(int32:index);
+    func:aria_cookie_value            = string(int32:index);
+    func:aria_cookie_builder_reset    = void();
+    func:aria_cookie_builder_name     = void(string:name);
+    func:aria_cookie_builder_value    = void(string:value);
+    func:aria_cookie_builder_path     = void(string:path);
+    func:aria_cookie_builder_domain   = void(string:domain);
+    func:aria_cookie_builder_max_age  = void(int32:seconds);
+    func:aria_cookie_builder_secure   = void(int32:flag);
+    func:aria_cookie_builder_httponly = void(int32:flag);
+    func:aria_cookie_builder_samesite = void(string:policy);
+    func:aria_cookie_builder_build    = string();
+    func:aria_cookie_delete           = string(string:name, string:path);
+    func:aria_cookie_reset            = void();
+}
+
+pub func:cookie_parse = int32(string:cookie_header) {
+    int32:r = aria_cookie_parse(cookie_header);
+    pass(r);
+};
+
+pub func:cookie_get = string(string:name) {
+    string:r = aria_cookie_get(name);
+    pass(r);
+};
+
+pub func:cookie_has = int32(string:name) {
+    int32:r = aria_cookie_has(name);
+    pass(r);
+};
+
+pub func:cookie_count = int32() {
+    int32:r = aria_cookie_count();
+    pass(r);
+};
+
+pub func:cookie_name = string(int32:index) {
+    string:r = aria_cookie_name(index);
+    pass(r);
+};
+
+pub func:cookie_value = string(int32:index) {
+    string:r = aria_cookie_value(index);
+    pass(r);
+};
+
+pub func:cookie_build_reset = NIL() {
+    aria_cookie_builder_reset();
+    pass(NIL);
+};
+
+pub func:cookie_build_name = NIL(string:name) {
+    aria_cookie_builder_name(name);
+    pass(NIL);
+};
+
+pub func:cookie_build_value = NIL(string:value) {
+    aria_cookie_builder_value(value);
+    pass(NIL);
+};
+
+pub func:cookie_build_path = NIL(string:path) {
+    aria_cookie_builder_path(path);
+    pass(NIL);
+};
+
+pub func:cookie_build_domain = NIL(string:domain) {
+    aria_cookie_builder_domain(domain);
+    pass(NIL);
+};
+
+pub func:cookie_build_max_age = NIL(int32:seconds) {
+    aria_cookie_builder_max_age(seconds);
+    pass(NIL);
+};
+
+pub func:cookie_build_secure = NIL(int32:flag) {
+    aria_cookie_builder_secure(flag);
+    pass(NIL);
+};
+
+pub func:cookie_build_httponly = NIL(int32:flag) {
+    aria_cookie_builder_httponly(flag);
+    pass(NIL);
+};
+
+pub func:cookie_build_samesite = NIL(string:policy) {
+    aria_cookie_builder_samesite(policy);
+    pass(NIL);
+};
+
+pub func:cookie_build = string() {
+    string:r = aria_cookie_builder_build();
+    pass(r);
+};
+
+pub func:cookie_delete_header = string(string:name, string:path) {
+    string:r = aria_cookie_delete(name, path);
+    pass(r);
+};
+
+pub func:cookie_reset = NIL() {
+    aria_cookie_reset();
+    pass(NIL);
+};

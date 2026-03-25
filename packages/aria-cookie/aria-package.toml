@@ -1,0 +1,7 @@
+[package]
+name = "aria-cookie"
+version = "0.2.9"
+description = "HTTP cookie parsing and Set-Cookie header generation for Aria servers"
+
+[dependencies]
+link_libraries = ["aria_cookie_shim"]

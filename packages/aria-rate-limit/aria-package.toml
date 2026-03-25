@@ -1,0 +1,7 @@
+[package]
+name = "aria-rate-limit"
+version = "0.2.9"
+description = "Token bucket rate limiting for Aria HTTP servers"
+
+[dependencies]
+link_libraries = ["aria_rate_limit_shim"]

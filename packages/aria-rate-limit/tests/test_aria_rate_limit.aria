@@ -1,0 +1,91 @@
+// test_aria_rate_limit.aria — Tests for token bucket rate limiting
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_rate_limit_shim" {
+    func:aria_rate_limit_configure       = void(int32:max_tokens, int32:refill_per_sec, int32:window_sec);
+    func:aria_rate_limit_check           = int32(string:key);
+    func:aria_rate_limit_check_cost      = int32(string:key, int32:cost);
+    func:aria_rate_limit_remaining       = int32(string:key);
+    func:aria_rate_limit_retry_after     = int32(string:key);
+    func:aria_rate_limit_headers         = string(string:key);
+    func:aria_rate_limit_reset           = void();
+    func:aria_rate_limit_test_set_tokens = void(string:key, int32:tokens);
+    func:aria_rate_limit_assert_int_eq   = void(string:label, int32:expected, int32:actual);
+    func:aria_rate_limit_assert_contains = void(string:label, string:expected, string:actual);
+    func:aria_rate_limit_test_summary    = void();
+}
+
+func:main = int32() {
+    // ── Test 1: Default allows requests ──
+    aria_rate_limit_reset();
+    int32:a1 = aria_rate_limit_check("192.168.1.1");
+    aria_rate_limit_assert_int_eq("default allows", 1i32, a1);
+
+    // ── Test 2: Remaining tokens decrease ──
+    aria_rate_limit_reset();
+    aria_rate_limit_configure(5i32, 1i32, 60i32);
+    aria_rate_limit_check("client1");
+    int32:rem1 = aria_rate_limit_remaining("client1");
+    aria_rate_limit_assert_int_eq("remaining after 1", 4i32, rem1);
+
+    // ── Test 3: Exhaust tokens ──
+    aria_rate_limit_check("client1");
+    aria_rate_limit_check("client1");
+    aria_rate_limit_check("client1");
+    aria_rate_limit_check("client1");
+    int32:a2 = aria_rate_limit_check("client1");
+    aria_rate_limit_assert_int_eq("exhausted denied", 0i32, a2);
+
+    int32:rem2 = aria_rate_limit_remaining("client1");
+    aria_rate_limit_assert_int_eq("remaining 0", 0i32, rem2);
+
+    // ── Test 4: Different clients are independent ──
+    int32:a3 = aria_rate_limit_check("client2");
+    aria_rate_limit_assert_int_eq("client2 allowed", 1i32, a3);
+
+    // ── Test 5: Retry-after when limited ──
+    int32:ra = aria_rate_limit_retry_after("client1");
+    aria_rate_limit_assert_int_eq("retry after > 0", 2i32, ra);
+
+    // ── Test 6: Custom cost ──
+    aria_rate_limit_reset();
+    aria_rate_limit_configure(10i32, 1i32, 60i32);
+    int32:a4 = aria_rate_limit_check_cost("expensive", 5i32);
+    aria_rate_limit_assert_int_eq("cost 5 allowed", 1i32, a4);
+
+    int32:rem3 = aria_rate_limit_remaining("expensive");
+    aria_rate_limit_assert_int_eq("remaining after cost 5", 5i32, rem3);
+
+    int32:a5 = aria_rate_limit_check_cost("expensive", 6i32);
+    aria_rate_limit_assert_int_eq("cost 6 denied", 0i32, a5);
+
+    // ── Test 7: Rate limit headers ──
+    aria_rate_limit_reset();
+    aria_rate_limit_configure(50i32, 5i32, 60i32);
+    aria_rate_limit_check("hdr_test");
+    string:hdrs = aria_rate_limit_headers("hdr_test");
+    aria_rate_limit_assert_contains("header limit", "X-RateLimit-Limit: 50", hdrs);
+    aria_rate_limit_assert_contains("header remaining", "X-RateLimit-Remaining: 49", hdrs);
+
+    // ── Test 8: Headers include Retry-After when exhausted ──
+    aria_rate_limit_test_set_tokens("hdr_test", 0i32);
+    string:hdrs2 = aria_rate_limit_headers("hdr_test");
+    aria_rate_limit_assert_contains("retry-after header", "Retry-After:", hdrs2);
+
+    // ── Test 9: Token refill (simulated) ──
+    aria_rate_limit_reset();
+    aria_rate_limit_configure(10i32, 10i32, 60i32);
+    aria_rate_limit_test_set_tokens("refill_test", 0i32);
+    // tokens=0, but time hasn't advanced so remaining should be 0
+    int32:rem4 = aria_rate_limit_remaining("refill_test");
+    aria_rate_limit_assert_int_eq("no refill yet", 0i32, rem4);
+
+    // ── Test 10: Reset clears all ──
+    aria_rate_limit_reset();
+    int32:a6 = aria_rate_limit_check("fresh");
+    aria_rate_limit_assert_int_eq("fresh after reset", 1i32, a6);
+
+    aria_rate_limit_test_summary();
+    pass(0i32);
+};

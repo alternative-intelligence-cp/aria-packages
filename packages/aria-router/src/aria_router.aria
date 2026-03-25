@@ -1,0 +1,92 @@
+// aria-router — Express-style HTTP router for Aria
+//
+// Register routes with method, pattern, and handler ID.
+// Match incoming requests to get handler ID and path params.
+//
+// Usage:
+//   router_add("GET", "/", 1i32);
+//   router_add("GET", "/users/:id", 2i32);
+//   router_add("POST", "/users", 3i32);
+//   router_use("", 100i32);          // global middleware
+//   router_use("/api", 101i32);      // scoped middleware
+//
+//   int32:handler = router_match(method, path);
+//   pick(handler) {
+//       1 => respond(client, 200i32, "OK", "text/html", "<h1>Home</h1>");
+//       2 => {
+//           string:id = router_param("id");
+//           // ... handle user by id
+//       }
+//       _ => respond(client, 404i32, "Not Found", "text/plain", "Not Found");
+//   };
+
+extern "aria_router_shim" {
+    func:aria_router_add             = void(string:method, string:pattern, int32:handler_id);
+    func:aria_router_use             = void(string:path_prefix, int32:middleware_id);
+    func:aria_router_match           = int32(string:method, string:path);
+    func:aria_router_param           = string(string:name);
+    func:aria_router_param_count     = int32();
+    func:aria_router_param_name      = string(int32:index);
+    func:aria_router_param_value     = string(int32:index);
+    func:aria_router_middleware_count = int32();
+    func:aria_router_middleware_id   = int32(int32:index);
+    func:aria_router_route_count     = int32();
+    func:aria_router_reset           = void();
+    func:aria_router_error           = string();
+    func:aria_router_assert_int_eq   = void(string:label, int32:expected, int32:actual);
+    func:aria_router_assert_str_eq   = void(string:label, string:expected, string:actual);
+    func:aria_router_test_summary    = void();
+}
+
+// -- Public API --
+
+pub func:router_add = NIL(string:method, string:pattern, int32:handler_id) {
+    aria_router_add(method, pattern, handler_id);
+    pass(NIL);
+};
+
+pub func:router_use = NIL(string:path_prefix, int32:middleware_id) {
+    aria_router_use(path_prefix, middleware_id);
+    pass(NIL);
+};
+
+pub func:router_match = int32(string:method, string:path) {
+    pass(aria_router_match(method, path));
+};
+
+pub func:router_param = string(string:name) {
+    pass(aria_router_param(name));
+};
+
+pub func:router_param_count = int32() {
+    pass(aria_router_param_count());
+};
+
+pub func:router_param_name = string(int32:index) {
+    pass(aria_router_param_name(index));
+};
+
+pub func:router_param_value = string(int32:index) {
+    pass(aria_router_param_value(index));
+};
+
+pub func:router_middleware_count = int32() {
+    pass(aria_router_middleware_count());
+};
+
+pub func:router_middleware_id = int32(int32:index) {
+    pass(aria_router_middleware_id(index));
+};
+
+pub func:router_route_count = int32() {
+    pass(aria_router_route_count());
+};
+
+pub func:router_reset = NIL() {
+    aria_router_reset();
+    pass(NIL);
+};
+
+pub func:router_error = string() {
+    pass(aria_router_error());
+};

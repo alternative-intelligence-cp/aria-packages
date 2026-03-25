@@ -1,0 +1,7 @@
+[package]
+name = "aria-session"
+version = "0.2.9"
+description = "In-memory session management for Aria HTTP servers"
+
+[dependencies]
+link_libraries = ["aria_session_shim"]

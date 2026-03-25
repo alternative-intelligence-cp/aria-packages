@@ -1,0 +1,119 @@
+// aria-server — HTTP/1.1 server for Aria
+// Provides listen, accept, request parsing, and response sending.
+//
+// Usage:
+//   int32:fd = server_listen("0.0.0.0", 8080i32, 128i32);
+//   // accept loop:
+//   int32:client = server_accept(fd, -1i32);       // blocks until connection
+//   string:method = server_req_method();            // "GET", "POST", etc.
+//   string:path   = server_req_path();              // "/api/users"
+//   string:query  = server_req_query();             // "page=2&limit=10"
+//   string:body   = server_req_body();              // POST/PUT body
+//   string:host   = server_req_header("Host");      // header lookup
+//   server_respond(client, 200i32, "OK", "text/html", "<h1>Hello</h1>");
+//   server_close_client(client);
+
+extern "aria_server_shim" {
+    func:aria_server_error            = string();
+    func:aria_server_listen           = int32(string:addr, int32:port, int32:backlog);
+    func:aria_server_accept           = int32(int32:listen_fd, int32:timeout_ms);
+    func:aria_server_req_method       = string();
+    func:aria_server_req_path         = string();
+    func:aria_server_req_query        = string();
+    func:aria_server_req_version      = string();
+    func:aria_server_req_body         = string();
+    func:aria_server_req_body_length  = int32();
+    func:aria_server_req_header       = string(string:name);
+    func:aria_server_req_header_count = int32();
+    func:aria_server_req_header_name  = string(int32:index);
+    func:aria_server_req_header_value = string(int32:index);
+    func:aria_server_peer_addr        = string();
+    func:aria_server_peer_port        = int32();
+    func:aria_server_respond          = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:body);
+    func:aria_server_respond_headers  = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:extra_headers, string:body);
+    func:aria_server_close_client     = void(int32:client_fd);
+    func:aria_server_close            = void(int32:listen_fd);
+    func:aria_server_assert_eq        = void(string:label, string:expected, string:actual);
+    func:aria_server_assert_int_eq    = void(string:label, int32:expected, int32:actual);
+    func:aria_server_test_summary     = void();
+}
+
+// -- Public API --
+
+pub func:server_error = string() {
+    pass(aria_server_error());
+};
+
+pub func:server_listen = int32(string:addr, int32:port, int32:backlog) {
+    pass(aria_server_listen(addr, port, backlog));
+};
+
+pub func:server_accept = int32(int32:listen_fd, int32:timeout_ms) {
+    pass(aria_server_accept(listen_fd, timeout_ms));
+};
+
+pub func:server_req_method = string() {
+    pass(aria_server_req_method());
+};
+
+pub func:server_req_path = string() {
+    pass(aria_server_req_path());
+};
+
+pub func:server_req_query = string() {
+    pass(aria_server_req_query());
+};
+
+pub func:server_req_version = string() {
+    pass(aria_server_req_version());
+};
+
+pub func:server_req_body = string() {
+    pass(aria_server_req_body());
+};
+
+pub func:server_req_body_length = int32() {
+    pass(aria_server_req_body_length());
+};
+
+pub func:server_req_header = string(string:name) {
+    pass(aria_server_req_header(name));
+};
+
+pub func:server_req_header_count = int32() {
+    pass(aria_server_req_header_count());
+};
+
+pub func:server_req_header_name = string(int32:index) {
+    pass(aria_server_req_header_name(index));
+};
+
+pub func:server_req_header_value = string(int32:index) {
+    pass(aria_server_req_header_value(index));
+};
+
+pub func:server_peer_addr = string() {
+    pass(aria_server_peer_addr());
+};
+
+pub func:server_peer_port = int32() {
+    pass(aria_server_peer_port());
+};
+
+pub func:server_respond = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:body) {
+    pass(aria_server_respond(client_fd, status, status_text, content_type, body));
+};
+
+pub func:server_respond_headers = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:extra_headers, string:body) {
+    pass(aria_server_respond_headers(client_fd, status, status_text, content_type, extra_headers, body));
+};
+
+pub func:server_close_client = NIL(int32:client_fd) {
+    aria_server_close_client(client_fd);
+    pass(NIL);
+};
+
+pub func:server_close = NIL(int32:listen_fd) {
+    aria_server_close(listen_fd);
+    pass(NIL);
+};

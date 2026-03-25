@@ -1,0 +1,59 @@
+// test_aria_server.aria — HTTP server integration test
+// Handles two sequential requests: POST with body, then GET.
+// Run: ariac test_aria_server.aria -o test_server -L../shim -laria_server_shim
+// Then: curl -X POST -H "Content-Type: application/json" -d '{"name":"aria"}' \
+//         http://127.0.0.1:19080/api/users?page=1
+//       curl http://127.0.0.1:19080/
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_server_shim" {
+    func:aria_server_listen           = int32(string:addr, int32:port, int32:backlog);
+    func:aria_server_accept           = int32(int32:fd, int32:timeout_ms);
+    func:aria_server_req_method       = string();
+    func:aria_server_req_path         = string();
+    func:aria_server_req_query        = string();
+    func:aria_server_req_body         = string();
+    func:aria_server_req_header       = string(string:name);
+    func:aria_server_req_body_length  = int32();
+    func:aria_server_respond          = int64(int32:cfd, int32:status, string:status_text, string:content_type, string:body);
+    func:aria_server_assert_eq        = void(string:label, string:expected, string:actual);
+    func:aria_server_assert_int_eq    = void(string:label, int32:expected, int32:actual);
+    func:aria_server_test_summary     = void();
+}
+
+func:main = int32() {
+    int32:fd = aria_server_listen("127.0.0.1", 19080i32, 8i32);
+    println("Listening on 127.0.0.1:19080");
+
+    // Test 1: POST /api/users?page=1 with JSON body
+    int32:c1 = aria_server_accept(fd, 15000i32);
+    string:m1 = aria_server_req_method();
+    string:p1 = aria_server_req_path();
+    string:q1 = aria_server_req_query();
+    string:b1 = aria_server_req_body();
+    string:ct = aria_server_req_header("Content-Type");
+
+    aria_server_assert_eq("POST method", "POST", m1);
+    aria_server_assert_eq("path /api/users", "/api/users", p1);
+    aria_server_assert_eq("query page=1", "page=1", q1);
+    aria_server_assert_eq("content-type json", "application/json", ct);
+    aria_server_assert_eq("json body", "{\"name\":\"aria\"}", b1);
+
+    int64:s1 = aria_server_respond(c1, 201i32, "Created", "application/json", "{\"id\":42}");
+
+    // Test 2: GET / with no body
+    int32:c2 = aria_server_accept(fd, 15000i32);
+    string:m2 = aria_server_req_method();
+    string:p2 = aria_server_req_path();
+    string:b2 = aria_server_req_body();
+
+    aria_server_assert_eq("GET method", "GET", m2);
+    aria_server_assert_eq("root path", "/", p2);
+    aria_server_assert_eq("empty body", "", b2);
+
+    int64:s2 = aria_server_respond(c2, 200i32, "OK", "text/html", "<h1>Home</h1>");
+
+    aria_server_test_summary();
+    pass(0i32);
+};

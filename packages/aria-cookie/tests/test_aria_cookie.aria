@@ -1,0 +1,113 @@
+// test_aria_cookie.aria — Tests for cookie parsing and Set-Cookie generation
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_cookie_shim" {
+    func:aria_cookie_parse            = int32(string:cookie_header);
+    func:aria_cookie_get              = string(string:name);
+    func:aria_cookie_has              = int32(string:name);
+    func:aria_cookie_count            = int32();
+    func:aria_cookie_name             = string(int32:index);
+    func:aria_cookie_value            = string(int32:index);
+    func:aria_cookie_builder_reset    = void();
+    func:aria_cookie_builder_name     = void(string:name);
+    func:aria_cookie_builder_value    = void(string:value);
+    func:aria_cookie_builder_path     = void(string:path);
+    func:aria_cookie_builder_domain   = void(string:domain);
+    func:aria_cookie_builder_max_age  = void(int32:seconds);
+    func:aria_cookie_builder_secure   = void(int32:flag);
+    func:aria_cookie_builder_httponly = void(int32:flag);
+    func:aria_cookie_builder_samesite = void(string:policy);
+    func:aria_cookie_builder_build    = string();
+    func:aria_cookie_delete           = string(string:name, string:path);
+    func:aria_cookie_reset            = void();
+    func:aria_cookie_assert_str_eq    = void(string:label, string:expected, string:actual);
+    func:aria_cookie_assert_int_eq    = void(string:label, int32:expected, int32:actual);
+    func:aria_cookie_assert_contains  = void(string:label, string:expected, string:actual);
+    func:aria_cookie_test_summary     = void();
+}
+
+func:main = int32() {
+    // ── Test 1: Parse simple Cookie header ──
+    int32:n1 = aria_cookie_parse("sid=abc123; theme=dark; lang=en");
+    aria_cookie_assert_int_eq("parse count", 3i32, n1);
+
+    string:v1 = aria_cookie_get("sid");
+    aria_cookie_assert_str_eq("get sid", "abc123", v1);
+
+    string:v2 = aria_cookie_get("theme");
+    aria_cookie_assert_str_eq("get theme", "dark", v2);
+
+    string:v3 = aria_cookie_get("lang");
+    aria_cookie_assert_str_eq("get lang", "en", v3);
+
+    // ── Test 2: has/missing ──
+    int32:h1 = aria_cookie_has("sid");
+    aria_cookie_assert_int_eq("has sid", 1i32, h1);
+
+    int32:h2 = aria_cookie_has("nope");
+    aria_cookie_assert_int_eq("has nope", 0i32, h2);
+
+    // ── Test 3: Iterate by index ──
+    string:n0 = aria_cookie_name(0i32);
+    aria_cookie_assert_str_eq("name 0", "sid", n0);
+    string:val0 = aria_cookie_value(0i32);
+    aria_cookie_assert_str_eq("value 0", "abc123", val0);
+
+    // ── Test 4: Empty cookie header ──
+    aria_cookie_reset();
+    int32:n2 = aria_cookie_parse("");
+    aria_cookie_assert_int_eq("empty parse", 0i32, n2);
+
+    // ── Test 5: Single cookie ──
+    aria_cookie_reset();
+    int32:n3 = aria_cookie_parse("token=xyz789");
+    aria_cookie_assert_int_eq("single count", 1i32, n3);
+    string:tk = aria_cookie_get("token");
+    aria_cookie_assert_str_eq("single value", "xyz789", tk);
+
+    // ── Test 6: Build Set-Cookie (simple) ──
+    aria_cookie_builder_reset();
+    aria_cookie_builder_name("sid");
+    aria_cookie_builder_value("abc123");
+    aria_cookie_builder_path("/");
+    string:sc1 = aria_cookie_builder_build();
+    aria_cookie_assert_str_eq("simple set-cookie", "Set-Cookie: sid=abc123; Path=/\r\n", sc1);
+
+    // ── Test 7: Build Set-Cookie (full) ──
+    aria_cookie_builder_reset();
+    aria_cookie_builder_name("session");
+    aria_cookie_builder_value("tok42");
+    aria_cookie_builder_path("/app");
+    aria_cookie_builder_domain("example.com");
+    aria_cookie_builder_max_age(3600i32);
+    aria_cookie_builder_secure(1i32);
+    aria_cookie_builder_httponly(1i32);
+    aria_cookie_builder_samesite("Strict");
+    string:sc2 = aria_cookie_builder_build();
+    aria_cookie_assert_contains("full name=val", "session=tok42", sc2);
+    aria_cookie_assert_contains("full path", "Path=/app", sc2);
+    aria_cookie_assert_contains("full domain", "Domain=example.com", sc2);
+    aria_cookie_assert_contains("full max-age", "Max-Age=3600", sc2);
+    aria_cookie_assert_contains("full secure", "Secure", sc2);
+    aria_cookie_assert_contains("full httponly", "HttpOnly", sc2);
+    aria_cookie_assert_contains("full samesite", "SameSite=Strict", sc2);
+
+    // ── Test 8: Delete cookie ──
+    string:del = aria_cookie_delete("sid", "/");
+    aria_cookie_assert_str_eq("delete cookie", "Set-Cookie: sid=; Path=/; Max-Age=0\r\n", del);
+
+    // ── Test 9: Delete cookie default path ──
+    string:del2 = aria_cookie_delete("token", "");
+    aria_cookie_assert_str_eq("delete default path", "Set-Cookie: token=; Path=/; Max-Age=0\r\n", del2);
+
+    // ── Test 10: Cookie with spaces around values ──
+    aria_cookie_reset();
+    int32:n4 = aria_cookie_parse("  name = value ; other = stuff ");
+    aria_cookie_assert_int_eq("trimmed count", 2i32, n4);
+    string:tv1 = aria_cookie_get("name");
+    aria_cookie_assert_str_eq("trimmed name", "value", tv1);
+
+    aria_cookie_test_summary();
+    pass(0i32);
+};

@@ -1,0 +1,131 @@
+// test_aria_session.aria — Tests for in-memory session management
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_session_shim" {
+    func:aria_session_set_max_age     = void(int32:seconds);
+    func:aria_session_set_cookie_name = void(string:name);
+    func:aria_session_get_cookie_name = string();
+    func:aria_session_create          = string();
+    func:aria_session_load            = int32(string:id);
+    func:aria_session_destroy         = void();
+    func:aria_session_destroy_id      = void(string:id);
+    func:aria_session_id              = string();
+    func:aria_session_set             = void(string:key, string:value);
+    func:aria_session_get             = string(string:key);
+    func:aria_session_has             = int32(string:key);
+    func:aria_session_remove          = void(string:key);
+    func:aria_session_var_count       = int32();
+    func:aria_session_count           = int32();
+    func:aria_session_cookie_header   = string();
+    func:aria_session_clear_cookie    = string();
+    func:aria_session_reset           = void();
+    func:aria_session_assert_str_eq   = void(string:label, string:expected, string:actual);
+    func:aria_session_assert_int_eq   = void(string:label, int32:expected, int32:actual);
+    func:aria_session_assert_contains = void(string:label, string:expected, string:actual);
+    func:aria_session_assert_not_empty = void(string:label, string:actual);
+    func:aria_session_test_summary    = void();
+}
+
+func:main = int32() {
+    // ── Test 1: Create session ──
+    aria_session_reset();
+    string:sid1 = aria_session_create();
+    aria_session_assert_not_empty("session id created", sid1);
+
+    int32:c1 = aria_session_count();
+    aria_session_assert_int_eq("active count 1", 1i32, c1);
+
+    // ── Test 2: Set/get session data ──
+    aria_session_set("username", "alice");
+    aria_session_set("role", "admin");
+
+    string:u1 = aria_session_get("username");
+    aria_session_assert_str_eq("get username", "alice", u1);
+
+    string:r1 = aria_session_get("role");
+    aria_session_assert_str_eq("get role", "admin", r1);
+
+    int32:h1 = aria_session_has("username");
+    aria_session_assert_int_eq("has username", 1i32, h1);
+
+    int32:h2 = aria_session_has("missing");
+    aria_session_assert_int_eq("has missing", 0i32, h2);
+
+    int32:vc1 = aria_session_var_count();
+    aria_session_assert_int_eq("var count 2", 2i32, vc1);
+
+    // ── Test 3: Update existing variable ──
+    aria_session_set("username", "bob");
+    string:u2 = aria_session_get("username");
+    aria_session_assert_str_eq("updated username", "bob", u2);
+
+    // ── Test 4: Remove variable ──
+    aria_session_remove("role");
+    int32:h3 = aria_session_has("role");
+    aria_session_assert_int_eq("removed role", 0i32, h3);
+
+    int32:vc2 = aria_session_var_count();
+    aria_session_assert_int_eq("var count after remove", 1i32, vc2);
+
+    // ── Test 5: Session ID persists ──
+    string:sid_check = aria_session_id();
+    aria_session_assert_str_eq("id matches", sid1, sid_check);
+
+    // ── Test 6: Load session by ID ──
+    string:saved_id = aria_session_id();
+    // Create a second session
+    string:sid2 = aria_session_create();
+    aria_session_set("data", "second");
+
+    int32:c2 = aria_session_count();
+    aria_session_assert_int_eq("active count 2", 2i32, c2);
+
+    // Switch back to first session
+    int32:loaded = aria_session_load(saved_id);
+    aria_session_assert_int_eq("load returns 1", 1i32, loaded);
+
+    string:u3 = aria_session_get("username");
+    aria_session_assert_str_eq("first session data", "bob", u3);
+
+    // ── Test 7: Load non-existent session ──
+    int32:bad = aria_session_load("nonexistent_session_id_xyz");
+    aria_session_assert_int_eq("bad load returns 0", 0i32, bad);
+
+    // ── Test 8: Destroy session ──
+    aria_session_load(sid2);
+    aria_session_destroy();
+    int32:c3 = aria_session_count();
+    aria_session_assert_int_eq("count after destroy", 1i32, c3);
+
+    // ── Test 9: Cookie header ──
+    aria_session_load(saved_id);
+    string:cookie = aria_session_cookie_header();
+    aria_session_assert_contains("cookie has name", "aria_sid=", cookie);
+    aria_session_assert_contains("cookie has path", "Path=/", cookie);
+    aria_session_assert_contains("cookie has httponly", "HttpOnly", cookie);
+
+    // ── Test 10: Clear cookie ──
+    string:clr = aria_session_clear_cookie();
+    aria_session_assert_contains("clear has max-age 0", "Max-Age=0", clr);
+
+    // ── Test 11: Custom cookie name ──
+    aria_session_set_cookie_name("my_session");
+    string:cn = aria_session_get_cookie_name();
+    aria_session_assert_str_eq("custom cookie name", "my_session", cn);
+
+    string:cookie2 = aria_session_cookie_header();
+    aria_session_assert_contains("custom name in cookie", "my_session=", cookie2);
+
+    // ── Test 12: Destroy by ID ──
+    aria_session_reset();
+    string:sid3 = aria_session_create();
+    aria_session_set("x", "1");
+    string:sid4 = aria_session_create();
+    aria_session_destroy_id(sid3);
+    int32:c4 = aria_session_count();
+    aria_session_assert_int_eq("destroy by id", 1i32, c4);
+
+    aria_session_test_summary();
+    pass(0i32);
+};

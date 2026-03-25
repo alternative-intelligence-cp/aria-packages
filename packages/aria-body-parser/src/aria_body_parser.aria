@@ -1,0 +1,80 @@
+// aria_body_parser.aria — Request body parsing (JSON, form-urlencoded, raw)
+// LIB-BP: Parse structured request bodies and extract fields by key.
+
+extern "aria_body_parser_shim" {
+    func:aria_body_parser_detect       = int32(string:content_type);
+    func:aria_body_parser_parse        = int32(string:body, string:content_type);
+    func:aria_body_parser_field        = string(string:key);
+    func:aria_body_parser_has_field    = int32(string:key);
+    func:aria_body_parser_field_count  = int32();
+    func:aria_body_parser_field_key    = string(int32:index);
+    func:aria_body_parser_field_value  = string(int32:index);
+    func:aria_body_parser_content_type = int32();
+    func:aria_body_parser_raw          = string();
+    func:aria_body_parser_raw_length   = int32();
+    func:aria_body_parser_error        = string();
+    func:aria_body_parser_reset        = void();
+}
+
+// Content type constants
+// 0 = unknown, 1 = JSON, 2 = form-urlencoded, 3 = multipart, 4 = text
+
+pub func:body_parse = int32(string:body, string:content_type) {
+    int32:r = aria_body_parser_parse(body, content_type);
+    pass(r);
+};
+
+pub func:body_detect = int32(string:content_type) {
+    int32:r = aria_body_parser_detect(content_type);
+    pass(r);
+};
+
+pub func:body_field = string(string:key) {
+    string:r = aria_body_parser_field(key);
+    pass(r);
+};
+
+pub func:body_has_field = int32(string:key) {
+    int32:r = aria_body_parser_has_field(key);
+    pass(r);
+};
+
+pub func:body_field_count = int32() {
+    int32:r = aria_body_parser_field_count();
+    pass(r);
+};
+
+pub func:body_field_key = string(int32:index) {
+    string:r = aria_body_parser_field_key(index);
+    pass(r);
+};
+
+pub func:body_field_value = string(int32:index) {
+    string:r = aria_body_parser_field_value(index);
+    pass(r);
+};
+
+pub func:body_content_type = int32() {
+    int32:r = aria_body_parser_content_type();
+    pass(r);
+};
+
+pub func:body_raw = string() {
+    string:r = aria_body_parser_raw();
+    pass(r);
+};
+
+pub func:body_raw_length = int32() {
+    int32:r = aria_body_parser_raw_length();
+    pass(r);
+};
+
+pub func:body_error = string() {
+    string:r = aria_body_parser_error();
+    pass(r);
+};
+
+pub func:body_reset = NIL() {
+    aria_body_parser_reset();
+    pass(NIL);
+};

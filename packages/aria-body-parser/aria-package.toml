@@ -1,0 +1,7 @@
+[package]
+name = "aria-body-parser"
+version = "0.2.9"
+description = "Request body parsing: JSON field access, URL-encoded form data, raw body"
+
+[dependencies]
+link_libraries = ["aria_body_parser_shim"]

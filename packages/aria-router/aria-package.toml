@@ -1,0 +1,7 @@
+[package]
+name = "aria-router"
+version = "0.2.9"
+description = "Express-style HTTP router with path parameters and middleware"
+
+[dependencies]
+link_libraries = ["aria_router_shim"]

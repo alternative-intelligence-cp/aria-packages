@@ -1,0 +1,78 @@
+// aria_rate_limit.aria — Token bucket rate limiting for Aria HTTP servers
+// LIB-RL: Per-client rate limiting with configurable token bucket.
+//
+// Usage:
+//   rate_limit_configure(100i32, 10i32, 60i32);  // 100 max, 10/sec refill, 60s window
+//
+//   // In request handler:
+//   string:client_ip = server_req_header("X-Forwarded-For");
+//   int32:ok = rate_limit_check(client_ip);
+//   pick(ok) {
+//       (0i32) {
+//           // Rate limited — respond 429
+//           string:hdrs = rate_limit_headers(client_ip);
+//           server_respond_headers(fd, 429i32, "Too Many Requests", "text/plain", hdrs, "Rate limit exceeded");
+//       },
+//       (*) {
+//           // Allowed — process request
+//           string:hdrs = rate_limit_headers(client_ip);
+//           server_respond_headers(fd, 200i32, "OK", "application/json", hdrs, body);
+//       }
+//   }
+
+extern "aria_rate_limit_shim" {
+    func:aria_rate_limit_configure    = void(int32:max_tokens, int32:refill_per_sec, int32:window_sec);
+    func:aria_rate_limit_set_max      = void(int32:max_tokens);
+    func:aria_rate_limit_set_rate     = void(int32:tokens_per_sec);
+    func:aria_rate_limit_check        = int32(string:key);
+    func:aria_rate_limit_check_cost   = int32(string:key, int32:cost);
+    func:aria_rate_limit_remaining    = int32(string:key);
+    func:aria_rate_limit_retry_after  = int32(string:key);
+    func:aria_rate_limit_headers      = string(string:key);
+    func:aria_rate_limit_reset        = void();
+}
+
+pub func:rate_limit_configure = NIL(int32:max_tokens, int32:refill_per_sec, int32:window_sec) {
+    aria_rate_limit_configure(max_tokens, refill_per_sec, window_sec);
+    pass(NIL);
+};
+
+pub func:rate_limit_max = NIL(int32:max_tokens) {
+    aria_rate_limit_set_max(max_tokens);
+    pass(NIL);
+};
+
+pub func:rate_limit_rate = NIL(int32:tokens_per_sec) {
+    aria_rate_limit_set_rate(tokens_per_sec);
+    pass(NIL);
+};
+
+pub func:rate_limit_check = int32(string:key) {
+    int32:r = aria_rate_limit_check(key);
+    pass(r);
+};
+
+pub func:rate_limit_check_cost = int32(string:key, int32:cost) {
+    int32:r = aria_rate_limit_check_cost(key, cost);
+    pass(r);
+};
+
+pub func:rate_limit_remaining = int32(string:key) {
+    int32:r = aria_rate_limit_remaining(key);
+    pass(r);
+};
+
+pub func:rate_limit_retry_after = int32(string:key) {
+    int32:r = aria_rate_limit_retry_after(key);
+    pass(r);
+};
+
+pub func:rate_limit_headers = string(string:key) {
+    string:r = aria_rate_limit_headers(key);
+    pass(r);
+};
+
+pub func:rate_limit_reset = NIL() {
+    aria_rate_limit_reset();
+    pass(NIL);
+};

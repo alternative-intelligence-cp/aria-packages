@@ -1,0 +1,7 @@
+[package]
+name = "aria-static"
+version = "0.2.9"
+description = "Static file serving for Aria HTTP servers"
+
+[dependencies]
+link_libraries = ["aria_static_shim"]

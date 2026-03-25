@@ -1,0 +1,106 @@
+// test_aria_cors.aria — Tests for CORS header generation
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_cors_shim" {
+    func:aria_cors_reset             = void();
+    func:aria_cors_allow_origin      = void(string:origin);
+    func:aria_cors_allow_methods     = void(string:methods);
+    func:aria_cors_allow_headers     = void(string:headers);
+    func:aria_cors_expose_headers    = void(string:headers);
+    func:aria_cors_allow_credentials = void(int32:allow);
+    func:aria_cors_max_age           = void(int32:seconds);
+    func:aria_cors_is_allowed        = int32(string:origin);
+    func:aria_cors_headers           = string(string:origin);
+    func:aria_cors_preflight         = string(string:origin);
+    func:aria_cors_is_preflight      = int32(string:method);
+    func:aria_cors_assert_str_eq     = void(string:label, string:expected, string:actual);
+    func:aria_cors_assert_int_eq     = void(string:label, int32:expected, int32:actual);
+    func:aria_cors_assert_contains   = void(string:label, string:expected, string:actual);
+    func:aria_cors_test_summary      = void();
+}
+
+func:main = int32() {
+    // ── Test 1: Wildcard origin ──
+    aria_cors_reset();
+    aria_cors_allow_origin("*");
+    int32:a1 = aria_cors_is_allowed("https://example.com");
+    aria_cors_assert_int_eq("wildcard allows any", 1i32, a1);
+
+    string:h1 = aria_cors_headers("https://example.com");
+    aria_cors_assert_contains("wildcard origin header", "Access-Control-Allow-Origin: *", h1);
+
+    // ── Test 2: Specific origins ──
+    aria_cors_reset();
+    aria_cors_allow_origin("https://example.com");
+    aria_cors_allow_origin("https://other.com");
+
+    int32:a2 = aria_cors_is_allowed("https://example.com");
+    aria_cors_assert_int_eq("specific origin allowed", 1i32, a2);
+
+    int32:a3 = aria_cors_is_allowed("https://evil.com");
+    aria_cors_assert_int_eq("unknown origin denied", 0i32, a3);
+
+    string:h2 = aria_cors_headers("https://example.com");
+    aria_cors_assert_contains("reflects origin", "Access-Control-Allow-Origin: https://example.com", h2);
+    aria_cors_assert_contains("vary header", "Vary: Origin", h2);
+
+    // ── Test 3: Denied origin produces empty headers ──
+    string:h3 = aria_cors_headers("https://evil.com");
+    aria_cors_assert_str_eq("denied origin empty", "", h3);
+
+    // ── Test 4: Credentials ──
+    aria_cors_reset();
+    aria_cors_allow_origin("https://app.com");
+    aria_cors_allow_credentials(1i32);
+
+    string:h4 = aria_cors_headers("https://app.com");
+    aria_cors_assert_contains("credentials header", "Access-Control-Allow-Credentials: true", h4);
+
+    // ── Test 5: Preflight response ──
+    aria_cors_reset();
+    aria_cors_allow_origin("*");
+    aria_cors_allow_methods("GET, POST");
+    aria_cors_allow_headers("Content-Type, X-Token");
+    aria_cors_max_age(3600i32);
+
+    string:pf = aria_cors_preflight("https://any.com");
+    aria_cors_assert_contains("preflight methods", "Access-Control-Allow-Methods: GET, POST", pf);
+    aria_cors_assert_contains("preflight headers", "Access-Control-Allow-Headers: Content-Type, X-Token", pf);
+    aria_cors_assert_contains("preflight max-age", "Access-Control-Max-Age: 3600", pf);
+
+    // ── Test 6: is_preflight check ──
+    int32:ip1 = aria_cors_is_preflight("OPTIONS");
+    aria_cors_assert_int_eq("OPTIONS is preflight", 1i32, ip1);
+
+    int32:ip2 = aria_cors_is_preflight("GET");
+    aria_cors_assert_int_eq("GET not preflight", 0i32, ip2);
+
+    int32:ip3 = aria_cors_is_preflight("options");
+    aria_cors_assert_int_eq("options lowercase", 1i32, ip3);
+
+    // ── Test 7: Expose headers ──
+    aria_cors_reset();
+    aria_cors_allow_origin("*");
+    aria_cors_expose_headers("X-Request-Id, X-Total-Count");
+
+    string:h5 = aria_cors_headers("https://any.com");
+    aria_cors_assert_contains("expose headers", "Access-Control-Expose-Headers: X-Request-Id, X-Total-Count", h5);
+
+    // ── Test 8: No config = empty headers ──
+    aria_cors_reset();
+    string:h6 = aria_cors_headers("https://any.com");
+    aria_cors_assert_str_eq("no config empty", "", h6);
+
+    // ── Test 9: Wildcard + credentials reflects origin ──
+    aria_cors_reset();
+    aria_cors_allow_origin("*");
+    aria_cors_allow_credentials(1i32);
+
+    string:h7 = aria_cors_headers("https://specific.com");
+    aria_cors_assert_contains("cred reflects origin", "Access-Control-Allow-Origin: https://specific.com", h7);
+    aria_cors_assert_contains("cred has credentials", "Access-Control-Allow-Credentials: true", h7);
+
+    aria_cors_test_summary();
+    pass(0i32);
+};
