@@ -1,10 +1,10 @@
 [package]
 name = "aria-raylib"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Aria Language Project"]
 license = "Apache-2.0 WITH Runtime-Library-Exception"
-description = "Raylib bindings for Aria — windowing, 2D drawing, input, and text rendering via C shim"
-keywords = ["raylib", "gui", "graphics", "gamedev", "2d", "ffi"]
+description = "Raylib bindings for Aria — windowing, 2D drawing, textures, audio, input, and text rendering via C shim"
+keywords = ["raylib", "gui", "graphics", "gamedev", "2d", "ffi", "audio", "texture"]
 categories = ["graphics", "gamedev"]
 
 [dependencies]

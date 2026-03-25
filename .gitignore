@@ -4,6 +4,12 @@ build/
 *.so
 *.a
 a.out*
+*.bak
+
+# Compiled Aria program binaries (no extension, named after package)
+packages/aria-tetris/aria_tetris
+packages/aria-gml/gml_bounce
+packages/aria-editor/aria_editor
 
 # Editor
 .vscode/

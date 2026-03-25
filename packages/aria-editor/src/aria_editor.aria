@@ -1,0 +1,721 @@
+// aria_editor.aria — Minimal CLI text editor written in Aria
+//
+// A terminal-based text editor in the spirit of kilo/nano.
+// Demonstrates aria-display, aria-input, aria-fs, and the editor line-buffer shim.
+//
+// Usage:  aria_editor [filename]
+//
+// Keybindings:
+//   Ctrl-Q       Quit (press 3x if unsaved changes)
+//   Ctrl-S       Save file
+//   Ctrl-F       Find text (then: arrows = next/prev, Enter/Esc = cancel)
+//   Ctrl-G       Go to line number
+//   Home/End     Start/end of line
+//   PgUp/PgDn    Page up/down
+//   Arrow keys   Move cursor
+//   Backspace    Delete char before cursor
+//   Delete       Delete char at cursor
+//   Enter        Insert new line
+//
+// Build:
+//   cd aria-packages/packages/aria-editor
+//   /path/to/ariac src/aria_editor.aria -o aria_editor \
+//     -L shim -laria_editor_shim \
+//     -L ../aria-display/shim -laria_display \
+//     -L ../aria-input/shim -laria_input \
+//     -L ../aria-fs/shim -laria_fs_shim
+//
+// Run:
+//   export LD_LIBRARY_PATH=shim:../aria-display/shim:../aria-input/shim:../aria-fs/shim
+//   ./aria_editor myfile.txt
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Extern declarations (file-scoped — must be declared in every consuming file)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Terminal display ──────────────────────────────────────────────────────────
+extern "aria_display" {
+    func:aria_display_move         = int32(int32:col, int32:row);
+    func:aria_display_home         = int32();
+    func:aria_display_hide_cursor  = int32();
+    func:aria_display_show_cursor  = int32();
+    func:aria_display_clear        = int32();
+    func:aria_display_clear_eol    = int32();
+    func:aria_display_set_fg       = int32(int32:color);
+    func:aria_display_set_bg       = int32(int32:color);
+    func:aria_display_reset_attr   = int32();
+    func:aria_display_set_bold     = int32(int32:on);
+    func:aria_display_set_reverse  = int32(int32:on);
+    func:aria_display_get_size     = int64();
+    func:aria_display_flush        = int32();
+}
+
+// ── Keyboard input ────────────────────────────────────────────────────────────
+extern "aria_input" {
+    func:aria_input_enter_raw  = int32();
+    func:aria_input_exit_raw   = int32();
+    func:aria_input_read_key   = int32();
+    func:aria_input_poll       = int32();
+}
+
+// ── File system ───────────────────────────────────────────────────────────────
+extern "aria_fs_shim" {
+    func:aria_fs_read_file   = string(string:path);
+    func:aria_fs_write_file  = int32(string:path, string:data);
+    func:aria_fs_exists      = int32(string:path);
+    func:aria_fs_last_result = string();
+}
+
+// ── Editor line buffer (C shim) ───────────────────────────────────────────────
+extern "aria_editor_shim" {
+    func:aria_editor_init        = void();
+    func:aria_editor_load        = void(string:content);
+    func:aria_editor_line_count  = int32();
+    func:aria_editor_get_line    = string(int32:idx);
+    func:aria_editor_line_len    = int32(int32:idx);
+    func:aria_editor_set_line    = void(int32:idx, string:text);
+    func:aria_editor_insert_line = void(int32:idx, string:text);
+    func:aria_editor_delete_line = void(int32:idx);
+    func:aria_editor_insert_char = void(int32:row, int32:col, int32:ch);
+    func:aria_editor_delete_char = void(int32:row, int32:col);
+    func:aria_editor_split_line  = void(int32:row, int32:col);
+    func:aria_editor_join_lines  = void(int32:row);
+    func:aria_editor_to_string   = string();
+    func:aria_editor_is_dirty    = int32();
+    func:aria_editor_clear_dirty = void();
+    func:aria_editor_find        = int64(string:needle, int32:from_row, int32:from_col);
+    func:aria_editor_find_row    = int32(int64:packed);
+    func:aria_editor_find_col    = int32(int64:packed);
+}
+
+// ── libc (for reading /proc/self/cmdline) ─────────────────────────────────────
+extern "libc" {
+    func:fopen   = int64(string:path, string:mode);
+    func:fgetc   = int32(int64:fp);
+    func:fclose  = int32(int64:fp);
+}
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+// ═══════════════════════════════════════════════════════════════════════════════
+// Virtual key code constants
+// ═══════════════════════════════════════════════════════════════════════════════
+func:KEY_UP     = int32() { pass(200i32); };
+func:KEY_DOWN   = int32() { pass(201i32); };
+func:KEY_LEFT   = int32() { pass(202i32); };
+func:KEY_RIGHT  = int32() { pass(203i32); };
+func:KEY_HOME   = int32() { pass(204i32); };
+func:KEY_END    = int32() { pass(205i32); };
+func:KEY_DELETE = int32() { pass(206i32); };
+func:KEY_PGUP   = int32() { pass(207i32); };
+func:KEY_PGDN   = int32() { pass(208i32); };
+func:KEY_ESC    = int32() { pass(27i32); };
+func:KEY_ENTER  = int32() { pass(13i32); };
+func:KEY_TAB    = int32() { pass(9i32); };
+func:KEY_BACKSPACE = int32() { pass(127i32); };
+func:CTRL_Q     = int32() { pass(17i32); };
+func:CTRL_S     = int32() { pass(19i32); };
+func:CTRL_F     = int32() { pass(6i32); };
+func:CTRL_G     = int32() { pass(7i32); };
+func:CTRL_H     = int32() { pass(8i32); };
+func:KEY_NONE   = int32() { pass(-1i32); };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Terminal size helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+func:get_cols = int32(int64:packed) {
+    uint64:u = @cast<uint64>(packed);
+    uint64:shifted = u >> 32u64;
+    pass(@cast<int32>(shifted));
+};
+
+func:get_rows = int32(int64:packed) {
+    uint64:u = @cast<uint64>(packed);
+    uint64:mask = 4294967295u64;
+    uint64:low = u & mask;
+    pass(@cast<int32>(low));
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLI argument loading — read filename from argv[1]
+// ═══════════════════════════════════════════════════════════════════════════════
+func:get_filename_arg = string() {
+    int64:fp = fopen("/proc/self/cmdline", "r");
+    if (fp == 0i64) { pass(""); }
+
+    int32:arg_num = 0i32;
+    string:current = "";
+    int32:c = fgetc(fp);
+    while (c >= 0i32) {
+        if (c == 0i32) {
+            if (arg_num == 1i32) {
+                drop(fclose(fp));
+                pass(current);
+            }
+            arg_num = arg_num + 1i32;
+            current = "";
+        }
+        if (c > 0i32) {
+            current = string_concat(current, string_from_char(@cast<int8>(c)));
+        }
+        c = fgetc(fp);
+    }
+    drop(fclose(fp));
+    if (arg_num == 1i32) { pass(current); }
+    pass("");
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Drawing helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Render visible text rows. Rows showing file content are drawn from the line
+// buffer; rows past EOF show a tilde ("~") like vi.
+func:draw_rows = NIL(int32:rowoff, int32:coloff, int32:screen_rows, int32:screen_cols) {
+    int32:total_lines = aria_editor_line_count();
+    int32:y = 0i32;
+    while (y < screen_rows) {
+        int32:file_row = y + rowoff;
+        drop(aria_display_move(1i32, y + 1i32));
+        if (file_row >= total_lines) {
+            // Past end of file — draw tilde
+            drop(aria_display_set_fg(6i32));
+            print("~");
+            drop(aria_display_reset_attr());
+        }
+        if (file_row < total_lines) {
+            // Draw file content
+            string:line = aria_editor_get_line(file_row);
+            int64:line_len = string_length(line);
+            int64:col_off_64 = @cast<int64>(coloff);
+            int64:scr_cols_64 = @cast<int64>(screen_cols);
+            if (col_off_64 < line_len) {
+                int64:stop = col_off_64 + scr_cols_64;
+                if (stop > line_len) {
+                    stop = line_len;
+                }
+                string:visible = string_substring(line, col_off_64, stop);
+                print(visible);
+            }
+        }
+        drop(aria_display_clear_eol());
+        y = y + 1i32;
+    }
+    pass(NIL);
+};
+
+// Draw the status bar (reverse video) at row (screen_rows + 1)
+func:draw_status_bar = NIL(string:filename, int32:cy, int32:screen_rows, int32:screen_cols) {
+    int32:total_lines = aria_editor_line_count();
+    int32:dirty = aria_editor_is_dirty();
+    int32:bar_row = screen_rows + 1i32;
+    drop(aria_display_move(1i32, bar_row));
+    drop(aria_display_set_reverse(1i32));
+
+    // Left side: filename + modified indicator + line count
+    string:fname_display = filename;
+    if (string_length(filename) == 0i64) {
+        fname_display = "[No Name]";
+    }
+    string:mod_mark = "";
+    if (dirty != 0i32) {
+        mod_mark = " (modified)";
+    }
+    string:left = string_concat(fname_display, string_concat(mod_mark, string_concat(" - ", string_concat(string_from_int(@cast<int64>(total_lines)), " lines"))));
+
+    // Right side: current line / total
+    string:right = string_concat("Ln ", string_concat(string_from_int(@cast<int64>(cy + 1i32)), string_concat("/", string_from_int(@cast<int64>(total_lines)))));
+
+    // Print left side
+    print(left);
+    int64:left_len = string_length(left);
+    int64:right_len = string_length(right);
+    int64:cols_64 = @cast<int64>(screen_cols);
+
+    // Fill spaces between left and right
+    int64:padding = cols_64 - left_len;
+    if (padding > right_len) {
+        int64:spaces_count = padding - right_len;
+        string:spaces = string_repeat(" ", spaces_count);
+        print(spaces);
+        print(right);
+    }
+    if (padding <= right_len) {
+        // Not enough room for right side, just pad the rest
+        if (padding > 0i64) {
+            string:spaces = string_repeat(" ", padding);
+            print(spaces);
+        }
+    }
+
+    drop(aria_display_set_reverse(0i32));
+    drop(aria_display_reset_attr());
+    pass(NIL);
+};
+
+// Draw the message bar at row (screen_rows + 2)
+func:draw_message_bar = NIL(string:msg, int32:screen_rows, int32:screen_cols) {
+    int32:msg_row = screen_rows + 2i32;
+    drop(aria_display_move(1i32, msg_row));
+    drop(aria_display_clear_eol());
+    int64:msg_len = string_length(msg);
+    int64:cols_64 = @cast<int64>(screen_cols);
+    if (msg_len > 0i64) {
+        if (msg_len > cols_64) {
+            print(string_substring(msg, 0i64, cols_64));
+        }
+        if (msg_len <= cols_64) {
+            print(msg);
+        }
+    }
+    pass(NIL);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Input prompt — read a string from the status bar area (for search, goto, etc.)
+// Returns "" if user pressed Esc to cancel.
+// ═══════════════════════════════════════════════════════════════════════════════
+func:editor_prompt = string(string:prompt_text, int32:screen_rows, int32:screen_cols) {
+    string:input = "";
+    int32:prompting = 1i32;
+    int32:k_esc = 27i32;
+    int32:k_enter = 13i32;
+    int32:k_bksp = 127i32;
+    int32:k_ctrl_h = 8i32;
+    while (prompting == 1i32) {
+        // Draw prompt in message bar
+        int32:msg_row = screen_rows + 2i32;
+        drop(aria_display_move(1i32, msg_row));
+        drop(aria_display_clear_eol());
+        string:full_prompt = string_concat(prompt_text, input);
+        print(full_prompt);
+        drop(aria_display_flush());
+
+        int32:key = aria_input_read_key();
+        if (key == -1i32) {
+            sleep_ms(10i64);
+        }
+        if (key == k_esc) {
+            prompting = 0i32;
+            input = "";
+        }
+        if (key == k_enter) {
+            prompting = 0i32;
+        }
+        if (key == k_bksp) {
+            int64:ilen = string_length(input);
+            if (ilen > 0i64) {
+                input = string_substring(input, 0i64, ilen - 1i64);
+            }
+        }
+        if (key == k_ctrl_h) {
+            int64:ilen = string_length(input);
+            if (ilen > 0i64) {
+                input = string_substring(input, 0i64, ilen - 1i64);
+            }
+        }
+        // Printable ASCII
+        if (key >= 32i32) {
+            if (key < 127i32) {
+                input = string_concat(input, string_from_char(@cast<int8>(key)));
+            }
+        }
+    }
+    pass(input);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main entry point
+// ═══════════════════════════════════════════════════════════════════════════════
+func:main = int32() {
+    // ── Parse arguments ──────────────────────────────────────────────────────
+    string:filename = raw(get_filename_arg());
+
+    // ── Initialize editor buffer ─────────────────────────────────────────────
+    aria_editor_init();
+
+    // ── Load file if specified ───────────────────────────────────────────────
+    if (string_length(filename) > 0i64) {
+        int32:exists = aria_fs_exists(filename);
+        if (exists != 0i32) {
+            string:content = aria_fs_read_file(filename);
+            aria_editor_load(content);
+        }
+    }
+
+    // ── Enter raw mode ───────────────────────────────────────────────────────
+    drop(aria_input_enter_raw());
+
+    // ── Get terminal size ────────────────────────────────────────────────────
+    int64:size_packed = aria_display_get_size();
+    int32:screen_cols = raw(get_cols(size_packed));
+    int32:screen_rows = raw(get_rows(size_packed));
+    // Reserve 2 rows for status bar and message bar
+    screen_rows = screen_rows - 2i32;
+
+    // ── Editor state ─────────────────────────────────────────────────────────
+    int32:cx = 0i32;           // cursor column (0-based, in-line offset)
+    int32:cy = 0i32;           // cursor row (0-based, document row)
+    int32:rowoff = 0i32;       // vertical scroll offset
+    int32:coloff = 0i32;       // horizontal scroll offset
+    int32:running = 1i32;
+    int32:quit_times = 3i32;   // dirty buffer quit protection
+    string:status_msg = "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find";
+
+    // ── Key constants (pre-bound to avoid Result<int32> unwrapping) ──────────
+    int32:k_up    = 200i32;
+    int32:k_down  = 201i32;
+    int32:k_left  = 202i32;
+    int32:k_right = 203i32;
+    int32:k_home  = 204i32;
+    int32:k_end   = 205i32;
+    int32:k_del   = 206i32;
+    int32:k_pgup  = 207i32;
+    int32:k_pgdn  = 208i32;
+    int32:k_esc   = 27i32;
+    int32:k_enter = 13i32;
+    int32:k_tab   = 9i32;
+    int32:k_bksp  = 127i32;
+    int32:k_ctrl_q = 17i32;
+    int32:k_ctrl_s = 19i32;
+    int32:k_ctrl_f = 6i32;
+    int32:k_ctrl_g = 7i32;
+    int32:k_ctrl_h = 8i32;
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // MAIN LOOP
+    // ══════════════════════════════════════════════════════════════════════════
+    while (running == 1i32) {
+        // ── Scroll adjustment ────────────────────────────────────────────────
+        // Vertical scroll
+        if (cy < rowoff) {
+            rowoff = cy;
+        }
+        if (cy >= rowoff + screen_rows) {
+            rowoff = cy - screen_rows + 1i32;
+        }
+        // Horizontal scroll
+        if (cx < coloff) {
+            coloff = cx;
+        }
+        if (cx >= coloff + screen_cols) {
+            coloff = cx - screen_cols + 1i32;
+        }
+
+        // ── Render screen ────────────────────────────────────────────────────
+        drop(aria_display_hide_cursor());
+        drop(aria_display_home());
+        drop(raw(draw_rows(rowoff, coloff, screen_rows, screen_cols)));
+        drop(raw(draw_status_bar(filename, cy, screen_rows, screen_cols)));
+        drop(raw(draw_message_bar(status_msg, screen_rows, screen_cols)));
+
+        // Position cursor
+        int32:cursor_screen_col = cx - coloff + 1i32;
+        int32:cursor_screen_row = cy - rowoff + 1i32;
+        drop(aria_display_move(cursor_screen_col, cursor_screen_row));
+        drop(aria_display_show_cursor());
+        drop(aria_display_flush());
+
+        // ── Read input ───────────────────────────────────────────────────────
+        int32:key = aria_input_read_key();
+        if (key == -1i32) {
+            sleep_ms(10i64);
+        }
+
+        // ── Process keypress ─────────────────────────────────────────────────
+
+        // After any non-quit keypress, reset quit_times
+        int32:reset_quit = 1i32;
+
+        // ── Ctrl-Q: Quit ─────────────────────────────────────────────────────
+        if (key == k_ctrl_q) {
+            reset_quit = 0i32;
+            int32:is_dirty = aria_editor_is_dirty();
+            if (is_dirty != 0i32) {
+                if (quit_times > 0i32) {
+                    status_msg = string_concat("WARNING! File has unsaved changes. Press Ctrl-Q ", string_concat(string_from_int(@cast<int64>(quit_times)), " more times to quit."));
+                    quit_times = quit_times - 1i32;
+                }
+                if (quit_times <= 0i32) {
+                    running = 0i32;
+                }
+            }
+            if (is_dirty == 0i32) {
+                running = 0i32;
+            }
+        }
+
+        // ── Ctrl-S: Save ─────────────────────────────────────────────────────
+        if (key == k_ctrl_s) {
+            if (string_length(filename) == 0i64) {
+                filename = raw(editor_prompt("Save as: ", screen_rows, screen_cols));
+                if (string_length(filename) == 0i64) {
+                    status_msg = "Save aborted.";
+                }
+            }
+            if (string_length(filename) > 0i64) {
+                string:content = aria_editor_to_string();
+                int32:result = aria_fs_write_file(filename, content);
+                if (result == 0i32) {
+                    aria_editor_clear_dirty();
+                    int64:byte_count = string_length(content);
+                    status_msg = string_concat(string_from_int(byte_count), " bytes written to disk.");
+                }
+                if (result != 0i32) {
+                    status_msg = "ERROR: Could not save file!";
+                }
+            }
+        }
+
+        // ── Ctrl-F: Find ─────────────────────────────────────────────────────
+        if (key == k_ctrl_f) {
+            string:query = raw(editor_prompt("Search: ", screen_rows, screen_cols));
+            if (string_length(query) > 0i64) {
+                int32:search_col = cx + 1i32;
+                int64:result = aria_editor_find(query, cy, search_col);
+                if (result >= 0i64) {
+                    cy = aria_editor_find_row(result);
+                    cx = aria_editor_find_col(result);
+                    // Center found line on screen
+                    rowoff = cy - screen_rows / 2i32;
+                    if (rowoff < 0i32) {
+                        rowoff = 0i32;
+                    }
+                    status_msg = string_concat("Found \"", string_concat(query, "\""));
+                }
+                if (result < 0i64) {
+                    status_msg = string_concat("Not found: \"", string_concat(query, "\""));
+                }
+            }
+            if (string_length(query) == 0i64) {
+                status_msg = "Search cancelled.";
+            }
+        }
+
+        // ── Ctrl-G: Go to line ───────────────────────────────────────────────
+        if (key == k_ctrl_g) {
+            string:line_str = raw(editor_prompt("Go to line: ", screen_rows, screen_cols));
+            if (string_length(line_str) > 0i64) {
+                // Parse number manually (Aria has no string-to-int builtin)
+                int32:target = 0i32;
+                int32:valid = 1i32;
+                int64:i = 0i64;
+                int64:slen = string_length(line_str);
+                while (i < slen) {
+                    string:ch = string_substring(line_str, i, i + 1i64);
+                    int32:found = 0i32;
+                    if (string_equals(ch, "0")) { target = target * 10i32;               found = 1i32; }
+                    if (string_equals(ch, "1")) { target = target * 10i32 + 1i32;        found = 1i32; }
+                    if (string_equals(ch, "2")) { target = target * 10i32 + 2i32;        found = 1i32; }
+                    if (string_equals(ch, "3")) { target = target * 10i32 + 3i32;        found = 1i32; }
+                    if (string_equals(ch, "4")) { target = target * 10i32 + 4i32;        found = 1i32; }
+                    if (string_equals(ch, "5")) { target = target * 10i32 + 5i32;        found = 1i32; }
+                    if (string_equals(ch, "6")) { target = target * 10i32 + 6i32;        found = 1i32; }
+                    if (string_equals(ch, "7")) { target = target * 10i32 + 7i32;        found = 1i32; }
+                    if (string_equals(ch, "8")) { target = target * 10i32 + 8i32;        found = 1i32; }
+                    if (string_equals(ch, "9")) { target = target * 10i32 + 9i32;        found = 1i32; }
+                    if (found == 0i32) { valid = 0i32; }
+                    i = i + 1i64;
+                }
+                if (valid == 1i32) {
+                    // Convert 1-based input to 0-based
+                    target = target - 1i32;
+                    if (target < 0i32) { target = 0i32; }
+                    int32:max_line = aria_editor_line_count() - 1i32;
+                    if (target > max_line) { target = max_line; }
+                    cy = target;
+                    cx = 0i32;
+                    rowoff = cy - screen_rows / 2i32;
+                    if (rowoff < 0i32) { rowoff = 0i32; }
+                    status_msg = string_concat("Jumped to line ", string_from_int(@cast<int64>(cy + 1i32)));
+                }
+                if (valid == 0i32) {
+                    status_msg = "Invalid line number.";
+                }
+            }
+        }
+
+        // ── Arrow keys: cursor movement ──────────────────────────────────────
+        if (key == k_up) {
+            if (cy > 0i32) {
+                cy = cy - 1i32;
+            }
+        }
+        if (key == k_down) {
+            int32:total = aria_editor_line_count();
+            if (cy < total - 1i32) {
+                cy = cy + 1i32;
+            }
+        }
+        if (key == k_left) {
+            if (cx > 0i32) {
+                cx = cx - 1i32;
+            }
+            if (cx == 0i32) {
+                if (cy > 0i32) {
+                    // Move to end of previous line
+                    cy = cy - 1i32;
+                    cx = aria_editor_line_len(cy);
+                }
+            }
+        }
+        if (key == k_right) {
+            int32:cur_len = aria_editor_line_len(cy);
+            if (cx < cur_len) {
+                cx = cx + 1i32;
+            }
+            if (cx >= cur_len) {
+                int32:total = aria_editor_line_count();
+                if (cy < total - 1i32) {
+                    // Move to start of next line
+                    cy = cy + 1i32;
+                    cx = 0i32;
+                }
+            }
+        }
+
+        // ── Home / End ───────────────────────────────────────────────────────
+        if (key == k_home) {
+            cx = 0i32;
+        }
+        if (key == k_end) {
+            cx = aria_editor_line_len(cy);
+        }
+
+        // ── Page Up / Page Down ──────────────────────────────────────────────
+        if (key == k_pgup) {
+            cy = rowoff;
+            int32:pg = 0i32;
+            while (pg < screen_rows) {
+                if (cy > 0i32) {
+                    cy = cy - 1i32;
+                }
+                pg = pg + 1i32;
+            }
+        }
+        if (key == k_pgdn) {
+            cy = rowoff + screen_rows - 1i32;
+            int32:total = aria_editor_line_count();
+            int32:pg = 0i32;
+            while (pg < screen_rows) {
+                if (cy < total - 1i32) {
+                    cy = cy + 1i32;
+                }
+                pg = pg + 1i32;
+            }
+        }
+
+        // ── Backspace ────────────────────────────────────────────────────────
+        if (key == k_bksp) {
+            if (cx > 0i32) {
+                cx = cx - 1i32;
+                aria_editor_delete_char(cy, cx);
+            }
+            if (cx == 0i32) {
+                if (cy > 0i32) {
+                    // Join with previous line
+                    int32:prev = cy - 1i32;
+                    cx = aria_editor_line_len(prev);
+                    aria_editor_join_lines(prev);
+                    cy = prev;
+                }
+            }
+        }
+        // Ctrl-H is also backspace in many terminals
+        if (key == k_ctrl_h) {
+            if (cx > 0i32) {
+                cx = cx - 1i32;
+                aria_editor_delete_char(cy, cx);
+            }
+            if (cx == 0i32) {
+                if (cy > 0i32) {
+                    int32:prev = cy - 1i32;
+                    cx = aria_editor_line_len(prev);
+                    aria_editor_join_lines(prev);
+                    cy = prev;
+                }
+            }
+        }
+
+        // ── Delete key ───────────────────────────────────────────────────────
+        if (key == k_del) {
+            int32:cur_len = aria_editor_line_len(cy);
+            if (cx < cur_len) {
+                aria_editor_delete_char(cy, cx);
+            }
+            if (cx >= cur_len) {
+                int32:total = aria_editor_line_count();
+                if (cy < total - 1i32) {
+                    // Join current line with next
+                    aria_editor_join_lines(cy);
+                }
+            }
+        }
+
+        // ── Enter ────────────────────────────────────────────────────────────
+        if (key == k_enter) {
+            aria_editor_split_line(cy, cx);
+            cy = cy + 1i32;
+            cx = 0i32;
+        }
+
+        // ── Tab ──────────────────────────────────────────────────────────────
+        if (key == k_tab) {
+            // Insert 4 spaces
+            aria_editor_insert_char(cy, cx, 32i32);
+            cx = cx + 1i32;
+            aria_editor_insert_char(cy, cx, 32i32);
+            cx = cx + 1i32;
+            aria_editor_insert_char(cy, cx, 32i32);
+            cx = cx + 1i32;
+            aria_editor_insert_char(cy, cx, 32i32);
+            cx = cx + 1i32;
+        }
+
+        // ── Printable character insertion ────────────────────────────────────
+        if (key >= 32i32) {
+            if (key < 127i32) {
+                // Exclude control keys already handled
+                if (key != k_ctrl_q) {
+                    if (key != k_ctrl_s) {
+                        if (key != k_ctrl_f) {
+                            if (key != k_ctrl_g) {
+                                aria_editor_insert_char(cy, cx, key);
+                                cx = cx + 1i32;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Clamp cursor to line length ──────────────────────────────────────
+        int32:line_len = aria_editor_line_len(cy);
+        if (cx > line_len) {
+            cx = line_len;
+        }
+
+        // ── Reset quit counter on non-quit key ──────────────────────────────
+        if (reset_quit == 1i32) {
+            if (key != -1i32) {
+                quit_times = 3i32;
+            }
+        }
+
+        // ── Clear status message on next key ─────────────────────────────────
+        if (key != -1i32) {
+            // Keep status messages for one render cycle by not clearing them here.
+            // Messages are only overwritten when a new message is set.
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Cleanup
+    // ══════════════════════════════════════════════════════════════════════════
+    drop(aria_display_clear());
+    drop(aria_display_home());
+    drop(aria_display_show_cursor());
+    drop(aria_display_flush());
+    drop(aria_input_exit_raw());
+
+    pass(0i32);
+};

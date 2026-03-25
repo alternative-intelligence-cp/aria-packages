@@ -24,8 +24,19 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef __linux__
+#include <alsa/asoundlib.h>
+#endif
+
 #define AUDIO_CHANNELS   4
 #define AUDIO_SAMPLE_RATE 44100
+#define AUDIO_FRAME_SAMPLES 735  /* 44100 / 60 */
+
+/* ---- ALSA state ---- */
+#ifdef __linux__
+static snd_pcm_t *g_pcm = NULL;
+#endif
+static int32_t g_phase[AUDIO_CHANNELS]; /* per-channel phase accumulator */
 
 /* ---- per-channel state ---- */
 
@@ -36,6 +47,12 @@ typedef struct {
     int32_t  duration_ms;
     int32_t  volume;       /* 0-15 */
     uint32_t lfsr;         /* noise state */
+    /* ADSR envelope */
+    int32_t  env_attack;   /* attack time in ms */
+    int32_t  env_decay;    /* decay time in ms */
+    int32_t  env_sustain;  /* sustain level 0-15 */
+    int32_t  env_release;  /* release time in ms */
+    int32_t  env_enabled;  /* 1 if ADSR active */
 } Channel;
 
 static int     g_initialized = 0;
@@ -73,17 +90,39 @@ int32_t aria_audio_init(int32_t dry_mode) {
     if (g_initialized) return 0;
     g_dry_mode = (dry_mode != 0) ? 1 : 0;
     memset(g_channels, 0, sizeof(g_channels));
+    memset(g_phase, 0, sizeof(g_phase));
     for (int i = 0; i < AUDIO_CHANNELS; i++) {
         g_channels[i].volume = 15;
         g_channels[i].lfsr   = (uint32_t)(0xACE1u + i);
     }
+#ifdef __linux__
+    if (!g_dry_mode) {
+        int err = snd_pcm_open(&g_pcm, "default", SND_PCM_STREAM_PLAYBACK, 0);
+        if (err < 0) {
+            g_pcm = NULL;
+            g_dry_mode = 1; /* fall back to dry */
+        } else {
+            snd_pcm_set_params(g_pcm, SND_PCM_FORMAT_S16_LE,
+                               SND_PCM_ACCESS_RW_INTERLEAVED,
+                               1, AUDIO_SAMPLE_RATE, 1, 50000);
+        }
+    }
+#endif
     g_initialized = 1;
     return 0;
 }
 
 /* Shutdown and reset state. Returns 0. */
 int32_t aria_audio_shutdown(void) {
+#ifdef __linux__
+    if (g_pcm) {
+        snd_pcm_drain(g_pcm);
+        snd_pcm_close(g_pcm);
+        g_pcm = NULL;
+    }
+#endif
     memset(g_channels, 0, sizeof(g_channels));
+    memset(g_phase, 0, sizeof(g_phase));
     g_initialized = 0;
     return 0;
 }
@@ -202,9 +241,8 @@ int32_t aria_audio_square_sample(int32_t phase_sample, int32_t freq_hz) {
 }
 
 /*
- * Advance a 16-bit Galois LFSR one step and return the output bit (0 or 1).
+ * Advance a 16-bit Galois LFSR one step and return the next state.
  * Polynomial: x^16 + x^14 + x^13 + x^11 + 1 (taps: bits 0,2,3,5)
- * Pass a pointer to a uint32 holding the LFSR state (seed must be != 0).
  * Returns 0 or 1.
  */
 int32_t aria_audio_lfsr_step(int32_t state) {
@@ -215,4 +253,180 @@ int32_t aria_audio_lfsr_step(int32_t state) {
     s >>= 1;
     if (bit) s ^= 0xB400u; /* taps for maximal 16-bit sequence */
     return (int32_t)s;
+}
+
+/* ---- ADSR envelope ---- */
+
+/*
+ * Set ADSR envelope parameters for a channel.
+ *   attack_ms  : ramp from 0 to max volume
+ *   decay_ms   : ramp from max to sustain level
+ *   sustain    : held level (0-15)
+ *   release_ms : ramp from sustain to 0 after note off
+ * Returns 0 on success, -1 on bad args.
+ */
+int32_t aria_audio_set_envelope(int32_t channel, int32_t attack_ms,
+                                 int32_t decay_ms, int32_t sustain,
+                                 int32_t release_ms) {
+    if (channel < 0 || channel >= AUDIO_CHANNELS) return -1;
+    if (attack_ms < 0 || decay_ms < 0 || release_ms < 0) return -1;
+    if (sustain < 0 || sustain > 15) return -1;
+    Channel *ch = &g_channels[channel];
+    ch->env_attack  = attack_ms;
+    ch->env_decay   = decay_ms;
+    ch->env_sustain = sustain;
+    ch->env_release = release_ms;
+    ch->env_enabled = 1;
+    return 0;
+}
+
+/*
+ * Clear envelope for a channel (reverts to flat volume).
+ * Returns 0 on success, -1 on bad channel.
+ */
+int32_t aria_audio_clear_envelope(int32_t channel) {
+    if (channel < 0 || channel >= AUDIO_CHANNELS) return -1;
+    Channel *ch = &g_channels[channel];
+    ch->env_attack  = 0;
+    ch->env_decay   = 0;
+    ch->env_sustain = 15;
+    ch->env_release = 0;
+    ch->env_enabled = 0;
+    return 0;
+}
+
+/*
+ * Returns 1 if the channel has an ADSR envelope set, 0 otherwise.
+ */
+int32_t aria_audio_has_envelope(int32_t channel) {
+    if (channel < 0 || channel >= AUDIO_CHANNELS) return -1;
+    return g_channels[channel].env_enabled ? 1 : 0;
+}
+
+/*
+ * Compute the envelope amplitude level (0-15) at a given elapsed time.
+ * Phases: attack → decay → sustain (held indefinitely).
+ * Release phase is handled separately via aria_audio_envelope_release.
+ *
+ *   elapsed_ms: time since note-on in milliseconds
+ *
+ * Returns volume level 0-15.
+ */
+int32_t aria_audio_envelope_level(int32_t channel, int32_t elapsed_ms) {
+    if (channel < 0 || channel >= AUDIO_CHANNELS) return 0;
+    Channel *ch = &g_channels[channel];
+    if (!ch->env_enabled) return ch->volume;
+    if (elapsed_ms < 0) elapsed_ms = 0;
+
+    int32_t max_vol = ch->volume;  /* peak volume */
+    int32_t sus_vol = ch->env_sustain;
+
+    /* Attack phase: ramp 0 → max_vol */
+    if (elapsed_ms < ch->env_attack) {
+        if (ch->env_attack == 0) return max_vol;
+        return (int32_t)((int64_t)max_vol * elapsed_ms / ch->env_attack);
+    }
+
+    /* Decay phase: ramp max_vol → sus_vol */
+    int32_t decay_start = ch->env_attack;
+    if (elapsed_ms < decay_start + ch->env_decay) {
+        if (ch->env_decay == 0) return sus_vol;
+        int32_t t = elapsed_ms - decay_start;
+        int32_t drop = max_vol - sus_vol;
+        return max_vol - (int32_t)((int64_t)drop * t / ch->env_decay);
+    }
+
+    /* Sustain phase: hold at sus_vol */
+    return sus_vol;
+}
+
+/*
+ * Compute the release envelope level (sus → 0) given time since note-off.
+ * Returns volume level 0-15.
+ */
+int32_t aria_audio_envelope_release(int32_t channel, int32_t release_elapsed_ms) {
+    if (channel < 0 || channel >= AUDIO_CHANNELS) return 0;
+    Channel *ch = &g_channels[channel];
+    if (!ch->env_enabled || ch->env_release == 0) return 0;
+    if (release_elapsed_ms < 0) release_elapsed_ms = 0;
+    if (release_elapsed_ms >= ch->env_release) return 0;
+
+    int32_t sus_vol = ch->env_sustain;
+    return sus_vol - (int32_t)((int64_t)sus_vol * release_elapsed_ms / ch->env_release);
+}
+
+/* ---- sample generation helpers ---- */
+
+/*
+ * Generate one sample for a channel at its current phase.
+ * Returns a signed 16-bit sample value (-32767 to 32767).
+ * Advances the channel's phase accumulator.
+ */
+static int16_t _generate_sample(int ch_idx) {
+    Channel *ch = &g_channels[ch_idx];
+    if (!ch->active || ch->freq_hz <= 0) return 0;
+
+    int32_t period = AUDIO_SAMPLE_RATE / ch->freq_hz;
+    if (period < 1) period = 1;
+    int32_t pos = g_phase[ch_idx] % period;
+    int16_t sample = 0;
+
+    switch (ch->waveform) {
+        case 0: /* square */
+            sample = (pos < period / 2) ? 8191 : -8191;
+            break;
+        case 1: /* triangle */
+            if (pos < period / 2) {
+                sample = (int16_t)(-8191 + (int32_t)(16382LL * pos / (period / 2)));
+            } else {
+                sample = (int16_t)(8191 - (int32_t)(16382LL * (pos - period / 2) / (period / 2)));
+            }
+            break;
+        case 2: /* sawtooth */
+            sample = (int16_t)(-8191 + (int32_t)(16382LL * pos / period));
+            break;
+        case 3: /* noise (LFSR) */
+            ch->lfsr = (uint32_t)aria_audio_lfsr_step((int32_t)ch->lfsr);
+            sample = (ch->lfsr & 1) ? 8191 : -8191;
+            break;
+    }
+
+    /* Apply volume (0-15 → scale) */
+    sample = (int16_t)((int32_t)sample * ch->volume / 15);
+    g_phase[ch_idx]++;
+    return sample;
+}
+
+/*
+ * Render one frame of audio (735 samples at 44100Hz/60fps) and write
+ * to the ALSA PCM device. In dry mode, just advances phase accumulators.
+ * Call once per game frame.
+ * Returns 0 on success, -1 on error.
+ */
+int32_t aria_audio_tick(void) {
+    if (!g_initialized) return -1;
+
+    int16_t buf[AUDIO_FRAME_SAMPLES];
+    memset(buf, 0, sizeof(buf));
+
+    for (int s = 0; s < AUDIO_FRAME_SAMPLES; s++) {
+        int32_t mix = 0;
+        for (int c = 0; c < AUDIO_CHANNELS; c++) {
+            mix += (int32_t)_generate_sample(c);
+        }
+        /* Clamp to int16 range */
+        if (mix > 32767) mix = 32767;
+        if (mix < -32767) mix = -32767;
+        buf[s] = (int16_t)mix;
+    }
+
+#ifdef __linux__
+    if (!g_dry_mode && g_pcm) {
+        snd_pcm_sframes_t frames = snd_pcm_writei(g_pcm, buf, AUDIO_FRAME_SAMPLES);
+        if (frames < 0) {
+            snd_pcm_recover(g_pcm, (int)frames, 1);
+        }
+    }
+#endif
+    return 0;
 }

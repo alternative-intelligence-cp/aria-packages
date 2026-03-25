@@ -1,0 +1,928 @@
+// aria_tetris.aria — Full Tetris clone in pure Aria
+//
+// All game logic written in Aria. Rendering, input, and audio via aria-raylib.
+// Procedural sound effects synthesized via aria_rl_gen_beep (no WAV files).
+//
+// Build:
+//   ariac src/aria_tetris.aria -o aria_tetris \
+//     -L ../aria-raylib/shim -laria_raylib_shim -lraylib -lm
+//
+// Run:
+//   export LD_LIBRARY_PATH=../aria-raylib/shim
+//   ./aria_tetris
+//
+// Controls (keyboard / gamepad):
+//   Left/Right  / D-pad L/R        Move piece
+//   Up / X      / D-pad U / A-btn  Rotate clockwise
+//   Z           / X-btn            Rotate counter-clockwise
+//   Down        / D-pad D          Soft drop
+//   Space       / Y-btn            Hard drop
+//   C           / B-btn            Hold piece
+//   P           / Start            Pause / Resume
+//   Enter       / Start            Start game / Restart
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Extern: raylib shim
+// ══════════════════════════════════════════════════════════════════════════════
+
+extern "aria_raylib_shim" {
+    // window / lifecycle
+    func:aria_rl_init_window          = void(int32:w, int32:h, string:title);
+    func:aria_rl_close_window         = void();
+    func:aria_rl_window_should_close  = int32();
+    func:aria_rl_begin_drawing        = void();
+    func:aria_rl_end_drawing          = void();
+    func:aria_rl_clear_background     = void(int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_set_target_fps       = void(int32:fps);
+    // drawing
+    func:aria_rl_draw_text            = void(string:text, int32:x, int32:y,
+                                             int32:font_size,
+                                             int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_draw_rectangle       = void(int32:x, int32:y, int32:w, int32:h,
+                                             int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_draw_rectangle_lines = void(int32:x, int32:y, int32:w, int32:h,
+                                             int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_measure_text         = int32(string:text, int32:font_size);
+    // keyboard
+    func:aria_rl_is_key_pressed       = int32(int32:key);
+    func:aria_rl_is_key_down          = int32(int32:key);
+    // gamepad
+    func:aria_rl_is_gamepad_button_pressed = int32(int32:gp, int32:button);
+    func:aria_rl_is_gamepad_button_down    = int32(int32:gp, int32:button);
+    // audio
+    func:aria_rl_init_audio_device    = void();
+    func:aria_rl_close_audio_device   = void();
+    func:aria_rl_gen_beep             = int32(int32:freq, int32:dur_ms, int32:wave, flt32:vol);
+    func:aria_rl_play_sound           = void(int32:handle);
+}
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Piece colors: RGB for types 1-7 (0 = empty board cell)
+// 1=I(cyan) 2=O(yellow) 3=T(purple) 4=S(green) 5=Z(red) 6=J(blue) 7=L(orange)
+// ══════════════════════════════════════════════════════════════════════════════
+
+func:color_r = int32(int32:t) {
+    pick(t) {
+        (1i32) { pass(0i32); },
+        (2i32) { pass(240i32); },
+        (3i32) { pass(160i32); },
+        (4i32) { pass(0i32); },
+        (5i32) { pass(240i32); },
+        (6i32) { pass(50i32); },
+        (7i32) { pass(240i32); },
+        (*) { pass(80i32); }
+    }
+    pass(80i32);
+};
+
+func:color_g = int32(int32:t) {
+    pick(t) {
+        (1i32) { pass(240i32); },
+        (2i32) { pass(240i32); },
+        (3i32) { pass(0i32); },
+        (4i32) { pass(240i32); },
+        (5i32) { pass(0i32); },
+        (6i32) { pass(50i32); },
+        (7i32) { pass(160i32); },
+        (*) { pass(80i32); }
+    }
+    pass(80i32);
+};
+
+func:color_b = int32(int32:t) {
+    pick(t) {
+        (1i32) { pass(240i32); },
+        (2i32) { pass(0i32); },
+        (3i32) { pass(240i32); },
+        (4i32) { pass(0i32); },
+        (5i32) { pass(0i32); },
+        (6i32) { pass(220i32); },
+        (7i32) { pass(0i32); },
+        (*) { pass(80i32); }
+    }
+    pass(80i32);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Collision check — returns 1 if piece fits, 0 if it doesn't
+// ══════════════════════════════════════════════════════════════════════════════
+
+func:piece_fits = int32(int32[200]:brd, int32[112]:sr, int32[112]:sc,
+                         int32:pt, int32:prot, int32:pr, int32:pc) {
+    int32:fits = 1i32;
+    for(int32:ci = 0i32; ci < 4i32; ci += 1i32) {
+        int32:si = pt * 16i32 + prot * 4i32 + ci;
+        int32:cr = pr + sr[si];
+        int32:cc = pc + sc[si];
+        if (cr < 0i32) { fits = 0i32; }
+        if (cr >= 20i32) { fits = 0i32; }
+        if (cc < 0i32) { fits = 0i32; }
+        if (cc >= 10i32) { fits = 0i32; }
+        if (fits == 1i32) {
+            if (brd[cr * 10i32 + cc] != 0i32) { fits = 0i32; }
+        }
+    }
+    pass(fits);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Main
+// ══════════════════════════════════════════════════════════════════════════════
+
+func:main = int32() {
+
+    // ── Window setup ─────────────────────────────────────────────────────────
+    aria_rl_init_window(520i32, 700i32, "Aria Tetris");
+    aria_rl_set_target_fps(60i32);
+
+    // ── Audio setup ───────────────────────────────────────────────────────────
+    // wave types: 0=square  1=triangle  2=sawtooth  3=sine
+    aria_rl_init_audio_device();
+    int32:snd_move     = aria_rl_gen_beep(220i32,  40i32, 0i32, 0.3f32);
+    int32:snd_rotate   = aria_rl_gen_beep(330i32,  40i32, 0i32, 0.3f32);
+    int32:snd_lock     = aria_rl_gen_beep(150i32,  70i32, 0i32, 0.4f32);
+    int32:snd_single   = aria_rl_gen_beep(440i32, 120i32, 0i32, 0.5f32);
+    int32:snd_tetris   = aria_rl_gen_beep(880i32, 200i32, 1i32, 0.6f32);
+    int32:snd_levelup  = aria_rl_gen_beep(660i32, 160i32, 3i32, 0.5f32);
+    int32:snd_gameover = aria_rl_gen_beep(110i32, 450i32, 0i32, 0.6f32);
+
+    // ── Layout constants ──────────────────────────────────────────────────────
+    int32:cell_sz = 30i32;
+    int32:board_x = 30i32;
+    int32:board_y = 80i32;
+    int32:panel_x = 360i32;
+
+    // ── Piece shape data ──────────────────────────────────────────────────────
+    // 7 types x 4 rotations x 4 cells = 112 entries
+    // Index: type * 16 + rot * 4 + cell
+    // Types: 0=I, 1=O, 2=T, 3=S, 4=Z, 5=J, 6=L
+    int32[112]:shape_r = [
+        // I piece
+        1i32,1i32,1i32,1i32,  0i32,1i32,2i32,3i32,  2i32,2i32,2i32,2i32,  0i32,1i32,2i32,3i32,
+        // O piece
+        0i32,0i32,1i32,1i32,  0i32,0i32,1i32,1i32,  0i32,0i32,1i32,1i32,  0i32,0i32,1i32,1i32,
+        // T piece
+        0i32,1i32,1i32,1i32,  0i32,1i32,1i32,2i32,  1i32,1i32,1i32,2i32,  0i32,1i32,1i32,2i32,
+        // S piece
+        0i32,0i32,1i32,1i32,  0i32,1i32,1i32,2i32,  1i32,1i32,2i32,2i32,  0i32,1i32,1i32,2i32,
+        // Z piece
+        0i32,0i32,1i32,1i32,  0i32,1i32,1i32,2i32,  1i32,1i32,2i32,2i32,  0i32,1i32,1i32,2i32,
+        // J piece
+        0i32,1i32,1i32,1i32,  0i32,0i32,1i32,2i32,  1i32,1i32,1i32,2i32,  0i32,1i32,2i32,2i32,
+        // L piece
+        0i32,1i32,1i32,1i32,  0i32,1i32,2i32,2i32,  1i32,1i32,1i32,2i32,  0i32,0i32,1i32,2i32
+    ];
+
+    int32[112]:shape_c = [
+        // I piece
+        0i32,1i32,2i32,3i32,  2i32,2i32,2i32,2i32,  0i32,1i32,2i32,3i32,  1i32,1i32,1i32,1i32,
+        // O piece
+        0i32,1i32,0i32,1i32,  0i32,1i32,0i32,1i32,  0i32,1i32,0i32,1i32,  0i32,1i32,0i32,1i32,
+        // T piece
+        1i32,0i32,1i32,2i32,  1i32,1i32,2i32,1i32,  0i32,1i32,2i32,1i32,  1i32,0i32,1i32,1i32,
+        // S piece
+        1i32,2i32,0i32,1i32,  0i32,0i32,1i32,1i32,  1i32,2i32,0i32,1i32,  1i32,1i32,2i32,2i32,
+        // Z piece
+        0i32,1i32,1i32,2i32,  2i32,1i32,2i32,1i32,  0i32,1i32,1i32,2i32,  1i32,0i32,1i32,0i32,
+        // J piece
+        0i32,0i32,1i32,2i32,  1i32,2i32,1i32,1i32,  0i32,1i32,2i32,2i32,  1i32,1i32,0i32,1i32,
+        // L piece
+        2i32,0i32,1i32,2i32,  1i32,1i32,1i32,2i32,  0i32,1i32,2i32,0i32,  0i32,1i32,1i32,1i32
+    ];
+
+    // ── Keyboard key codes ────────────────────────────────────────────────────
+    int32:key_right = 262i32;
+    int32:key_left  = 263i32;
+    int32:key_down  = 264i32;
+    int32:key_up    = 265i32;
+    int32:key_space = 32i32;
+    int32:key_enter = 257i32;
+    int32:key_z     = 90i32;
+    int32:key_x     = 88i32;
+    int32:key_c     = 67i32;
+    int32:key_p     = 80i32;
+
+    // ── Gamepad button constants (raylib GamepadButton enum) ──────────────────
+    // D-pad
+    int32:gp_dpad_up    = 1i32;
+    int32:gp_dpad_right = 2i32;
+    int32:gp_dpad_down  = 3i32;
+    int32:gp_dpad_left  = 4i32;
+    // Face: Y=5(hard-drop), B=6(hold), A=7(rotate-CW), X=8(rotate-CCW)
+    int32:gp_face_y  = 5i32;
+    int32:gp_face_b  = 6i32;
+    int32:gp_face_a  = 7i32;
+    int32:gp_face_x  = 8i32;
+    // Middle
+    int32:gp_start = 15i32;
+
+    // ── Board: 10x20 flattened grid ───────────────────────────────────────────
+    int32[200]:board = [
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32
+    ];
+
+    // ── RNG state (xorshift64) ────────────────────────────────────────────────
+    uint64:rng = 1u64;
+
+    // ── 7-bag randomizer ──────────────────────────────────────────────────────
+    int32[7]:bag = [0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32];
+    int32:bag_idx = 7i32;
+
+    // ── Game state ────────────────────────────────────────────────────────────
+    int32:cur_type    = 0i32;
+    int32:cur_rot     = 0i32;
+    int32:cur_row     = 0i32;
+    int32:cur_col     = 3i32;
+    int32:next_type   = 0i32;
+    int32:hold_type   = -1i32;
+    int32:hold_used   = 0i32;
+    int32:score       = 0i32;
+    int32:level       = 1i32;
+    int32:lines_total = 0i32;
+    int32:prev_level  = 1i32;
+
+    // ── Timing ────────────────────────────────────────────────────────────────
+    int32:drop_timer    = 0i32;
+    int32:drop_interval = 48i32;
+
+    // ── Line-clear flash animation ────────────────────────────────────────────
+    // While flash_timer > 0, input and gravity are suspended.
+    // The marked rows blink white (3-frame on/off) then are removed.
+    int32:flash_timer = 0i32;
+    int32[20]:flash_mark = [
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32,
+        0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32, 0i32
+    ];
+    int32:pending_lines = 0i32;
+
+    // ── High score (persisted to aria_tetris_best.txt) ────────────────────────
+    int32:high_score = 0i32;
+    string:hs_content = raw(readFile("aria_tetris_best.txt"));
+    if (string_length(hs_content) > 0i64) {
+        int64:hs_val = string_to_int(hs_content);
+        if (hs_val > 0i64) {
+            high_score = @cast<int32>(hs_val);
+        }
+    }
+
+    // ── State machine: 0=title  1=playing  2=game over  3=paused ─────────────
+    int32:state = 0i32;
+    int32:title_frames = 0i32;
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // MAIN LOOP
+    // ══════════════════════════════════════════════════════════════════════════
+    int32:should_close = aria_rl_window_should_close();
+    while (should_close == 0i32) {
+
+        // ── TITLE SCREEN ──────────────────────────────────────────────────────
+        if (state == 0i32) {
+            title_frames = title_frames + 1i32;
+
+            int32:start_game = 0i32;
+            if (aria_rl_is_key_pressed(key_enter) == 1i32) { start_game = 1i32; }
+            if (aria_rl_is_gamepad_button_pressed(0i32, gp_start) == 1i32) { start_game = 1i32; }
+
+            if (start_game == 1i32) {
+                // Seed RNG from frame count
+                rng = @cast<uint64>(title_frames);
+                if (rng == 0u64) { rng = 42u64; }
+
+                // Clear board
+                for(int32:init_i = 0i32; init_i < 200i32; init_i += 1i32) {
+                    board[init_i] = 0i32;
+                }
+
+                // Reset state
+                score         = 0i32;
+                level         = 1i32;
+                lines_total   = 0i32;
+                prev_level    = 1i32;
+                hold_type     = -1i32;
+                hold_used     = 0i32;
+                drop_timer    = 0i32;
+                drop_interval = 48i32;
+                flash_timer   = 0i32;
+                pending_lines = 0i32;
+                for(int32:fm0 = 0i32; fm0 < 20i32; fm0 += 1i32) { flash_mark[fm0] = 0i32; }
+
+                // Shuffle bag
+                for(int32:si = 6i32; si > 0i32; si -= 1i32) {
+                    rng = rng ^ (rng << 13u64);
+                    rng = rng ^ (rng >> 7u64);
+                    rng = rng ^ (rng << 17u64);
+                    int32:j = @cast<int32>(rng % @cast<uint64>(si + 1i32));
+                    int32:tmp = bag[si];
+                    bag[si] = bag[j];
+                    bag[j] = tmp;
+                }
+                bag_idx = 0i32;
+
+                // Pull first and next pieces
+                cur_type  = bag[bag_idx];
+                bag_idx   = bag_idx + 1i32;
+                next_type = bag[bag_idx];
+                bag_idx   = bag_idx + 1i32;
+                cur_rot   = 0i32;
+                cur_row   = 0i32;
+                cur_col   = 3i32;
+
+                state = 1i32;
+            }
+
+            // Render title
+            aria_rl_begin_drawing();
+            aria_rl_clear_background(20i32, 20i32, 35i32, 255i32);
+            aria_rl_draw_text("ARIA TETRIS", 120i32, 180i32, 48i32,
+                              0i32, 240i32, 240i32, 255i32);
+            aria_rl_draw_text("Press ENTER to start", 130i32, 300i32, 24i32,
+                              200i32, 200i32, 200i32, 255i32);
+            aria_rl_draw_text("Controls:", 130i32, 380i32, 20i32,
+                              150i32, 150i32, 150i32, 255i32);
+            aria_rl_draw_text("Arrows / D-pad :  Move & Rotate", 150i32, 408i32, 17i32,
+                              120i32, 120i32, 120i32, 255i32);
+            aria_rl_draw_text("Space  / Y-btn :  Hard Drop", 150i32, 430i32, 17i32,
+                              120i32, 120i32, 120i32, 255i32);
+            aria_rl_draw_text("C      / B-btn :  Hold Piece", 150i32, 452i32, 17i32,
+                              120i32, 120i32, 120i32, 255i32);
+            aria_rl_draw_text("Z / X  / X / A :  Rotate L / R", 150i32, 474i32, 17i32,
+                              120i32, 120i32, 120i32, 255i32);
+            aria_rl_draw_text("P      / Start :  Pause", 150i32, 496i32, 17i32,
+                              120i32, 120i32, 120i32, 255i32);
+            if (high_score > 0i32) {
+                string:hs_disp = string_concat("Best: ",
+                                     string_from_int(@cast<int64>(high_score)));
+                aria_rl_draw_text(hs_disp, 170i32, 565i32, 22i32,
+                                  200i32, 200i32, 100i32, 255i32);
+            }
+            aria_rl_draw_text("Written in Aria", 160i32, 645i32, 15i32,
+                              70i32, 70i32, 90i32, 255i32);
+            aria_rl_end_drawing();
+        }
+
+        // ── PAUSED ────────────────────────────────────────────────────────────
+        if (state == 3i32) {
+            int32:unpause = 0i32;
+            if (aria_rl_is_key_pressed(key_p) == 1i32) { unpause = 1i32; }
+            if (aria_rl_is_gamepad_button_pressed(0i32, gp_start) == 1i32) { unpause = 1i32; }
+            if (unpause == 1i32) { state = 1i32; }
+
+            aria_rl_begin_drawing();
+            aria_rl_clear_background(20i32, 20i32, 35i32, 255i32);
+            aria_rl_draw_text("PAUSED", 170i32, 300i32, 48i32,
+                              240i32, 240i32, 0i32, 255i32);
+            aria_rl_draw_text("Press P or Start to resume", 120i32, 385i32, 22i32,
+                              200i32, 200i32, 200i32, 255i32);
+            aria_rl_end_drawing();
+        }
+
+        // ── GAME OVER ─────────────────────────────────────────────────────────
+        if (state == 2i32) {
+            int32:restart = 0i32;
+            if (aria_rl_is_key_pressed(key_enter) == 1i32) { restart = 1i32; }
+            if (aria_rl_is_gamepad_button_pressed(0i32, gp_start) == 1i32) { restart = 1i32; }
+            if (restart == 1i32) {
+                state = 0i32;
+                title_frames = 0i32;
+            }
+
+            aria_rl_begin_drawing();
+            aria_rl_clear_background(20i32, 20i32, 35i32, 255i32);
+            aria_rl_draw_text("GAME OVER", 130i32, 200i32, 48i32,
+                              240i32, 0i32, 0i32, 255i32);
+            string:go_score = string_concat("Score: ",
+                                  string_from_int(@cast<int64>(score)));
+            aria_rl_draw_text(go_score, 170i32, 295i32, 28i32,
+                              240i32, 240i32, 240i32, 255i32);
+            string:go_lines = string_concat("Lines: ",
+                                  string_from_int(@cast<int64>(lines_total)));
+            aria_rl_draw_text(go_lines, 170i32, 335i32, 28i32,
+                              200i32, 200i32, 200i32, 255i32);
+            string:go_level = string_concat("Level: ",
+                                  string_from_int(@cast<int64>(level)));
+            aria_rl_draw_text(go_level, 170i32, 375i32, 28i32,
+                              200i32, 200i32, 200i32, 255i32);
+            string:go_best = string_concat("Best:  ",
+                                 string_from_int(@cast<int64>(high_score)));
+            aria_rl_draw_text(go_best, 170i32, 420i32, 26i32,
+                              200i32, 200i32, 100i32, 255i32);
+            if (score == high_score) {
+                if (score > 0i32) {
+                    aria_rl_draw_text("NEW BEST!", 190i32, 460i32, 22i32,
+                                      255i32, 220i32, 0i32, 255i32);
+                }
+            }
+            aria_rl_draw_text("Press ENTER or Start to play again", 80i32, 520i32, 20i32,
+                              150i32, 150i32, 150i32, 255i32);
+            aria_rl_end_drawing();
+        }
+
+        // ── PLAYING ───────────────────────────────────────────────────────────
+        if (state == 1i32) {
+
+            int32:do_spawn = 0i32;
+
+            // Pause check (always active, even during flash animation)
+            int32:do_pause = 0i32;
+            if (aria_rl_is_key_pressed(key_p) == 1i32) { do_pause = 1i32; }
+            if (aria_rl_is_gamepad_button_pressed(0i32, gp_start) == 1i32) { do_pause = 1i32; }
+            if (do_pause == 1i32) { state = 3i32; }
+
+            // Input, gravity, and lock only when not in flash animation
+            if (state == 1i32) {
+                if (flash_timer == 0i32) {
+
+                    // ── Move Left ────────────────────────────────────────────
+                    int32:do_left = 0i32;
+                    if (aria_rl_is_key_pressed(key_left) == 1i32) { do_left = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_left) == 1i32) { do_left = 1i32; }
+                    if (do_left == 1i32) {
+                        int32:fl = raw(piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row, cur_col - 1i32));
+                        if (fl == 1i32) {
+                            cur_col = cur_col - 1i32;
+                            aria_rl_play_sound(snd_move);
+                        }
+                    }
+
+                    // ── Move Right ───────────────────────────────────────────
+                    int32:do_right = 0i32;
+                    if (aria_rl_is_key_pressed(key_right) == 1i32) { do_right = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_right) == 1i32) { do_right = 1i32; }
+                    if (do_right == 1i32) {
+                        int32:fr = raw(piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row, cur_col + 1i32));
+                        if (fr == 1i32) {
+                            cur_col = cur_col + 1i32;
+                            aria_rl_play_sound(snd_move);
+                        }
+                    }
+
+                    // ── Rotate CW (Up, X-key, A-btn, D-pad Up) ───────────────
+                    int32:rot_cw = 0i32;
+                    if (aria_rl_is_key_pressed(key_up) == 1i32) { rot_cw = 1i32; }
+                    if (aria_rl_is_key_pressed(key_x) == 1i32) { rot_cw = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_a) == 1i32) { rot_cw = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_up) == 1i32) { rot_cw = 1i32; }
+                    if (rot_cw == 1i32) {
+                        int32:new_rot = (cur_rot + 1i32) % 4i32;
+                        int32:frc = raw(piece_fits(board, shape_r, shape_c,
+                                        cur_type, new_rot, cur_row, cur_col));
+                        if (frc == 1i32) {
+                            cur_rot = new_rot;
+                            aria_rl_play_sound(snd_rotate);
+                        }
+                    }
+
+                    // ── Rotate CCW (Z-key, X-btn) ────────────────────────────
+                    int32:rot_ccw = 0i32;
+                    if (aria_rl_is_key_pressed(key_z) == 1i32) { rot_ccw = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_x) == 1i32) { rot_ccw = 1i32; }
+                    if (rot_ccw == 1i32) {
+                        int32:new_rot2 = (cur_rot + 3i32) % 4i32;
+                        int32:frc2 = raw(piece_fits(board, shape_r, shape_c,
+                                         cur_type, new_rot2, cur_row, cur_col));
+                        if (frc2 == 1i32) {
+                            cur_rot = new_rot2;
+                            aria_rl_play_sound(snd_rotate);
+                        }
+                    }
+
+                    // ── Hard Drop (Space, Y-btn) ─────────────────────────────
+                    int32:did_hard_drop = 0i32;
+                    int32:do_hard = 0i32;
+                    if (aria_rl_is_key_pressed(key_space) == 1i32) { do_hard = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_y) == 1i32) { do_hard = 1i32; }
+                    if (do_hard == 1i32) {
+                        int32:hr = cur_row;
+                        int32:hf = raw(piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, hr + 1i32, cur_col));
+                        while (hf == 1i32) {
+                            hr = hr + 1i32;
+                            score = score + 2i32;
+                            hf = raw(piece_fits(board, shape_r, shape_c,
+                                     cur_type, cur_rot, hr + 1i32, cur_col));
+                        }
+                        cur_row = hr;
+                        did_hard_drop = 1i32;
+                    }
+
+                    // ── Hold Piece (C-key, B-btn) ────────────────────────────
+                    int32:do_hold = 0i32;
+                    if (aria_rl_is_key_pressed(key_c) == 1i32) { do_hold = 1i32; }
+                    if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_b) == 1i32) { do_hold = 1i32; }
+                    if (do_hold == 1i32) {
+                        if (hold_used == 0i32) {
+                            hold_used = 1i32;
+                            if (hold_type == -1i32) {
+                                hold_type = cur_type;
+                                if (bag_idx >= 7i32) {
+                                    for(int32:sh = 6i32; sh > 0i32; sh -= 1i32) {
+                                        rng = rng ^ (rng << 13u64);
+                                        rng = rng ^ (rng >> 7u64);
+                                        rng = rng ^ (rng << 17u64);
+                                        int32:jh = @cast<int32>(rng % @cast<uint64>(sh + 1i32));
+                                        int32:tmph = bag[sh];
+                                        bag[sh] = bag[jh];
+                                        bag[jh] = tmph;
+                                    }
+                                    bag_idx = 0i32;
+                                }
+                                cur_type  = next_type;
+                                next_type = bag[bag_idx];
+                                bag_idx   = bag_idx + 1i32;
+                            }
+                            if (hold_type != -1i32) {
+                                if (hold_used == 1i32) {
+                                    int32:swap = hold_type;
+                                    hold_type = cur_type;
+                                    cur_type  = swap;
+                                }
+                            }
+                            cur_rot = 0i32;
+                            cur_row = 0i32;
+                            cur_col = 3i32;
+                            int32:hfit = raw(piece_fits(board, shape_r, shape_c,
+                                             cur_type, cur_rot, cur_row, cur_col));
+                            if (hfit == 0i32) {
+                                state = 2i32;
+                                aria_rl_play_sound(snd_gameover);
+                                if (score > high_score) {
+                                    high_score = score;
+                                    raw(writeFile("aria_tetris_best.txt",
+                                        string_from_int(@cast<int64>(high_score))));
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Soft Drop (Down held / D-pad Down held) ──────────────
+                    int32:soft_drop = 0i32;
+                    if (aria_rl_is_key_down(key_down) == 1i32) { soft_drop = 1i32; }
+                    if (aria_rl_is_gamepad_button_down(0i32, gp_dpad_down) == 1i32) { soft_drop = 1i32; }
+
+                    // ── Gravity ──────────────────────────────────────────────
+                    drop_timer = drop_timer + 1i32;
+                    int32:eff_interval = drop_interval;
+                    if (soft_drop == 1i32) { eff_interval = 2i32; }
+
+                    int32:should_lock = 0i32;
+                    if (did_hard_drop == 1i32) { should_lock = 1i32; }
+                    if (drop_timer >= eff_interval) {
+                        drop_timer = 0i32;
+                        int32:fd = raw(piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row + 1i32, cur_col));
+                        if (fd == 1i32) {
+                            cur_row = cur_row + 1i32;
+                            if (soft_drop == 1i32) { score = score + 1i32; }
+                        }
+                        if (fd == 0i32) { should_lock = 1i32; }
+                    }
+
+                    // ── Lock Piece ───────────────────────────────────────────
+                    if (should_lock == 1i32) {
+                        // Write piece cells to board
+                        for(int32:li = 0i32; li < 4i32; li += 1i32) {
+                            int32:lsi = cur_type * 16i32 + cur_rot * 4i32 + li;
+                            int32:lr  = cur_row + shape_r[lsi];
+                            int32:lc  = cur_col + shape_c[lsi];
+                            if (lr >= 0i32) {
+                                if (lr < 20i32) {
+                                    if (lc >= 0i32) {
+                                        if (lc < 10i32) {
+                                            board[lr * 10i32 + lc] = cur_type + 1i32;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Scan for full rows and mark them for flash animation
+                        pending_lines = 0i32;
+                        for(int32:fm = 0i32; fm < 20i32; fm += 1i32) {
+                            flash_mark[fm] = 0i32;
+                        }
+                        for(int32:cr2 = 0i32; cr2 < 20i32; cr2 += 1i32) {
+                            int32:full_f = 1i32;
+                            for(int32:cc2 = 0i32; cc2 < 10i32; cc2 += 1i32) {
+                                if (board[cr2 * 10i32 + cc2] == 0i32) { full_f = 0i32; }
+                            }
+                            if (full_f == 1i32) {
+                                flash_mark[cr2] = 1i32;
+                                pending_lines = pending_lines + 1i32;
+                            }
+                        }
+
+                        if (pending_lines > 0i32) {
+                            flash_timer = 18i32;
+                            if (pending_lines >= 4i32) {
+                                aria_rl_play_sound(snd_tetris);
+                            }
+                            if (pending_lines < 4i32) {
+                                aria_rl_play_sound(snd_single);
+                            }
+                        }
+                        if (pending_lines == 0i32) {
+                            aria_rl_play_sound(snd_lock);
+                            do_spawn = 1i32;
+                        }
+                    }
+
+                } // end flash_timer == 0
+
+                // ── Flash countdown + line removal on expiry ──────────────────
+                if (flash_timer > 0i32) {
+                    flash_timer = flash_timer - 1i32;
+                    if (flash_timer == 0i32) {
+                        // Remove full rows: scan bottom-to-top to preserve gravity
+                        int32:cr3 = 19i32;
+                        while (cr3 >= 0i32) {
+                            int32:full3 = 1i32;
+                            for(int32:cc3 = 0i32; cc3 < 10i32; cc3 += 1i32) {
+                                if (board[cr3 * 10i32 + cc3] == 0i32) { full3 = 0i32; }
+                            }
+                            if (full3 == 1i32) {
+                                for(int32:sr3 = cr3; sr3 > 0i32; sr3 -= 1i32) {
+                                    for(int32:sc3 = 0i32; sc3 < 10i32; sc3 += 1i32) {
+                                        board[sr3 * 10i32 + sc3] =
+                                            board[(sr3 - 1i32) * 10i32 + sc3];
+                                    }
+                                }
+                                for(int32:tc3 = 0i32; tc3 < 10i32; tc3 += 1i32) {
+                                    board[tc3] = 0i32;
+                                }
+                            }
+                            if (full3 == 0i32) { cr3 = cr3 - 1i32; }
+                        }
+                        for(int32:fm2 = 0i32; fm2 < 20i32; fm2 += 1i32) {
+                            flash_mark[fm2] = 0i32;
+                        }
+
+                        // Scoring
+                        pick(pending_lines) {
+                            (1i32) { score = score + 100i32 * level; },
+                            (2i32) { score = score + 300i32 * level; },
+                            (3i32) { score = score + 500i32 * level; },
+                            (4i32) { score = score + 800i32 * level; },
+                            (*) { }
+                        }
+                        lines_total   = lines_total + pending_lines;
+                        pending_lines = 0i32;
+
+                        // Level up every 10 lines cleared
+                        level = lines_total / 10i32 + 1i32;
+                        drop_interval = 53i32 - level * 5i32;
+                        if (drop_interval < 3i32) { drop_interval = 3i32; }
+
+                        if (level > prev_level) {
+                            aria_rl_play_sound(snd_levelup);
+                            prev_level = level;
+                        }
+
+                        do_spawn = 1i32;
+                    }
+                }
+
+                // ── Spawn next piece ──────────────────────────────────────────
+                // Runs after a 0-line lock AND after flash animation completes.
+                if (do_spawn == 1i32) {
+                    cur_type   = next_type;
+                    cur_rot    = 0i32;
+                    cur_row    = 0i32;
+                    cur_col    = 3i32;
+                    hold_used  = 0i32;
+                    drop_timer = 0i32;
+
+                    if (bag_idx >= 7i32) {
+                        for(int32:si2 = 6i32; si2 > 0i32; si2 -= 1i32) {
+                            rng = rng ^ (rng << 13u64);
+                            rng = rng ^ (rng >> 7u64);
+                            rng = rng ^ (rng << 17u64);
+                            int32:j2 = @cast<int32>(rng % @cast<uint64>(si2 + 1i32));
+                            int32:tmp2 = bag[si2];
+                            bag[si2] = bag[j2];
+                            bag[j2]  = tmp2;
+                        }
+                        bag_idx = 0i32;
+                    }
+                    next_type = bag[bag_idx];
+                    bag_idx   = bag_idx + 1i32;
+
+                    int32:sf = raw(piece_fits(board, shape_r, shape_c,
+                                   cur_type, cur_rot, cur_row, cur_col));
+                    if (sf == 0i32) {
+                        state = 2i32;
+                        aria_rl_play_sound(snd_gameover);
+                        if (score > high_score) {
+                            high_score = score;
+                            raw(writeFile("aria_tetris_best.txt",
+                                string_from_int(@cast<int64>(high_score))));
+                        }
+                    }
+                }
+
+                // ════════════════════════════════════════════════════════════
+                // RENDER
+                // ════════════════════════════════════════════════════════════
+                aria_rl_begin_drawing();
+                aria_rl_clear_background(20i32, 20i32, 35i32, 255i32);
+
+                // Header
+                aria_rl_draw_text("ARIA TETRIS", 30i32, 20i32, 32i32,
+                                  0i32, 200i32, 200i32, 255i32);
+
+                // Board background
+                aria_rl_draw_rectangle(board_x, board_y,
+                                       cell_sz * 10i32, cell_sz * 20i32,
+                                       10i32, 10i32, 20i32, 255i32);
+
+                // Grid lines
+                for(int32:gx = 0i32; gx <= 10i32; gx += 1i32) {
+                    int32:lx = board_x + gx * cell_sz;
+                    aria_rl_draw_rectangle(lx, board_y, 1i32, cell_sz * 20i32,
+                                           35i32, 35i32, 50i32, 255i32);
+                }
+                for(int32:gy = 0i32; gy <= 20i32; gy += 1i32) {
+                    int32:ly = board_y + gy * cell_sz;
+                    aria_rl_draw_rectangle(board_x, ly, cell_sz * 10i32, 1i32,
+                                           35i32, 35i32, 50i32, 255i32);
+                }
+
+                // Board cells with line-clear flash effect
+                for(int32:dr = 0i32; dr < 20i32; dr += 1i32) {
+                    for(int32:dc = 0i32; dc < 10i32; dc += 1i32) {
+                        int32:cell_val = board[dr * 10i32 + dc];
+                        if (cell_val != 0i32) {
+                            int32:cx2 = board_x + dc * cell_sz + 1i32;
+                            int32:cy2 = board_y + dr * cell_sz + 1i32;
+                            int32:cs2 = cell_sz - 2i32;
+                            int32:draw_r = raw(color_r(cell_val));
+                            int32:draw_g = raw(color_g(cell_val));
+                            int32:draw_b = raw(color_b(cell_val));
+                            if (flash_timer > 0i32) {
+                                if (flash_mark[dr] == 1i32) {
+                                    int32:blink = (flash_timer / 3i32) % 2i32;
+                                    if (blink == 0i32) {
+                                        draw_r = 255i32;
+                                        draw_g = 255i32;
+                                        draw_b = 255i32;
+                                    }
+                                }
+                            }
+                            aria_rl_draw_rectangle(cx2, cy2, cs2, cs2,
+                                                   draw_r, draw_g, draw_b, 255i32);
+                        }
+                    }
+                }
+
+                // Ghost piece and active piece (hidden during flash)
+                if (flash_timer == 0i32) {
+                    // Ghost piece: drop to lowest valid position
+                    int32:ghost_r = cur_row;
+                    int32:gfit = raw(piece_fits(board, shape_r, shape_c,
+                                     cur_type, cur_rot, ghost_r + 1i32, cur_col));
+                    while (gfit == 1i32) {
+                        ghost_r = ghost_r + 1i32;
+                        gfit = raw(piece_fits(board, shape_r, shape_c,
+                                   cur_type, cur_rot, ghost_r + 1i32, cur_col));
+                    }
+                    int32:gcol = cur_type + 1i32;
+                    int32:gcr = raw(color_r(gcol));
+                    int32:gcg = raw(color_g(gcol));
+                    int32:gcb = raw(color_b(gcol));
+                    for(int32:gi = 0i32; gi < 4i32; gi += 1i32) {
+                        int32:gsi = cur_type * 16i32 + cur_rot * 4i32 + gi;
+                        int32:gpr = ghost_r + shape_r[gsi];
+                        int32:gpc = cur_col + shape_c[gsi];
+                        if (gpr >= 0i32) {
+                            if (gpr < 20i32) {
+                                int32:gpx = board_x + gpc * cell_sz + 1i32;
+                                int32:gpy = board_y + gpr * cell_sz + 1i32;
+                                int32:gps = cell_sz - 2i32;
+                                aria_rl_draw_rectangle(gpx, gpy, gps, gps,
+                                                       gcr, gcg, gcb, 60i32);
+                            }
+                        }
+                    }
+
+                    // Active piece
+                    int32:pc_col = cur_type + 1i32;
+                    int32:pc_r = raw(color_r(pc_col));
+                    int32:pc_g = raw(color_g(pc_col));
+                    int32:pc_b = raw(color_b(pc_col));
+                    for(int32:pi = 0i32; pi < 4i32; pi += 1i32) {
+                        int32:psi = cur_type * 16i32 + cur_rot * 4i32 + pi;
+                        int32:ppr = cur_row + shape_r[psi];
+                        int32:ppc = cur_col + shape_c[psi];
+                        if (ppr >= 0i32) {
+                            if (ppr < 20i32) {
+                                int32:ppx = board_x + ppc * cell_sz + 1i32;
+                                int32:ppy = board_y + ppr * cell_sz + 1i32;
+                                int32:pps = cell_sz - 2i32;
+                                aria_rl_draw_rectangle(ppx, ppy, pps, pps,
+                                                       pc_r, pc_g, pc_b, 255i32);
+                            }
+                        }
+                    }
+                }
+
+                // Board border
+                aria_rl_draw_rectangle_lines(board_x - 1i32, board_y - 1i32,
+                                             cell_sz * 10i32 + 2i32,
+                                             cell_sz * 20i32 + 2i32,
+                                             100i32, 100i32, 120i32, 255i32);
+
+                // Right panel: Next piece preview
+                aria_rl_draw_text("NEXT", panel_x, board_y, 22i32,
+                                  180i32, 180i32, 180i32, 255i32);
+                aria_rl_draw_rectangle(panel_x, board_y + 30i32, 120i32, 90i32,
+                                       10i32, 10i32, 20i32, 255i32);
+                for(int32:ni = 0i32; ni < 4i32; ni += 1i32) {
+                    int32:nsi = next_type * 16i32 + ni;
+                    int32:ncr = raw(color_r(next_type + 1i32));
+                    int32:ncg = raw(color_g(next_type + 1i32));
+                    int32:ncb = raw(color_b(next_type + 1i32));
+                    int32:nx = panel_x + 10i32 + shape_c[nsi] * 24i32;
+                    int32:ny = board_y + 40i32 + shape_r[nsi] * 24i32;
+                    aria_rl_draw_rectangle(nx, ny, 22i32, 22i32, ncr, ncg, ncb, 255i32);
+                }
+
+                // Right panel: Hold piece preview
+                aria_rl_draw_text("HOLD", panel_x, board_y + 140i32, 22i32,
+                                  180i32, 180i32, 180i32, 255i32);
+                aria_rl_draw_rectangle(panel_x, board_y + 170i32, 120i32, 90i32,
+                                       10i32, 10i32, 20i32, 255i32);
+                if (hold_type >= 0i32) {
+                    for(int32:hi = 0i32; hi < 4i32; hi += 1i32) {
+                        int32:hsi = hold_type * 16i32 + hi;
+                        int32:hcr = raw(color_r(hold_type + 1i32));
+                        int32:hcg = raw(color_g(hold_type + 1i32));
+                        int32:hcb = raw(color_b(hold_type + 1i32));
+                        int32:hx = panel_x + 10i32 + shape_c[hsi] * 24i32;
+                        int32:hy = board_y + 180i32 + shape_r[hsi] * 24i32;
+                        aria_rl_draw_rectangle(hx, hy, 22i32, 22i32, hcr, hcg, hcb, 255i32);
+                    }
+                }
+
+                // Right panel: Score / Level / Lines / Best
+                aria_rl_draw_text("SCORE", panel_x, board_y + 280i32, 22i32,
+                                  180i32, 180i32, 180i32, 255i32);
+                string:score_str = string_from_int(@cast<int64>(score));
+                aria_rl_draw_text(score_str, panel_x, board_y + 305i32, 24i32,
+                                  240i32, 240i32, 240i32, 255i32);
+
+                aria_rl_draw_text("LEVEL", panel_x, board_y + 350i32, 22i32,
+                                  180i32, 180i32, 180i32, 255i32);
+                string:level_str = string_from_int(@cast<int64>(level));
+                aria_rl_draw_text(level_str, panel_x, board_y + 375i32, 24i32,
+                                  240i32, 240i32, 240i32, 255i32);
+
+                aria_rl_draw_text("LINES", panel_x, board_y + 420i32, 22i32,
+                                  180i32, 180i32, 180i32, 255i32);
+                string:lines_str = string_from_int(@cast<int64>(lines_total));
+                aria_rl_draw_text(lines_str, panel_x, board_y + 445i32, 24i32,
+                                  240i32, 240i32, 240i32, 255i32);
+
+                aria_rl_draw_text("BEST", panel_x, board_y + 490i32, 22i32,
+                                  160i32, 160i32, 100i32, 255i32);
+                string:best_str2 = string_from_int(@cast<int64>(high_score));
+                aria_rl_draw_text(best_str2, panel_x, board_y + 515i32, 24i32,
+                                  210i32, 210i32, 140i32, 255i32);
+
+                aria_rl_draw_text("P/Start = Pause", panel_x, board_y + 562i32, 14i32,
+                                  80i32, 80i32, 80i32, 255i32);
+
+                aria_rl_end_drawing();
+
+            } // end state == 1 (not just-paused)
+        } // end PLAYING
+
+        should_close = aria_rl_window_should_close();
+    } // end main loop
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+    aria_rl_close_audio_device();
+    aria_rl_close_window();
+    pass(0i32);
+};

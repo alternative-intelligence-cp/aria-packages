@@ -150,7 +150,21 @@ int32_t aria_input_read_key(void) {
                 case 'B': return 201; /* DOWN  */
                 case 'C': return 203; /* RIGHT */
                 case 'D': return 202; /* LEFT  */
+                case 'H': return 204; /* HOME  */
+                case 'F': return 205; /* END   */
                 default:  break;
+            }
+            /* Tilde sequences: ESC [ <digit> ~ */
+            if (n >= 3 && buf[3] == '~') {
+                switch (buf[2]) {
+                    case '1': return 204; /* HOME   (ESC[1~) */
+                    case '2': return 209; /* INSERT (ESC[2~) */
+                    case '3': return 206; /* DELETE (ESC[3~) */
+                    case '4': return 205; /* END    (ESC[4~) */
+                    case '5': return 207; /* PGUP   (ESC[5~) */
+                    case '6': return 208; /* PGDN   (ESC[6~) */
+                    default:  break;
+                }
             }
         }
     }
@@ -213,4 +227,56 @@ int32_t aria_input_poll(void) {
 int32_t aria_input_flush_pending(void) {
     tcflush(STDIN_FILENO, TCIFLUSH);
     return 0;
+}
+
+/* ---- frame-based button state (btnp / btnr edge detection) ---- */
+
+static int32_t g_prev_buttons = 0;
+static int32_t g_curr_buttons = 0;
+
+/*
+ * Update frame state: copy curr→prev, then drain all pending key events
+ * from stdin and OR their button bitmasks into g_curr_buttons.
+ * Call once per frame in the game loop.
+ * Returns the current frame's button bitmask.
+ */
+int32_t aria_input_update_frame(void) {
+    g_prev_buttons = g_curr_buttons;
+    g_curr_buttons = 0;
+    for (;;) {
+        int32_t vk = aria_input_read_key();
+        if (vk < 0) break;
+        int32_t btn = aria_input_key_to_buttons(vk);
+        g_curr_buttons |= btn;
+    }
+    return g_curr_buttons;
+}
+
+/* Returns 1 if button is held this frame, 0 otherwise. */
+int32_t aria_input_btn(int32_t button_mask) {
+    return (g_curr_buttons & button_mask) ? 1 : 0;
+}
+
+/* Returns 1 if button was just pressed this frame (not prev, yes curr). */
+int32_t aria_input_btnp(int32_t button_mask) {
+    int now  = (g_curr_buttons  & button_mask) != 0;
+    int prev = (g_prev_buttons & button_mask) != 0;
+    return (now && !prev) ? 1 : 0;
+}
+
+/* Returns 1 if button was just released this frame (yes prev, not curr). */
+int32_t aria_input_btnr(int32_t button_mask) {
+    int now  = (g_curr_buttons  & button_mask) != 0;
+    int prev = (g_prev_buttons & button_mask) != 0;
+    return (!now && prev) ? 1 : 0;
+}
+
+/* Get the current frame's raw button bitmask. */
+int32_t aria_input_get_buttons(void) {
+    return g_curr_buttons;
+}
+
+/* Get the previous frame's raw button bitmask. */
+int32_t aria_input_get_prev_buttons(void) {
+    return g_prev_buttons;
 }

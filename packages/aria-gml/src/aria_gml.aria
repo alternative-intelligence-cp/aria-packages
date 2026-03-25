@@ -1,0 +1,546 @@
+// aria_gml.aria — GameMaker Language compatibility layer for Aria
+//
+// Provides GML-style function names and semantics over raylib.
+// Usage: compile with  -L path/to/shim -laria_gml_shim -lraylib -lm
+//
+// Key GML conventions preserved:
+//   - draw_set_color() persists across draw calls
+//   - Colors packed as r | (g<<8) | (b<<16)
+//   - Rectangles use (x1,y1)-(x2,y2) corners
+//   - outline param: 0i32 = filled, 1i32 = outline
+
+func:failsafe = NIL(int32:err_code) {
+    pass(NIL);
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// Color Constants (GML-standard, packed as r | g<<8 | b<<16)
+// ═══════════════════════════════════════════════════════════════════════
+
+int32:c_black   = 0i32;
+int32:c_white   = 16777215i32;
+int32:c_red     = 255i32;
+int32:c_green   = 65280i32;
+int32:c_blue    = 16711680i32;
+int32:c_yellow  = 65535i32;
+int32:c_orange  = 4235519i32;
+int32:c_purple  = 16711935i32;
+int32:c_fuchsia = 16711935i32;
+int32:c_aqua    = 16776960i32;
+int32:c_teal    = 8421376i32;
+int32:c_maroon  = 128i32;
+int32:c_navy    = 8388608i32;
+int32:c_olive   = 32896i32;
+int32:c_gray    = 8421504i32;
+int32:c_ltgray  = 12632256i32;
+int32:c_dkgray  = 4210752i32;
+int32:c_silver  = 12632256i32;
+
+// ═══════════════════════════════════════════════════════════════════════
+// Keyboard Constants (raylib KEY_ values matching GML vk_ names)
+// ═══════════════════════════════════════════════════════════════════════
+
+int32:vk_left      = 263i32;
+int32:vk_right     = 262i32;
+int32:vk_up        = 265i32;
+int32:vk_down      = 264i32;
+int32:vk_space     = 32i32;
+int32:vk_enter     = 257i32;
+int32:vk_escape    = 256i32;
+int32:vk_backspace = 259i32;
+int32:vk_tab       = 258i32;
+int32:vk_shift     = 340i32;
+int32:vk_control   = 341i32;
+int32:vk_alt       = 342i32;
+int32:vk_delete    = 261i32;
+int32:vk_insert    = 260i32;
+int32:vk_home      = 268i32;
+int32:vk_pageup    = 266i32;
+int32:vk_pagedown  = 267i32;
+
+// Letter keys (A-Z, ASCII values work with raylib)
+int32:vk_a = 65i32;
+int32:vk_b = 66i32;
+int32:vk_c = 67i32;
+int32:vk_d = 68i32;
+int32:vk_e = 69i32;
+int32:vk_f = 70i32;
+int32:vk_g = 71i32;
+int32:vk_h = 72i32;
+int32:vk_i = 73i32;
+int32:vk_j = 74i32;
+int32:vk_k = 75i32;
+int32:vk_l = 76i32;
+int32:vk_m = 77i32;
+int32:vk_n = 78i32;
+int32:vk_o = 79i32;
+int32:vk_p = 80i32;
+int32:vk_q = 81i32;
+int32:vk_r = 82i32;
+int32:vk_s = 83i32;
+int32:vk_t = 84i32;
+int32:vk_u = 85i32;
+int32:vk_v = 86i32;
+int32:vk_w = 87i32;
+int32:vk_x = 88i32;
+int32:vk_y = 89i32;
+int32:vk_z = 90i32;
+
+// Number keys
+int32:vk_0 = 48i32;
+int32:vk_1 = 49i32;
+int32:vk_2 = 50i32;
+int32:vk_3 = 51i32;
+int32:vk_4 = 52i32;
+int32:vk_5 = 53i32;
+int32:vk_6 = 54i32;
+int32:vk_7 = 55i32;
+int32:vk_8 = 56i32;
+int32:vk_9 = 57i32;
+
+// Mouse button constants
+int32:mb_left   = 0i32;
+int32:mb_right  = 1i32;
+int32:mb_middle = 2i32;
+
+// ═══════════════════════════════════════════════════════════════════════
+// Extern declarations — link to aria_gml_shim
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── color helpers ──
+extern func:aria_gml_make_color_rgb    = int32(int32:r, int32:g, int32:b);
+extern func:aria_gml_color_get_red     = int32(int32:col);
+extern func:aria_gml_color_get_green   = int32(int32:col);
+extern func:aria_gml_color_get_blue    = int32(int32:col);
+
+// ── draw state ──
+extern func:aria_gml_draw_set_color    = void(int32:col);
+extern func:aria_gml_draw_set_alpha    = void(flt32:alpha);
+extern func:aria_gml_draw_get_color    = int32();
+extern func:aria_gml_draw_get_alpha    = flt32();
+extern func:aria_gml_draw_set_font_size = void(int32:size);
+
+// ── game loop ──
+extern func:aria_gml_game_init         = void(int32:w, int32:h, string:title);
+extern func:aria_gml_game_should_close = int32();
+extern func:aria_gml_game_begin_step   = void();
+extern func:aria_gml_game_begin_draw   = void();
+extern func:aria_gml_game_end_draw     = void();
+extern func:aria_gml_game_shutdown     = void();
+extern func:aria_gml_game_set_target_fps = void(int32:fps);
+extern func:aria_gml_game_get_fps      = int32();
+extern func:aria_gml_game_get_time     = flt32();
+extern func:aria_gml_game_get_frame_time = flt32();
+
+// ── drawing primitives ──
+extern func:aria_gml_draw_clear        = void(int32:col);
+extern func:aria_gml_draw_rectangle    = void(flt32:x1, flt32:y1, flt32:x2, flt32:y2, int32:outline);
+extern func:aria_gml_draw_circle       = void(flt32:x, flt32:y, flt32:radius, int32:outline);
+extern func:aria_gml_draw_triangle     = void(flt32:x1, flt32:y1, flt32:x2, flt32:y2, flt32:x3, flt32:y3, int32:outline);
+extern func:aria_gml_draw_line         = void(flt32:x1, flt32:y1, flt32:x2, flt32:y2);
+extern func:aria_gml_draw_line_width   = void(flt32:x1, flt32:y1, flt32:x2, flt32:y2, flt32:width);
+extern func:aria_gml_draw_point        = void(flt32:x, flt32:y);
+extern func:aria_gml_draw_text         = void(flt32:x, flt32:y, string:text);
+extern func:aria_gml_string_width      = int32(string:text);
+extern func:aria_gml_draw_text_ext     = void(flt32:x, flt32:y, string:text, int32:font_size);
+
+// ── sprites ──
+extern func:aria_gml_sprite_load       = int32(string:path);
+extern func:aria_gml_sprite_delete     = void(int32:handle);
+extern func:aria_gml_sprite_get_width  = int32(int32:handle);
+extern func:aria_gml_sprite_get_height = int32(int32:handle);
+extern func:aria_gml_draw_sprite       = void(int32:handle, flt32:x, flt32:y);
+extern func:aria_gml_draw_sprite_ext   = void(int32:handle, flt32:x, flt32:y, flt32:xscale, flt32:yscale, flt32:rot);
+
+// ── sounds ──
+extern func:aria_gml_sound_load        = int32(string:path);
+extern func:aria_gml_sound_delete      = void(int32:handle);
+extern func:aria_gml_audio_play_sound  = void(int32:handle);
+extern func:aria_gml_audio_stop_sound  = void(int32:handle);
+extern func:aria_gml_audio_is_playing  = int32(int32:handle);
+extern func:aria_gml_audio_set_volume  = void(int32:handle, flt32:vol);
+
+// ── music ──
+extern func:aria_gml_music_load        = int32(string:path);
+extern func:aria_gml_music_delete      = void(int32:handle);
+extern func:aria_gml_music_play        = void(int32:handle);
+extern func:aria_gml_music_stop        = void(int32:handle);
+extern func:aria_gml_music_update      = void(int32:handle);
+extern func:aria_gml_music_set_volume  = void(int32:handle, flt32:vol);
+extern func:aria_gml_music_is_playing  = int32(int32:handle);
+
+// ── keyboard ──
+extern func:aria_gml_keyboard_check          = int32(int32:key);
+extern func:aria_gml_keyboard_check_pressed  = int32(int32:key);
+extern func:aria_gml_keyboard_check_released = int32(int32:key);
+extern func:aria_gml_keyboard_lastkey        = int32();
+
+// ── mouse ──
+extern func:aria_gml_mouse_x                      = int32();
+extern func:aria_gml_mouse_y                      = int32();
+extern func:aria_gml_mouse_check_button           = int32(int32:btn);
+extern func:aria_gml_mouse_check_button_pressed   = int32(int32:btn);
+extern func:aria_gml_mouse_check_button_released  = int32(int32:btn);
+extern func:aria_gml_mouse_wheel                  = flt32();
+
+// ── random ──
+extern func:aria_gml_randomize       = void(int32:seed);
+extern func:aria_gml_irandom         = int32(int32:mx);
+extern func:aria_gml_irandom_range   = int32(int32:lo, int32:hi);
+extern func:aria_gml_random          = flt32(flt32:mx);
+extern func:aria_gml_random_range    = flt32(flt32:lo, flt32:hi);
+
+// ── window ──
+extern func:aria_gml_window_get_width  = int32();
+extern func:aria_gml_window_get_height = int32();
+
+// ═══════════════════════════════════════════════════════════════════════
+// Public API — GML-named wrappers
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Color helpers ──
+
+pub func:make_color_rgb = int32(int32:r, int32:g, int32:b) {
+    int32:result = aria_gml_make_color_rgb(r, g, b);
+    pass(result);
+};
+
+pub func:color_get_red = int32(int32:col) {
+    int32:result = aria_gml_color_get_red(col);
+    pass(result);
+};
+
+pub func:color_get_green = int32(int32:col) {
+    int32:result = aria_gml_color_get_green(col);
+    pass(result);
+};
+
+pub func:color_get_blue = int32(int32:col) {
+    int32:result = aria_gml_color_get_blue(col);
+    pass(result);
+};
+
+// ── Draw state ──
+
+pub func:draw_set_color = NIL(int32:col) {
+    aria_gml_draw_set_color(col);
+    pass(NIL);
+};
+
+pub func:draw_set_alpha = NIL(flt32:alpha) {
+    aria_gml_draw_set_alpha(alpha);
+    pass(NIL);
+};
+
+pub func:draw_get_color = int32() {
+    int32:result = aria_gml_draw_get_color();
+    pass(result);
+};
+
+pub func:draw_get_alpha = flt32() {
+    flt32:result = aria_gml_draw_get_alpha();
+    pass(result);
+};
+
+pub func:draw_set_font_size = NIL(int32:size) {
+    aria_gml_draw_set_font_size(size);
+    pass(NIL);
+};
+
+// ── Game loop ──
+
+pub func:game_init = NIL(int32:w, int32:h, string:title) {
+    aria_gml_game_init(w, h, title);
+    pass(NIL);
+};
+
+pub func:game_should_close = int32() {
+    int32:result = aria_gml_game_should_close();
+    pass(result);
+};
+
+pub func:game_begin_step = NIL() {
+    aria_gml_game_begin_step();
+    pass(NIL);
+};
+
+pub func:game_begin_draw = NIL() {
+    aria_gml_game_begin_draw();
+    pass(NIL);
+};
+
+pub func:game_end_draw = NIL() {
+    aria_gml_game_end_draw();
+    pass(NIL);
+};
+
+pub func:game_shutdown = NIL() {
+    aria_gml_game_shutdown();
+    pass(NIL);
+};
+
+pub func:game_set_target_fps = NIL(int32:fps) {
+    aria_gml_game_set_target_fps(fps);
+    pass(NIL);
+};
+
+pub func:game_get_fps = int32() {
+    int32:result = aria_gml_game_get_fps();
+    pass(result);
+};
+
+pub func:game_get_time = flt32() {
+    flt32:result = aria_gml_game_get_time();
+    pass(result);
+};
+
+pub func:delta_time = flt32() {
+    flt32:result = aria_gml_game_get_frame_time();
+    pass(result);
+};
+
+// ── Drawing primitives ──
+
+pub func:draw_clear = NIL(int32:col) {
+    aria_gml_draw_clear(col);
+    pass(NIL);
+};
+
+pub func:draw_rectangle = NIL(flt32:x1, flt32:y1, flt32:x2, flt32:y2, int32:outline) {
+    aria_gml_draw_rectangle(x1, y1, x2, y2, outline);
+    pass(NIL);
+};
+
+pub func:draw_circle = NIL(flt32:x, flt32:y, flt32:radius, int32:outline) {
+    aria_gml_draw_circle(x, y, radius, outline);
+    pass(NIL);
+};
+
+pub func:draw_triangle = NIL(flt32:x1, flt32:y1, flt32:x2, flt32:y2, flt32:x3, flt32:y3, int32:outline) {
+    aria_gml_draw_triangle(x1, y1, x2, y2, x3, y3, outline);
+    pass(NIL);
+};
+
+pub func:draw_line = NIL(flt32:x1, flt32:y1, flt32:x2, flt32:y2) {
+    aria_gml_draw_line(x1, y1, x2, y2);
+    pass(NIL);
+};
+
+pub func:draw_line_width = NIL(flt32:x1, flt32:y1, flt32:x2, flt32:y2, flt32:width) {
+    aria_gml_draw_line_width(x1, y1, x2, y2, width);
+    pass(NIL);
+};
+
+pub func:draw_point = NIL(flt32:x, flt32:y) {
+    aria_gml_draw_point(x, y);
+    pass(NIL);
+};
+
+pub func:draw_text = NIL(flt32:x, flt32:y, string:text) {
+    aria_gml_draw_text(x, y, text);
+    pass(NIL);
+};
+
+pub func:string_width = int32(string:text) {
+    int32:result = aria_gml_string_width(text);
+    pass(result);
+};
+
+pub func:draw_text_ext = NIL(flt32:x, flt32:y, string:text, int32:font_size) {
+    aria_gml_draw_text_ext(x, y, text, font_size);
+    pass(NIL);
+};
+
+// ── Sprites ──
+
+pub func:sprite_load = int32(string:path) {
+    int32:result = aria_gml_sprite_load(path);
+    pass(result);
+};
+
+pub func:sprite_delete = NIL(int32:handle) {
+    aria_gml_sprite_delete(handle);
+    pass(NIL);
+};
+
+pub func:sprite_get_width = int32(int32:handle) {
+    int32:result = aria_gml_sprite_get_width(handle);
+    pass(result);
+};
+
+pub func:sprite_get_height = int32(int32:handle) {
+    int32:result = aria_gml_sprite_get_height(handle);
+    pass(result);
+};
+
+pub func:draw_sprite = NIL(int32:handle, flt32:x, flt32:y) {
+    aria_gml_draw_sprite(handle, x, y);
+    pass(NIL);
+};
+
+pub func:draw_sprite_ext = NIL(int32:handle, flt32:x, flt32:y, flt32:xscale, flt32:yscale, flt32:rot) {
+    aria_gml_draw_sprite_ext(handle, x, y, xscale, yscale, rot);
+    pass(NIL);
+};
+
+// ── Sounds ──
+
+pub func:sound_load = int32(string:path) {
+    int32:result = aria_gml_sound_load(path);
+    pass(result);
+};
+
+pub func:sound_delete = NIL(int32:handle) {
+    aria_gml_sound_delete(handle);
+    pass(NIL);
+};
+
+pub func:audio_play_sound = NIL(int32:handle) {
+    aria_gml_audio_play_sound(handle);
+    pass(NIL);
+};
+
+pub func:audio_stop_sound = NIL(int32:handle) {
+    aria_gml_audio_stop_sound(handle);
+    pass(NIL);
+};
+
+pub func:audio_sound_is_playing = int32(int32:handle) {
+    int32:result = aria_gml_audio_is_playing(handle);
+    pass(result);
+};
+
+pub func:audio_set_sound_volume = NIL(int32:handle, flt32:vol) {
+    aria_gml_audio_set_volume(handle, vol);
+    pass(NIL);
+};
+
+// ── Music ──
+
+pub func:music_load = int32(string:path) {
+    int32:result = aria_gml_music_load(path);
+    pass(result);
+};
+
+pub func:music_delete = NIL(int32:handle) {
+    aria_gml_music_delete(handle);
+    pass(NIL);
+};
+
+pub func:music_play = NIL(int32:handle) {
+    aria_gml_music_play(handle);
+    pass(NIL);
+};
+
+pub func:music_stop = NIL(int32:handle) {
+    aria_gml_music_stop(handle);
+    pass(NIL);
+};
+
+pub func:music_update = NIL(int32:handle) {
+    aria_gml_music_update(handle);
+    pass(NIL);
+};
+
+pub func:music_set_volume = NIL(int32:handle, flt32:vol) {
+    aria_gml_music_set_volume(handle, vol);
+    pass(NIL);
+};
+
+pub func:music_is_playing = int32(int32:handle) {
+    int32:result = aria_gml_music_is_playing(handle);
+    pass(result);
+};
+
+// ── Keyboard ──
+
+pub func:keyboard_check = int32(int32:key) {
+    int32:result = aria_gml_keyboard_check(key);
+    pass(result);
+};
+
+pub func:keyboard_check_pressed = int32(int32:key) {
+    int32:result = aria_gml_keyboard_check_pressed(key);
+    pass(result);
+};
+
+pub func:keyboard_check_released = int32(int32:key) {
+    int32:result = aria_gml_keyboard_check_released(key);
+    pass(result);
+};
+
+pub func:keyboard_lastkey = int32() {
+    int32:result = aria_gml_keyboard_lastkey();
+    pass(result);
+};
+
+// ── Mouse ──
+
+pub func:mouse_x = int32() {
+    int32:result = aria_gml_mouse_x();
+    pass(result);
+};
+
+pub func:mouse_y = int32() {
+    int32:result = aria_gml_mouse_y();
+    pass(result);
+};
+
+pub func:mouse_check_button = int32(int32:btn) {
+    int32:result = aria_gml_mouse_check_button(btn);
+    pass(result);
+};
+
+pub func:mouse_check_button_pressed = int32(int32:btn) {
+    int32:result = aria_gml_mouse_check_button_pressed(btn);
+    pass(result);
+};
+
+pub func:mouse_check_button_released = int32(int32:btn) {
+    int32:result = aria_gml_mouse_check_button_released(btn);
+    pass(result);
+};
+
+pub func:mouse_wheel = flt32() {
+    flt32:result = aria_gml_mouse_wheel();
+    pass(result);
+};
+
+// ── Random ──
+
+pub func:randomize = NIL(int32:seed) {
+    aria_gml_randomize(seed);
+    pass(NIL);
+};
+
+pub func:irandom = int32(int32:mx) {
+    int32:result = aria_gml_irandom(mx);
+    pass(result);
+};
+
+pub func:irandom_range = int32(int32:lo, int32:hi) {
+    int32:result = aria_gml_irandom_range(lo, hi);
+    pass(result);
+};
+
+pub func:random_val = flt32(flt32:mx) {
+    flt32:result = aria_gml_random(mx);
+    pass(result);
+};
+
+pub func:random_range = flt32(flt32:lo, flt32:hi) {
+    flt32:result = aria_gml_random_range(lo, hi);
+    pass(result);
+};
+
+// ── Window ──
+
+pub func:window_get_width = int32() {
+    int32:result = aria_gml_window_get_width();
+    pass(result);
+};
+
+pub func:window_get_height = int32() {
+    int32:result = aria_gml_window_get_height();
+    pass(result);
+};

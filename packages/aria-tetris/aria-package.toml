@@ -1,0 +1,16 @@
+[package]
+name = "aria-tetris"
+version = "0.2.8"
+authors = ["Aria Language Project"]
+license = "Apache-2.0 WITH Runtime-Library-Exception"
+description = "Full Tetris clone written in pure Aria — 7-bag randomizer, hold piece, ghost piece, high score persistence, gamepad support, procedural sound effects, and line-clear flash animation"
+keywords = ["tetris", "game", "raylib", "gamedev", "example", "demo"]
+categories = ["games", "gamedev", "examples"]
+
+[dependencies]
+aria-raylib = "0.3.0"
+
+[build]
+type = "executable"
+entry = "src/aria_tetris.aria"
+link_libraries = ["aria_raylib_shim", "raylib", "m"]

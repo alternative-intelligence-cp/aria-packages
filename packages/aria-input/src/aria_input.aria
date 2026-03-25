@@ -17,6 +17,9 @@
 //   0-127   = ASCII value
 //   200     = UP arrow     201 = DOWN arrow
 //   202     = LEFT arrow   203 = RIGHT arrow
+//   204     = HOME         205 = END
+//   206     = DELETE       207 = PAGE UP
+//   208     = PAGE DOWN    209 = INSERT
 //   -1      = no key ready (non-blocking)
 //   -2      = unrecognized escape sequence
 
@@ -31,6 +34,12 @@ extern "aria_input" {
     func:aria_input_map_key      = int32(int32:ascii_byte, int32:button_mask);
     func:aria_input_poll         = int32();
     func:aria_input_flush_pending = int32();
+    func:aria_input_update_frame = int32();
+    func:aria_input_btn          = int32(int32:button_mask);
+    func:aria_input_btnp         = int32(int32:button_mask);
+    func:aria_input_btnr         = int32(int32:button_mask);
+    func:aria_input_get_buttons  = int32();
+    func:aria_input_get_prev_buttons = int32();
 }
 
 // ── Button bit constants ──────────────────────────────────────────────────────
@@ -136,4 +145,43 @@ pub func:inp_has_button = int32(int32:bitmask, int32:btn) {
         pass(1i32);
     }
     pass(0i32);
+};
+
+// ── Frame-based button state (call inp_update once per frame) ────────────────
+
+// Drain all pending key events, update curr/prev button bitmasks.
+// Returns the current frame's button bitmask.
+pub func:inp_update = int32() {
+    int32:r = aria_input_update_frame();
+    pass(r);
+};
+
+// Returns 1 if button is held this frame (after inp_update).
+pub func:inp_btn = int32(int32:button_mask) {
+    int32:r = aria_input_btn(button_mask);
+    pass(r);
+};
+
+// Returns 1 if button was just pressed this frame (edge: not prev, yes curr).
+pub func:inp_btnp = int32(int32:button_mask) {
+    int32:r = aria_input_btnp(button_mask);
+    pass(r);
+};
+
+// Returns 1 if button was just released this frame (edge: yes prev, not curr).
+pub func:inp_btnr = int32(int32:button_mask) {
+    int32:r = aria_input_btnr(button_mask);
+    pass(r);
+};
+
+// Get the current frame's full button bitmask.
+pub func:inp_get_buttons = int32() {
+    int32:r = aria_input_get_buttons();
+    pass(r);
+};
+
+// Get the previous frame's full button bitmask.
+pub func:inp_get_prev_buttons = int32() {
+    int32:r = aria_input_get_prev_buttons();
+    pass(r);
 };
