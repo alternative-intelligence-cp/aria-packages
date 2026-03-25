@@ -1,0 +1,13 @@
+[package]
+name = "aria-transformer"
+version = "0.2.10"
+description = "Transformer model implementation — multi-head attention, FFN, layer norm, causal masking"
+keywords = ["ml", "transformer", "attention", "neural-network", "ai"]
+license = "MIT"
+
+[dependencies]
+# Self-contained — no package dependencies (uses internal tensor ops)
+
+[build]
+shim = "shim/aria_transformer_shim.c"
+link = ["-lm"]

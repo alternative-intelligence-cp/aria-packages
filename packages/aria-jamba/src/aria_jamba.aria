@@ -1,0 +1,55 @@
+// aria_jamba.aria — Jamba hybrid model (Transformer + Mamba + MoE) wrapper
+//
+// Provides a pub interface to the Jamba C shim.
+
+use "print_utils.aria".*;
+
+extern "aria_jamba_shim" {
+    func:aria_jamba_last_error     = string();
+    func:aria_jamba_set_seed       = void(int32:seed);
+    func:aria_jamba_create         = int64(int32:d_model, int32:n_heads, int32:d_inner, int32:d_state, int32:dt_rank, int32:conv_k, int32:n_layers, int32:attn_every, int32:n_experts, int32:top_k, int32:vocab_size, int32:max_seq);
+    func:aria_jamba_destroy        = void(int64:id);
+    func:aria_jamba_d_model        = int32(int64:id);
+    func:aria_jamba_n_heads        = int32(int64:id);
+    func:aria_jamba_d_inner        = int32(int64:id);
+    func:aria_jamba_n_layers       = int32(int64:id);
+    func:aria_jamba_vocab_size     = int32(int64:id);
+    func:aria_jamba_n_experts      = int32(int64:id);
+    func:aria_jamba_top_k          = int32(int64:id);
+    func:aria_jamba_attn_every     = int32(int64:id);
+    func:aria_jamba_layer_is_attn  = int32(int64:id, int32:layer);
+    func:aria_jamba_param_count    = int64(int64:id);
+    func:aria_jamba_scratch_create = int64(int32:rows, int32:cols);
+    func:aria_jamba_scratch_destroy = void(int64:id);
+    func:aria_jamba_scratch_set    = void(int64:id, int32:idx, flt64:val);
+    func:aria_jamba_scratch_get    = flt64(int64:id, int32:idx);
+    func:aria_jamba_scratch_rows   = int32(int64:id);
+    func:aria_jamba_scratch_cols   = int32(int64:id);
+    func:aria_jamba_forward        = int64(int64:model, int64:input);
+    func:aria_jamba_argmax         = int32(int64:scratch, int32:row);
+    func:aria_jamba_softmax_row    = void(int64:scratch, int32:row);
+}
+
+pub func:jamba_last_error     = string()   { pass(aria_jamba_last_error()); };
+pub func:jamba_set_seed       = void(int32:s) { aria_jamba_set_seed(s); };
+pub func:jamba_create         = int64(int32:dm, int32:nh, int32:di, int32:ds, int32:dtr, int32:ck, int32:nl, int32:ae, int32:ne, int32:tk, int32:vs, int32:ms) { pass(aria_jamba_create(dm,nh,di,ds,dtr,ck,nl,ae,ne,tk,vs,ms)); };
+pub func:jamba_destroy        = void(int64:id) { aria_jamba_destroy(id); };
+pub func:jamba_d_model        = int32(int64:id) { pass(aria_jamba_d_model(id)); };
+pub func:jamba_n_heads        = int32(int64:id) { pass(aria_jamba_n_heads(id)); };
+pub func:jamba_d_inner        = int32(int64:id) { pass(aria_jamba_d_inner(id)); };
+pub func:jamba_n_layers       = int32(int64:id) { pass(aria_jamba_n_layers(id)); };
+pub func:jamba_vocab_size     = int32(int64:id) { pass(aria_jamba_vocab_size(id)); };
+pub func:jamba_n_experts      = int32(int64:id) { pass(aria_jamba_n_experts(id)); };
+pub func:jamba_top_k          = int32(int64:id) { pass(aria_jamba_top_k(id)); };
+pub func:jamba_attn_every     = int32(int64:id) { pass(aria_jamba_attn_every(id)); };
+pub func:jamba_layer_is_attn  = int32(int64:id, int32:l) { pass(aria_jamba_layer_is_attn(id,l)); };
+pub func:jamba_param_count    = int64(int64:id) { pass(aria_jamba_param_count(id)); };
+pub func:jamba_scratch_create = int64(int32:r, int32:c) { pass(aria_jamba_scratch_create(r,c)); };
+pub func:jamba_scratch_destroy = void(int64:id) { aria_jamba_scratch_destroy(id); };
+pub func:jamba_scratch_set    = void(int64:id, int32:i, flt64:v) { aria_jamba_scratch_set(id,i,v); };
+pub func:jamba_scratch_get    = flt64(int64:id, int32:i) { pass(aria_jamba_scratch_get(id,i)); };
+pub func:jamba_scratch_rows   = int32(int64:id) { pass(aria_jamba_scratch_rows(id)); };
+pub func:jamba_scratch_cols   = int32(int64:id) { pass(aria_jamba_scratch_cols(id)); };
+pub func:jamba_forward        = int64(int64:m, int64:inp) { pass(aria_jamba_forward(m,inp)); };
+pub func:jamba_argmax         = int32(int64:s, int32:r) { pass(aria_jamba_argmax(s,r)); };
+pub func:jamba_softmax_row    = void(int64:s, int32:r) { aria_jamba_softmax_row(s,r); };

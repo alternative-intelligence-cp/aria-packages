@@ -1,0 +1,1079 @@
+/*
+ * aria_uacp_shim.c — UACP reference implementation
+ *
+ * Universal AI Communication Protocol: binary framing, TCP transport,
+ * message serialization/deserialization.
+ *
+ * Compile:
+ *   gcc -shared -fPIC -O2 -o libaria_uacp_shim.so aria_uacp_shim.c -lpthread
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <errno.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <poll.h>
+
+/* ── AriaString ABI ── */
+typedef struct { char *data; int64_t length; } AriaString;
+
+static AriaString make_aria_string(const char *s) {
+    AriaString r;
+    int64_t len = (int64_t)strlen(s);
+    r.data = (char *)malloc(len + 1);
+    memcpy(r.data, s, len + 1);
+    r.length = len;
+    return r;
+}
+
+/* ── Protocol constants ── */
+#define UACP_MAGIC       0x50434155  /* "UACP" little-endian */
+#define UACP_VERSION     1
+#define UACP_HEADER_SIZE 16
+#define UACP_MAX_PAYLOAD (16 * 1024 * 1024)  /* 16 MiB limit */
+#define UACP_DEFAULT_PORT 9317
+
+/* Flags */
+#define FLAG_CRC      0x01
+#define FLAG_COMPRESS 0x02
+#define FLAG_REPLY    0x04
+
+/* Message types */
+#define MSG_HELLO        0x0001
+#define MSG_HELLO_ACK    0x0002
+#define MSG_PING         0x0003
+#define MSG_PONG         0x0004
+#define MSG_TEXT         0x0010
+#define MSG_BINARY       0x0011
+#define MSG_TENSOR       0x0012
+#define MSG_TOOL_CALL    0x0020
+#define MSG_TOOL_RESULT  0x0021
+#define MSG_STREAM_START 0x0030
+#define MSG_STREAM_CHUNK 0x0031
+#define MSG_STREAM_END   0x0032
+#define MSG_STATUS       0x0040
+#define MSG_STORE        0x0050
+#define MSG_LOAD         0x0051
+#define MSG_ERROR        0x00FF
+
+/* ── Connection pool ── */
+#define MAX_CONNECTIONS 256
+#define MAX_MESSAGES    4096
+
+typedef struct {
+    int      fd;
+    int      alive;
+    int      is_server;    /* 1 = listening socket */
+    uint32_t next_seq;
+    char     peer_name[128];
+    char     peer_version[64];
+} UACPConn;
+
+typedef struct {
+    int      alive;
+    uint16_t type;
+    uint32_t seq_id;
+    uint8_t  flags;
+    uint8_t *payload;
+    uint32_t payload_len;
+    int64_t  conn_id;
+} UACPMsg;
+
+static UACPConn g_conns[MAX_CONNECTIONS];
+static UACPMsg  g_msgs[MAX_MESSAGES];
+static char     g_last_error[512] = "";
+
+static void set_error(const char *msg) {
+    snprintf(g_last_error, sizeof(g_last_error), "%s", msg);
+}
+
+static void set_error_errno(const char *prefix) {
+    snprintf(g_last_error, sizeof(g_last_error), "%s: %s", prefix, strerror(errno));
+}
+
+static int alloc_conn(void) {
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        if (!g_conns[i].alive) {
+            memset(&g_conns[i], 0, sizeof(UACPConn));
+            g_conns[i].alive = 1;
+            g_conns[i].next_seq = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int alloc_msg(void) {
+    for (int i = 0; i < MAX_MESSAGES; i++) {
+        if (!g_msgs[i].alive) {
+            memset(&g_msgs[i], 0, sizeof(UACPMsg));
+            g_msgs[i].alive = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* ── Low-level I/O ── */
+
+static int send_all(int fd, const void *buf, size_t len) {
+    const uint8_t *p = (const uint8_t *)buf;
+    size_t sent = 0;
+    while (sent < len) {
+        ssize_t n = send(fd, p + sent, len - sent, MSG_NOSIGNAL);
+        if (n <= 0) {
+            if (n < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            return -1;
+        }
+        sent += (size_t)n;
+    }
+    return 0;
+}
+
+static int recv_all(int fd, void *buf, size_t len) {
+    uint8_t *p = (uint8_t *)buf;
+    size_t got = 0;
+    while (got < len) {
+        ssize_t n = recv(fd, p + got, len - got, 0);
+        if (n <= 0) {
+            if (n < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            return -1;
+        }
+        got += (size_t)n;
+    }
+    return 0;
+}
+
+/* ── Frame encoding/decoding ── */
+
+static int send_frame(int fd, uint8_t flags, uint16_t type, uint32_t seq,
+                      const uint8_t *payload, uint32_t payload_len) {
+    uint8_t header[UACP_HEADER_SIZE];
+    /* Magic */
+    header[0] = 0x55; header[1] = 0x41; header[2] = 0x43; header[3] = 0x50;
+    /* Version */
+    header[4] = UACP_VERSION;
+    /* Flags */
+    header[5] = flags;
+    /* Type (LE) */
+    header[6] = (uint8_t)(type & 0xFF);
+    header[7] = (uint8_t)((type >> 8) & 0xFF);
+    /* SeqID (LE) */
+    header[8]  = (uint8_t)(seq & 0xFF);
+    header[9]  = (uint8_t)((seq >> 8) & 0xFF);
+    header[10] = (uint8_t)((seq >> 16) & 0xFF);
+    header[11] = (uint8_t)((seq >> 24) & 0xFF);
+    /* Length (LE) */
+    header[12] = (uint8_t)(payload_len & 0xFF);
+    header[13] = (uint8_t)((payload_len >> 8) & 0xFF);
+    header[14] = (uint8_t)((payload_len >> 16) & 0xFF);
+    header[15] = (uint8_t)((payload_len >> 24) & 0xFF);
+
+    if (send_all(fd, header, UACP_HEADER_SIZE) < 0) return -1;
+    if (payload_len > 0 && payload) {
+        if (send_all(fd, payload, payload_len) < 0) return -1;
+    }
+    return 0;
+}
+
+static int recv_frame(int fd, uint8_t *out_flags, uint16_t *out_type,
+                      uint32_t *out_seq, uint8_t **out_payload,
+                      uint32_t *out_len) {
+    uint8_t header[UACP_HEADER_SIZE];
+    if (recv_all(fd, header, UACP_HEADER_SIZE) < 0) return -1;
+
+    /* Verify magic */
+    if (header[0] != 0x55 || header[1] != 0x41 ||
+        header[2] != 0x43 || header[3] != 0x50) {
+        set_error("Invalid UACP magic bytes");
+        return -2;
+    }
+
+    /* Check version */
+    if (header[4] != UACP_VERSION) {
+        set_error("Unsupported UACP version");
+        return -3;
+    }
+
+    *out_flags = header[5];
+    *out_type  = (uint16_t)(header[6]) | ((uint16_t)(header[7]) << 8);
+    *out_seq   = (uint32_t)(header[8]) | ((uint32_t)(header[9]) << 8) |
+                 ((uint32_t)(header[10]) << 16) | ((uint32_t)(header[11]) << 24);
+    *out_len   = (uint32_t)(header[12]) | ((uint32_t)(header[13]) << 8) |
+                 ((uint32_t)(header[14]) << 16) | ((uint32_t)(header[15]) << 24);
+
+    if (*out_len > UACP_MAX_PAYLOAD) {
+        set_error("Payload exceeds maximum size");
+        return -4;
+    }
+
+    *out_payload = NULL;
+    if (*out_len > 0) {
+        *out_payload = (uint8_t *)malloc(*out_len);
+        if (!*out_payload) {
+            set_error("Out of memory for payload");
+            return -5;
+        }
+        if (recv_all(fd, *out_payload, *out_len) < 0) {
+            free(*out_payload);
+            *out_payload = NULL;
+            set_error("Failed to receive payload");
+            return -6;
+        }
+    }
+
+    return 0;
+}
+
+/* ═══════════════════════════════════════════════════
+ *  Public API — exported to Aria
+ *
+ *  NOTE: Aria passes `string` parameters as plain
+ *  `const char *` (null-terminated).  Returns use
+ *  AriaString by value ({char*,int64_t} in rax:rdx).
+ * ═══════════════════════════════════════════════════ */
+
+AriaString aria_uacp_last_error(void) {
+    return make_aria_string(g_last_error);
+}
+
+int32_t aria_uacp_version(void) {
+    return UACP_VERSION;
+}
+
+int32_t aria_uacp_default_port(void) {
+    return UACP_DEFAULT_PORT;
+}
+
+/* ── Server ── */
+
+int64_t aria_uacp_server_create(int32_t port) {
+    int idx = alloc_conn();
+    if (idx < 0) { set_error("No free connection slots"); return -1; }
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) { set_error_errno("socket"); g_conns[idx].alive = 0; return -1; }
+
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons((uint16_t)port);
+
+    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        set_error_errno("bind");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    if (listen(fd, 16) < 0) {
+        set_error_errno("listen");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    g_conns[idx].fd = fd;
+    g_conns[idx].is_server = 1;
+    return (int64_t)idx;
+}
+
+int64_t aria_uacp_server_create_unix(const char *path) {
+    int idx = alloc_conn();
+    if (idx < 0) { set_error("No free connection slots"); return -1; }
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) { set_error_errno("socket"); g_conns[idx].alive = 0; return -1; }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    size_t plen = strlen(path);
+    if (plen >= sizeof(addr.sun_path)) {
+        set_error("Unix socket path too long");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+    memcpy(addr.sun_path, path, plen);
+
+    unlink(addr.sun_path);  /* remove existing socket file */
+    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        set_error_errno("bind unix");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    if (listen(fd, 16) < 0) {
+        set_error_errno("listen unix");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    g_conns[idx].fd = fd;
+    g_conns[idx].is_server = 1;
+    return (int64_t)idx;
+}
+
+int64_t aria_uacp_accept(int64_t server_id) {
+    if (server_id < 0 || server_id >= MAX_CONNECTIONS ||
+        !g_conns[server_id].alive || !g_conns[server_id].is_server) {
+        set_error("Invalid server ID");
+        return -1;
+    }
+
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+    int fd = accept(g_conns[server_id].fd, (struct sockaddr *)&addr, &addrlen);
+    if (fd < 0) {
+        set_error_errno("accept");
+        return -1;
+    }
+
+    int opt = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+
+    int idx = alloc_conn();
+    if (idx < 0) {
+        close(fd);
+        set_error("No free connection slots");
+        return -1;
+    }
+
+    g_conns[idx].fd = fd;
+    return (int64_t)idx;
+}
+
+/* Non-blocking accept — returns -1 if no connection pending, -2 on error */
+int64_t aria_uacp_try_accept(int64_t server_id) {
+    if (server_id < 0 || server_id >= MAX_CONNECTIONS ||
+        !g_conns[server_id].alive || !g_conns[server_id].is_server) {
+        set_error("Invalid server ID");
+        return -2;
+    }
+
+    struct pollfd pfd;
+    pfd.fd = g_conns[server_id].fd;
+    pfd.events = POLLIN;
+    int r = poll(&pfd, 1, 0);
+    if (r <= 0) return -1;  /* no connection pending */
+
+    return aria_uacp_accept(server_id);
+}
+
+/* ── Client ── */
+
+int64_t aria_uacp_conn(const char *host, int32_t port) {
+    int idx = alloc_conn();
+    if (idx < 0) { set_error("No free connection slots"); return -1; }
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) { set_error_errno("socket"); g_conns[idx].alive = 0; return -1; }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((uint16_t)port);
+
+    if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+        set_error("Invalid host address");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        set_error_errno("connect");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    int opt = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+
+    g_conns[idx].fd = fd;
+    return (int64_t)idx;
+}
+
+int64_t aria_uacp_conn_unix(const char *path) {
+    int idx = alloc_conn();
+    if (idx < 0) { set_error("No free connection slots"); return -1; }
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) { set_error_errno("socket"); g_conns[idx].alive = 0; return -1; }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    size_t plen = strlen(path);
+    if (plen >= sizeof(addr.sun_path)) {
+        set_error("Unix socket path too long");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+    memcpy(addr.sun_path, path, plen);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        set_error_errno("connect unix");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    g_conns[idx].fd = fd;
+    return (int64_t)idx;
+}
+
+int64_t aria_uacp_conn_loopback(int32_t port) {
+    int idx = alloc_conn();
+    if (idx < 0) { set_error("No free connection slots"); return -1; }
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) { set_error_errno("socket"); g_conns[idx].alive = 0; return -1; }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons((uint16_t)port);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        set_error_errno("connect loopback");
+        close(fd);
+        g_conns[idx].alive = 0;
+        return -1;
+    }
+
+    int opt = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+
+    g_conns[idx].fd = fd;
+    return (int64_t)idx;
+}
+
+/* ── Connection management ── */
+
+void aria_uacp_shutdown(int64_t id) {
+    if (id < 0 || id >= MAX_CONNECTIONS || !g_conns[id].alive) return;
+    close(g_conns[id].fd);
+    g_conns[id].alive = 0;
+}
+
+int32_t aria_uacp_is_alive(int64_t id) {
+    if (id < 0 || id >= MAX_CONNECTIONS) return 0;
+    return g_conns[id].alive ? 1 : 0;
+}
+
+/* ── Sending messages ── */
+
+static int64_t send_msg(int64_t conn_id, uint16_t type, uint8_t extra_flags,
+                        const uint8_t *payload, uint32_t len) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -1;
+    }
+
+    uint32_t seq = g_conns[conn_id].next_seq++;
+    if (send_frame(g_conns[conn_id].fd, extra_flags, type, seq,
+                   payload, len) < 0) {
+        set_error_errno("send failed");
+        return -1;
+    }
+    return (int64_t)seq;
+}
+
+/* Send HELLO — agent_version comes from g_stage_buf (call stage_str first) */
+int64_t aria_uacp_send_hello(int64_t conn_id, AriaString agent_name) {
+    fprintf(stderr, "[UACP DEBUG] send_hello: conn=%ld name.data=%p name.length=%ld name='%.*s'\n",
+            (long)conn_id, (void*)agent_name.data, (long)agent_name.length,
+            (int)(agent_name.length > 200 ? 200 : agent_name.length), agent_name.data);
+    /* Payload: [name_len:u16][name][ver_len:u16][ver][cap_count:u16=0] */
+    uint32_t plen = 2 + (uint32_t)agent_name.length + 2 +
+                    (uint32_t)g_stage_len + 2;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t off = 0;
+    uint16_t nlen = (uint16_t)agent_name.length;
+    memcpy(buf + off, &nlen, 2); off += 2;
+    memcpy(buf + off, agent_name.data, nlen); off += nlen;
+    uint16_t vlen = (uint16_t)g_stage_len;
+    memcpy(buf + off, &vlen, 2); off += 2;
+    memcpy(buf + off, g_stage_buf, vlen); off += vlen;
+    uint16_t cap_count = 0;
+    memcpy(buf + off, &cap_count, 2); off += 2;
+
+    int64_t r = send_msg(conn_id, MSG_HELLO, 0, buf, off);
+    free(buf);
+    return r;
+}
+
+/* Send HELLO_ACK — agent_version comes from g_stage_buf */
+int64_t aria_uacp_send_hello_ack(int64_t conn_id, AriaString agent_name) {
+    uint32_t plen = 2 + (uint32_t)agent_name.length + 2 +
+                    (uint32_t)g_stage_len + 2;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t off = 0;
+    uint16_t nlen = (uint16_t)agent_name.length;
+    memcpy(buf + off, &nlen, 2); off += 2;
+    memcpy(buf + off, agent_name.data, nlen); off += nlen;
+    uint16_t vlen = (uint16_t)g_stage_len;
+    memcpy(buf + off, &vlen, 2); off += 2;
+    memcpy(buf + off, g_stage_buf, vlen); off += vlen;
+    uint16_t cap_count = 0;
+    memcpy(buf + off, &cap_count, 2); off += 2;
+
+    int64_t r = send_msg(conn_id, MSG_HELLO_ACK, 0, buf, off);
+    free(buf);
+    return r;
+}
+
+/* Send TEXT */
+int64_t aria_uacp_send_text(int64_t conn_id, AriaString text) {
+    fprintf(stderr, "[UACP DEBUG] send_text: conn=%ld text.data=%p text.length=%ld text='%.*s'\n",
+            (long)conn_id, (void*)text.data, (long)text.length,
+            (int)(text.length > 200 ? 200 : text.length), text.data);
+    return send_msg(conn_id, MSG_TEXT, 0,
+                    (const uint8_t *)text.data, (uint32_t)text.length);
+}
+
+/* Send BINARY */
+int64_t aria_uacp_send_binary(int64_t conn_id, AriaString tag,
+                              int64_t data_ptr, int32_t data_len) {
+    uint32_t plen = 2 + (uint32_t)tag.length + (uint32_t)data_len;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t off = 0;
+    uint16_t tlen = (uint16_t)tag.length;
+    memcpy(buf + off, &tlen, 2); off += 2;
+    memcpy(buf + off, tag.data, tlen); off += tlen;
+    memcpy(buf + off, (void *)(uintptr_t)data_ptr, (size_t)data_len); off += (uint32_t)data_len;
+
+    int64_t r = send_msg(conn_id, MSG_BINARY, 0, buf, off);
+    free(buf);
+    return r;
+}
+
+/* Send TOOL_CALL — params_json comes from g_stage_buf */
+int64_t aria_uacp_send_tool_call(int64_t conn_id, AriaString tool_name) {
+    uint32_t plen = 2 + (uint32_t)tool_name.length + (uint32_t)g_stage_len;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t off = 0;
+    uint16_t nlen = (uint16_t)tool_name.length;
+    memcpy(buf + off, &nlen, 2); off += 2;
+    memcpy(buf + off, tool_name.data, nlen); off += nlen;
+    memcpy(buf + off, g_stage_buf, (size_t)g_stage_len);
+    off += (uint32_t)g_stage_len;
+
+    int64_t r = send_msg(conn_id, MSG_TOOL_CALL, 0, buf, off);
+    free(buf);
+    return r;
+}
+
+/* Send TOOL_RESULT (as reply) */
+int64_t aria_uacp_send_tool_result(int64_t conn_id, int32_t orig_seq,
+                                   int32_t result_status, AriaString result_data) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -1;
+    }
+
+    uint32_t plen = 1 + (uint32_t)result_data.length;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    buf[0] = (uint8_t)result_status;
+    memcpy(buf + 1, result_data.data, (size_t)result_data.length);
+
+    /* Use orig_seq as the frame's SeqID with FLAG_REPLY */
+    if (send_frame(g_conns[conn_id].fd, FLAG_REPLY, MSG_TOOL_RESULT,
+                   (uint32_t)orig_seq, buf, plen) < 0) {
+        free(buf);
+        set_error_errno("send tool_result");
+        return -1;
+    }
+    free(buf);
+    return (int64_t)orig_seq;
+}
+
+/* Send STATUS */
+int64_t aria_uacp_send_status(int64_t conn_id, int32_t code, AriaString message) {
+    uint32_t plen = 2 + 2 + (uint32_t)message.length;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint16_t c = (uint16_t)code;
+    memcpy(buf, &c, 2);
+    uint16_t mlen = (uint16_t)message.length;
+    memcpy(buf + 2, &mlen, 2);
+    memcpy(buf + 4, message.data, (size_t)message.length);
+
+    int64_t r = send_msg(conn_id, MSG_STATUS, 0, buf, plen);
+    free(buf);
+    return r;
+}
+
+/* Send ERROR (as reply) */
+int64_t aria_uacp_send_error(int64_t conn_id, int32_t orig_seq,
+                             int32_t error_code, AriaString message) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -1;
+    }
+
+    uint32_t plen = 4 + (uint32_t)message.length;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t ec = (uint32_t)error_code;
+    memcpy(buf, &ec, 4);
+    memcpy(buf + 4, message.data, (size_t)message.length);
+
+    if (send_frame(g_conns[conn_id].fd, FLAG_REPLY, MSG_ERROR,
+                   (uint32_t)orig_seq, buf, plen) < 0) {
+        free(buf);
+        set_error_errno("send error");
+        return -1;
+    }
+    free(buf);
+    return (int64_t)orig_seq;
+}
+
+/* Send PING */
+int64_t aria_uacp_send_ping(int64_t conn_id) {
+    return send_msg(conn_id, MSG_PING, 0, NULL, 0);
+}
+
+/* Send PONG (reply to ping) */
+int64_t aria_uacp_send_pong(int64_t conn_id, int32_t ping_seq) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -1;
+    }
+    if (send_frame(g_conns[conn_id].fd, FLAG_REPLY, MSG_PONG,
+                   (uint32_t)ping_seq, NULL, 0) < 0) {
+        set_error_errno("send pong");
+        return -1;
+    }
+    return (int64_t)ping_seq;
+}
+
+/* Send STREAM_START */
+int64_t aria_uacp_send_stream_start(int64_t conn_id, int32_t stream_id,
+                                    AriaString tag) {
+    uint32_t plen = 4 + 2 + (uint32_t)tag.length;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t sid = (uint32_t)stream_id;
+    memcpy(buf, &sid, 4);
+    uint16_t tlen = (uint16_t)tag.length;
+    memcpy(buf + 4, &tlen, 2);
+    memcpy(buf + 6, tag.data, (size_t)tag.length);
+
+    int64_t r = send_msg(conn_id, MSG_STREAM_START, 0, buf, plen);
+    free(buf);
+    return r;
+}
+
+/* Send STREAM_CHUNK */
+int64_t aria_uacp_send_stream_text(int64_t conn_id, int32_t stream_id,
+                                   AriaString chunk) {
+    uint32_t plen = 4 + (uint32_t)chunk.length;
+    uint8_t *buf = (uint8_t *)malloc(plen);
+    if (!buf) { set_error("OOM"); return -1; }
+
+    uint32_t sid = (uint32_t)stream_id;
+    memcpy(buf, &sid, 4);
+    memcpy(buf + 4, chunk.data, (size_t)chunk.length);
+
+    int64_t r = send_msg(conn_id, MSG_STREAM_CHUNK, 0, buf, plen);
+    free(buf);
+    return r;
+}
+
+/* Send STREAM_END */
+int64_t aria_uacp_send_stream_stop(int64_t conn_id, int32_t stream_id) {
+    uint32_t sid = (uint32_t)stream_id;
+    return send_msg(conn_id, MSG_STREAM_END, 0, (uint8_t *)&sid, 4);
+}
+
+/* ── Receiving messages ── */
+
+int64_t aria_uacp_recv(int64_t conn_id) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -1;
+    }
+
+    uint8_t  flags;
+    uint16_t type;
+    uint32_t seq;
+    uint8_t *payload;
+    uint32_t payload_len;
+
+    int r = recv_frame(g_conns[conn_id].fd, &flags, &type, &seq,
+                       &payload, &payload_len);
+    if (r < 0) {
+        if (r == -1) set_error("Connection closed");
+        return -1;
+    }
+
+    int idx = alloc_msg();
+    if (idx < 0) {
+        if (payload) free(payload);
+        set_error("No free message slots");
+        return -1;
+    }
+
+    g_msgs[idx].type = type;
+    g_msgs[idx].seq_id = seq;
+    g_msgs[idx].flags = flags;
+    g_msgs[idx].payload = payload;
+    g_msgs[idx].payload_len = payload_len;
+    g_msgs[idx].conn_id = conn_id;
+
+    return (int64_t)idx;
+}
+
+/* Non-blocking receive — returns -1 if no data available */
+int64_t aria_uacp_try_recv(int64_t conn_id) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -2;
+    }
+
+    struct pollfd pfd;
+    pfd.fd = g_conns[conn_id].fd;
+    pfd.events = POLLIN;
+    int r = poll(&pfd, 1, 0);
+    if (r <= 0) return -1;
+
+    return aria_uacp_recv(conn_id);
+}
+
+/* Timed receive — waits up to timeout_ms */
+int64_t aria_uacp_recv_timeout(int64_t conn_id, int32_t timeout_ms) {
+    if (conn_id < 0 || conn_id >= MAX_CONNECTIONS || !g_conns[conn_id].alive) {
+        set_error("Invalid connection ID");
+        return -2;
+    }
+
+    struct pollfd pfd;
+    pfd.fd = g_conns[conn_id].fd;
+    pfd.events = POLLIN;
+    int r = poll(&pfd, 1, timeout_ms);
+    if (r <= 0) return -1;
+
+    return aria_uacp_recv(conn_id);
+}
+
+/* ── Message inspection ── */
+
+int32_t aria_uacp_msg_type(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return -1;
+    return (int32_t)g_msgs[msg_id].type;
+}
+
+int32_t aria_uacp_msg_seq(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return -1;
+    return (int32_t)g_msgs[msg_id].seq_id;
+}
+
+int32_t aria_uacp_msg_flags(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return 0;
+    return (int32_t)g_msgs[msg_id].flags;
+}
+
+int32_t aria_uacp_msg_payload_len(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return 0;
+    return (int32_t)g_msgs[msg_id].payload_len;
+}
+
+int32_t aria_uacp_msg_is_reply(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return 0;
+    return (g_msgs[msg_id].flags & FLAG_REPLY) ? 1 : 0;
+}
+
+/* TEXT message: return the text content */
+AriaString aria_uacp_msg_text(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_TEXT) {
+        return make_aria_string("");
+    }
+    AriaString r;
+    r.length = (int64_t)g_msgs[msg_id].payload_len;
+    r.data = (char *)malloc(r.length + 1);
+    memcpy(r.data, g_msgs[msg_id].payload, (size_t)r.length);
+    r.data[r.length] = '\0';
+    return r;
+}
+
+/* HELLO / HELLO_ACK: extract agent name */
+AriaString aria_uacp_msg_agent_name(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].payload_len < 2) {
+        return make_aria_string("");
+    }
+    uint8_t *p = g_msgs[msg_id].payload;
+    uint16_t nlen;
+    memcpy(&nlen, p, 2);
+    if (2 + nlen > g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    AriaString r;
+    r.length = (int64_t)nlen;
+    r.data = (char *)malloc(nlen + 1);
+    memcpy(r.data, p + 2, nlen);
+    r.data[nlen] = '\0';
+    return r;
+}
+
+/* HELLO / HELLO_ACK: extract agent version */
+AriaString aria_uacp_msg_agent_version(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].payload_len < 4) {
+        return make_aria_string("");
+    }
+    uint8_t *p = g_msgs[msg_id].payload;
+    uint16_t nlen;
+    memcpy(&nlen, p, 2);
+    uint32_t off = 2 + nlen;
+    if (off + 2 > g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    uint16_t vlen;
+    memcpy(&vlen, p + off, 2);
+    off += 2;
+    if (off + vlen > g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    AriaString r;
+    r.length = (int64_t)vlen;
+    r.data = (char *)malloc(vlen + 1);
+    memcpy(r.data, p + off, vlen);
+    r.data[vlen] = '\0';
+    return r;
+}
+
+/* TOOL_CALL: extract tool name */
+AriaString aria_uacp_msg_tool_name(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_TOOL_CALL ||
+        g_msgs[msg_id].payload_len < 2) {
+        return make_aria_string("");
+    }
+    uint8_t *p = g_msgs[msg_id].payload;
+    uint16_t nlen;
+    memcpy(&nlen, p, 2);
+    if (2 + nlen > g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    AriaString r;
+    r.length = (int64_t)nlen;
+    r.data = (char *)malloc(nlen + 1);
+    memcpy(r.data, p + 2, nlen);
+    r.data[nlen] = '\0';
+    return r;
+}
+
+/* TOOL_CALL: extract params JSON */
+AriaString aria_uacp_msg_tool_params(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_TOOL_CALL ||
+        g_msgs[msg_id].payload_len < 2) {
+        return make_aria_string("");
+    }
+    uint8_t *p = g_msgs[msg_id].payload;
+    uint16_t nlen;
+    memcpy(&nlen, p, 2);
+    uint32_t off = 2 + nlen;
+    if (off >= g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    uint32_t plen = g_msgs[msg_id].payload_len - off;
+    AriaString r;
+    r.length = (int64_t)plen;
+    r.data = (char *)malloc(plen + 1);
+    memcpy(r.data, p + off, plen);
+    r.data[plen] = '\0';
+    return r;
+}
+
+/* TOOL_RESULT: extract status code */
+int32_t aria_uacp_msg_result_status(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_TOOL_RESULT ||
+        g_msgs[msg_id].payload_len < 1) {
+        return -1;
+    }
+    return (int32_t)g_msgs[msg_id].payload[0];
+}
+
+/* TOOL_RESULT: extract result data */
+AriaString aria_uacp_msg_result_data(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_TOOL_RESULT ||
+        g_msgs[msg_id].payload_len < 2) {
+        return make_aria_string("");
+    }
+    uint32_t dlen = g_msgs[msg_id].payload_len - 1;
+    AriaString r;
+    r.length = (int64_t)dlen;
+    r.data = (char *)malloc(dlen + 1);
+    memcpy(r.data, g_msgs[msg_id].payload + 1, dlen);
+    r.data[dlen] = '\0';
+    return r;
+}
+
+/* STATUS: extract code */
+int32_t aria_uacp_msg_status_code(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_STATUS ||
+        g_msgs[msg_id].payload_len < 2) {
+        return -1;
+    }
+    uint16_t c;
+    memcpy(&c, g_msgs[msg_id].payload, 2);
+    return (int32_t)c;
+}
+
+/* STATUS: extract message */
+AriaString aria_uacp_msg_status_text(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_STATUS ||
+        g_msgs[msg_id].payload_len < 4) {
+        return make_aria_string("");
+    }
+    uint16_t mlen;
+    memcpy(&mlen, g_msgs[msg_id].payload + 2, 2);
+    if (4 + mlen > g_msgs[msg_id].payload_len) return make_aria_string("");
+
+    AriaString r;
+    r.length = (int64_t)mlen;
+    r.data = (char *)malloc(mlen + 1);
+    memcpy(r.data, g_msgs[msg_id].payload + 4, mlen);
+    r.data[mlen] = '\0';
+    return r;
+}
+
+/* ERROR: extract error code */
+int32_t aria_uacp_msg_error_code(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_ERROR ||
+        g_msgs[msg_id].payload_len < 4) {
+        return -1;
+    }
+    uint32_t ec;
+    memcpy(&ec, g_msgs[msg_id].payload, 4);
+    return (int32_t)ec;
+}
+
+/* ERROR: extract error message */
+AriaString aria_uacp_msg_error_text(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].type != MSG_ERROR ||
+        g_msgs[msg_id].payload_len < 5) {
+        return make_aria_string("");
+    }
+    uint32_t mlen = g_msgs[msg_id].payload_len - 4;
+    AriaString r;
+    r.length = (int64_t)mlen;
+    r.data = (char *)malloc(mlen + 1);
+    memcpy(r.data, g_msgs[msg_id].payload + 4, mlen);
+    r.data[mlen] = '\0';
+    return r;
+}
+
+/* STREAM_CHUNK: extract stream_id */
+int32_t aria_uacp_msg_stream_id(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].payload_len < 4) {
+        return -1;
+    }
+    uint32_t sid;
+    memcpy(&sid, g_msgs[msg_id].payload, 4);
+    return (int32_t)sid;
+}
+
+/* STREAM_CHUNK: extract text data */
+AriaString aria_uacp_msg_stream_data(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive ||
+        g_msgs[msg_id].payload_len < 5) {
+        return make_aria_string("");
+    }
+    uint32_t dlen = g_msgs[msg_id].payload_len - 4;
+    AriaString r;
+    r.length = (int64_t)dlen;
+    r.data = (char *)malloc(dlen + 1);
+    memcpy(r.data, g_msgs[msg_id].payload + 4, dlen);
+    r.data[dlen] = '\0';
+    return r;
+}
+
+/* Release a received message */
+void aria_uacp_msg_release(int64_t msg_id) {
+    if (msg_id < 0 || msg_id >= MAX_MESSAGES || !g_msgs[msg_id].alive) return;
+    if (g_msgs[msg_id].payload) {
+        free(g_msgs[msg_id].payload);
+        g_msgs[msg_id].payload = NULL;
+    }
+    g_msgs[msg_id].alive = 0;
+}
+
+/* ── Message type names (for debugging) ── */
+
+AriaString aria_uacp_type_name(int32_t msg_type) {
+    switch ((uint16_t)msg_type) {
+        case MSG_HELLO:        return make_aria_string("HELLO");
+        case MSG_HELLO_ACK:    return make_aria_string("HELLO_ACK");
+        case MSG_PING:         return make_aria_string("PING");
+        case MSG_PONG:         return make_aria_string("PONG");
+        case MSG_TEXT:         return make_aria_string("TEXT");
+        case MSG_BINARY:       return make_aria_string("BINARY");
+        case MSG_TENSOR:       return make_aria_string("TENSOR");
+        case MSG_TOOL_CALL:    return make_aria_string("TOOL_CALL");
+        case MSG_TOOL_RESULT:  return make_aria_string("TOOL_RESULT");
+        case MSG_STREAM_START: return make_aria_string("STREAM_START");
+        case MSG_STREAM_CHUNK: return make_aria_string("STREAM_CHUNK");
+        case MSG_STREAM_END:   return make_aria_string("STREAM_END");
+        case MSG_STATUS:       return make_aria_string("STATUS");
+        case MSG_STORE:        return make_aria_string("STORE");
+        case MSG_LOAD:         return make_aria_string("LOAD");
+        case MSG_ERROR:        return make_aria_string("ERROR");
+        default:               return make_aria_string("UNKNOWN");
+    }
+}
+
+/* ── Message type constants (for Aria comparison) ── */
+int32_t aria_uacp_TYPE_HELLO(void)        { return MSG_HELLO; }
+int32_t aria_uacp_TYPE_HELLO_ACK(void)    { return MSG_HELLO_ACK; }
+int32_t aria_uacp_TYPE_PING(void)         { return MSG_PING; }
+int32_t aria_uacp_TYPE_PONG(void)         { return MSG_PONG; }
+int32_t aria_uacp_TYPE_TEXT(void)         { return MSG_TEXT; }
+int32_t aria_uacp_TYPE_BINARY(void)       { return MSG_BINARY; }
+int32_t aria_uacp_TYPE_TENSOR(void)       { return MSG_TENSOR; }
+int32_t aria_uacp_TYPE_TOOL_CALL(void)    { return MSG_TOOL_CALL; }
+int32_t aria_uacp_TYPE_TOOL_RESULT(void)  { return MSG_TOOL_RESULT; }
+int32_t aria_uacp_TYPE_STREAM_START(void) { return MSG_STREAM_START; }
+int32_t aria_uacp_TYPE_STREAM_CHUNK(void) { return MSG_STREAM_CHUNK; }
+int32_t aria_uacp_TYPE_STREAM_END(void)   { return MSG_STREAM_END; }
+int32_t aria_uacp_TYPE_STATUS(void)       { return MSG_STATUS; }
+int32_t aria_uacp_TYPE_ERROR(void)        { return MSG_ERROR; }

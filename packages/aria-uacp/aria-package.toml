@@ -1,0 +1,11 @@
+[package]
+name = "aria-uacp"
+version = "0.2.10"
+description = "Universal AI Communication Protocol — binary machine-to-machine protocol for AI-native systems"
+authors = ["Randy"]
+license = "MIT"
+
+[build]
+link_libraries = ["aria_uacp_shim"]
+
+[dependencies]

@@ -1,0 +1,276 @@
+// test_aria_transformer.aria — Transformer model test suite
+//
+// Compile:
+//   ariac test_aria_transformer.aria -o test_transformer -L../shim -laria_transformer_shim -lm
+// Run:
+//   LD_LIBRARY_PATH=../shim ./test_transformer
+
+use "print_utils.aria".*;
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_transformer_shim" {
+    func:aria_transformer_last_error     = string();
+    func:aria_transformer_set_seed       = void(int32:seed);
+    func:aria_transformer_create         = int64(int32:d_model, int32:n_heads, int32:n_layers, int32:d_ff, int32:vocab_size, int32:max_seq);
+    func:aria_transformer_destroy        = void(int64:id);
+    func:aria_transformer_d_model        = int32(int64:id);
+    func:aria_transformer_n_heads        = int32(int64:id);
+    func:aria_transformer_n_layers       = int32(int64:id);
+    func:aria_transformer_vocab_size     = int32(int64:id);
+    func:aria_transformer_param_count    = int64(int64:id);
+    func:aria_transformer_scratch_create = int64(int32:rows, int32:cols);
+    func:aria_transformer_scratch_destroy = void(int64:id);
+    func:aria_transformer_scratch_set    = void(int64:id, int32:idx, flt64:val);
+    func:aria_transformer_scratch_get    = flt64(int64:id, int32:idx);
+    func:aria_transformer_scratch_rows   = int32(int64:id);
+    func:aria_transformer_scratch_cols   = int32(int64:id);
+    func:aria_transformer_forward        = int64(int64:model, int64:input, int32:causal);
+    func:aria_transformer_get_attention  = int64(int64:model, int64:input, int32:layer, int32:head, int32:causal);
+    func:aria_transformer_argmax         = int32(int64:scratch, int32:row);
+    func:aria_transformer_softmax_row    = void(int64:scratch, int32:row);
+}
+
+func:main = int32() {
+    int32:passed = 0i32;
+    int32:total  = 0i32;
+
+    println("=== aria-transformer test suite ===");
+    println("");
+
+    aria_transformer_set_seed(42i32);
+
+    // ── Test 1: Create model ──
+    total += 1i32;
+    int64:model = aria_transformer_create(16i32, 2i32, 2i32, 32i32, 64i32, 16i32);
+    print("Test 1 — Create model (d=16 h=2 L=2 ff=32 V=64 seq=16): id=");
+    println(string_from_int(model));
+    if (model >= 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 2: Model metadata ──
+    total += 1i32;
+    int32:dm = aria_transformer_d_model(model);
+    int32:nh = aria_transformer_n_heads(model);
+    int32:nl = aria_transformer_n_layers(model);
+    int32:vs = aria_transformer_vocab_size(model);
+    print("Test 2 — Metadata: d_model=");
+    print(string_from_int(@cast<int64>(dm)));
+    print(" n_heads=");
+    print(string_from_int(@cast<int64>(nh)));
+    print(" n_layers=");
+    print(string_from_int(@cast<int64>(nl)));
+    print(" vocab=");
+    println(string_from_int(@cast<int64>(vs)));
+    if (dm == 16i32) {
+        if (nh == 2i32) {
+            if (nl == 2i32) {
+                if (vs == 64i32) {
+                    println("  PASS");
+                    passed += 1i32;
+                }
+            }
+        }
+    }
+
+    // ── Test 3: Parameter count ──
+    total += 1i32;
+    int64:params = aria_transformer_param_count(model);
+    print("Test 3 — Param count: ");
+    println(string_from_int(params));
+    if (params > 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 4: Create input scratch (sequence of token IDs) ──
+    total += 1i32;
+    int64:inp = aria_transformer_scratch_create(4i32, 1i32);
+    aria_transformer_scratch_set(inp, 0i32, 1.0);
+    aria_transformer_scratch_set(inp, 1i32, 5.0);
+    aria_transformer_scratch_set(inp, 2i32, 10.0);
+    aria_transformer_scratch_set(inp, 3i32, 3.0);
+    int32:ir = aria_transformer_scratch_rows(inp);
+    print("Test 4 — Input scratch: rows=");
+    println(string_from_int(@cast<int64>(ir)));
+    if (ir == 4i32) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 5: Forward pass (no causal mask) ──
+    total += 1i32;
+    int64:logits = aria_transformer_forward(model, inp, 0i32);
+    print("Test 5 — Forward pass (bidirectional): logits_id=");
+    println(string_from_int(logits));
+    if (logits >= 0i64) {
+        int32:lr = aria_transformer_scratch_rows(logits);
+        int32:lc = aria_transformer_scratch_cols(logits);
+        print("  Output shape: [");
+        print(string_from_int(@cast<int64>(lr)));
+        print(" x ");
+        print(string_from_int(@cast<int64>(lc)));
+        println("]");
+        if (lr == 4i32) {
+            if (lc == 64i32) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+    }
+
+    // ── Test 6: Argmax prediction ──
+    total += 1i32;
+    int32:pred0 = aria_transformer_argmax(logits, 0i32);
+    int32:pred1 = aria_transformer_argmax(logits, 1i32);
+    int32:pred3 = aria_transformer_argmax(logits, 3i32);
+    print("Test 6 — Argmax predictions: pos0=");
+    print(string_from_int(@cast<int64>(pred0)));
+    print(" pos1=");
+    print(string_from_int(@cast<int64>(pred1)));
+    print(" pos3=");
+    println(string_from_int(@cast<int64>(pred3)));
+    if (pred0 >= 0i32) {
+        if (pred0 < 64i32) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 7: Forward pass (causal mask) ──
+    total += 1i32;
+    int64:logits2 = aria_transformer_forward(model, inp, 1i32);
+    print("Test 7 — Forward pass (causal): logits_id=");
+    println(string_from_int(logits2));
+    if (logits2 >= 0i64) {
+        int32:lr2 = aria_transformer_scratch_rows(logits2);
+        int32:lc2 = aria_transformer_scratch_cols(logits2);
+        if (lr2 == 4i32) {
+            if (lc2 == 64i32) {
+                // Causal and non-causal should give different results
+                flt64:v1 = aria_transformer_scratch_get(logits, 0i32);
+                flt64:v2 = aria_transformer_scratch_get(logits2, 0i32);
+                print("  Bidirectional[0,0]=");
+                print(string_from_int(@cast<int64>(v1 * 1000.0)));
+                print("/1000  Causal[0,0]=");
+                println(string_from_int(@cast<int64>(v2 * 1000.0)));
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+    }
+
+    // ── Test 8: Softmax on logits (probabilities) ──
+    total += 1i32;
+    aria_transformer_softmax_row(logits2, 0i32);
+    flt64:prob0 = aria_transformer_scratch_get(logits2, 0i32);
+    // Sum first few probs to verify they're in valid range
+    flt64:prob_sum = 0.0;
+    int32:pi = 0i32;
+    for (pi = 0i32; pi < 64i32; pi += 1i32) {
+        flt64:pv = aria_transformer_scratch_get(logits2, pi);
+        prob_sum = prob_sum + pv;
+    }
+    print("Test 8 — Softmax probabilities: sum=");
+    println(string_from_int(@cast<int64>(prob_sum * 1000.0)));
+    // Sum should be ~1.0
+    if (prob_sum > 0.99) {
+        if (prob_sum < 1.01) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 9: Attention visualization ──
+    total += 1i32;
+    int64:attn = aria_transformer_get_attention(model, inp, 0i32, 0i32, 1i32);
+    print("Test 9 — Attention weights (layer=0 head=0): id=");
+    println(string_from_int(attn));
+    if (attn >= 0i64) {
+        int32:ar = aria_transformer_scratch_rows(attn);
+        int32:ac = aria_transformer_scratch_cols(attn);
+        print("  Shape: [");
+        print(string_from_int(@cast<int64>(ar)));
+        print(" x ");
+        print(string_from_int(@cast<int64>(ac)));
+        println("]");
+        // Verify attention row sums to ~1.0
+        flt64:asum = 0.0;
+        int32:ai = 0i32;
+        for (ai = 0i32; ai < 4i32; ai += 1i32) {
+            flt64:av = aria_transformer_scratch_get(attn, ai);
+            asum = asum + av;
+        }
+        print("  Row 0 sum=");
+        println(string_from_int(@cast<int64>(asum * 1000.0)));
+        if (ar == 4i32) {
+            if (ac == 4i32) {
+                if (asum > 0.99) {
+                    if (asum < 1.01) {
+                        println("  PASS");
+                        passed += 1i32;
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Test 10: Multi-layer model ──
+    total += 1i32;
+    int64:big = aria_transformer_create(32i32, 4i32, 4i32, 64i32, 128i32, 32i32);
+    print("Test 10 — Larger model (d=32 h=4 L=4 ff=64 V=128): id=");
+    println(string_from_int(big));
+    if (big >= 0i64) {
+        int64:bp = aria_transformer_param_count(big);
+        print("  Params=");
+        println(string_from_int(bp));
+        // Quick forward pass
+        int64:binp = aria_transformer_scratch_create(8i32, 1i32);
+        int32:bi = 0i32;
+        for (bi = 0i32; bi < 8i32; bi += 1i32) {
+            aria_transformer_scratch_set(binp, bi, @cast<flt64>(bi) * 5.0);
+        }
+        int64:bout = aria_transformer_forward(big, binp, 1i32);
+        if (bout >= 0i64) {
+            int32:br = aria_transformer_scratch_rows(bout);
+            int32:bc = aria_transformer_scratch_cols(bout);
+            print("  Output: [");
+            print(string_from_int(@cast<int64>(br)));
+            print(" x ");
+            print(string_from_int(@cast<int64>(bc)));
+            println("]");
+            if (br == 8i32) {
+                if (bc == 128i32) {
+                    println("  PASS");
+                    passed += 1i32;
+                }
+            }
+            aria_transformer_scratch_destroy(bout);
+        }
+        aria_transformer_scratch_destroy(binp);
+        aria_transformer_destroy(big);
+    }
+
+    // ── Cleanup ──
+    if (attn >= 0i64) { aria_transformer_scratch_destroy(attn); }
+    aria_transformer_scratch_destroy(logits);
+    aria_transformer_scratch_destroy(logits2);
+    aria_transformer_scratch_destroy(inp);
+    aria_transformer_destroy(model);
+
+    // ── Summary ──
+    println("");
+    print("=== Results: ");
+    print(string_from_int(@cast<int64>(passed)));
+    print("/");
+    print(string_from_int(@cast<int64>(total)));
+    println(" passed ===");
+
+    if (passed == total) {
+        println("ALL TESTS PASSED");
+        pass(0i32);
+    }
+    pass(1i32);
+};

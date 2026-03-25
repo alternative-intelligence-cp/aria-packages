@@ -1,0 +1,10 @@
+[package]
+name = "aria-mamba"
+version = "0.2.10"
+description = "Mamba selective state space model for Aria"
+license = "MIT"
+
+[build]
+shim = "shim/aria_mamba_shim.c"
+lib  = "libaria_mamba_shim.so"
+flags = ["-lm"]

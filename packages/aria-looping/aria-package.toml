@@ -1,0 +1,10 @@
+[package]
+name = "aria-looping"
+version = "0.2.10"
+description = "Looping / iterative-refinement model (Universal Transformer style) for Aria"
+license = "MIT"
+
+[build]
+shim = "shim/aria_looping_shim.c"
+lib  = "libaria_looping_shim.so"
+flags = ["-lm"]

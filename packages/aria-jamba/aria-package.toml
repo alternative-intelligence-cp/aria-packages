@@ -1,0 +1,10 @@
+[package]
+name = "aria-jamba"
+version = "0.2.10"
+description = "Jamba hybrid model (Transformer attention + Mamba SSM + MoE) for Aria"
+license = "MIT"
+
+[build]
+shim = "shim/aria_jamba_shim.c"
+lib  = "libaria_jamba_shim.so"
+flags = ["-lm"]

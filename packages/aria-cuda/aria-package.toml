@@ -1,0 +1,15 @@
+[package]
+name = "aria-cuda"
+version = "0.2.10"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "CUDA runtime FFI bindings — device management, memory ops, cuBLAS linear algebra"
+keywords = ["cuda", "gpu", "nvidia", "cublas", "ffi"]
+categories = ["gpu"]
+
+[dependencies]
+
+[build]
+type = "library"
+entry = "src/aria_cuda.aria"
+link_libraries = ["aria_cuda_shim", "cudart", "cublas"]

@@ -1,0 +1,167 @@
+// aria_uacp.aria — Universal AI Communication Protocol
+//
+// Binary machine-to-machine protocol for AI-native systems.
+// See spec/UACP_SPEC.md for full protocol specification.
+
+extern "aria_uacp_shim" {
+    // ── Core ──
+    func:aria_uacp_last_error     = string();
+    func:aria_uacp_version        = int32();
+    func:aria_uacp_default_port   = int32();
+
+    // ── Server ──
+    func:aria_uacp_server_create      = int64(int32:port);
+    func:aria_uacp_server_create_unix = int64(string:path);
+    func:aria_uacp_accept             = int64(int64:server_id);
+    func:aria_uacp_try_accept         = int64(int64:server_id);
+
+    // ── Client ──
+    func:aria_uacp_conn           = int64(string:host, int32:port);
+    func:aria_uacp_conn_unix      = int64(string:path);
+    func:aria_uacp_conn_loopback  = int64(int32:port);
+
+    // ── Connection ──
+    func:aria_uacp_shutdown       = void(int64:id);
+    func:aria_uacp_is_alive       = int32(int64:id);
+
+    // ── Send messages ──
+    func:aria_uacp_send_hello      = int64(int64:conn, string:agent_name, string:agent_version);
+    func:aria_uacp_send_hello_ack  = int64(int64:conn, string:agent_name, string:agent_version);
+    func:aria_uacp_send_text       = int64(int64:conn, string:text);
+    func:aria_uacp_send_binary     = int64(int64:conn, string:tag, int64:data_ptr, int32:data_len);
+    func:aria_uacp_send_tool_call  = int64(int64:conn, string:tool_name, string:params_json);
+    func:aria_uacp_send_tool_result = int64(int64:conn, int32:orig_seq, int32:result_status, string:result_data);
+    func:aria_uacp_send_status     = int64(int64:conn, int32:code, string:message);
+    func:aria_uacp_send_error      = int64(int64:conn, int32:orig_seq, int32:error_code, string:message);
+    func:aria_uacp_send_ping       = int64(int64:conn);
+    func:aria_uacp_send_pong       = int64(int64:conn, int32:ping_seq);
+    func:aria_uacp_send_stream_start = int64(int64:conn, int32:stream_id, string:tag);
+    func:aria_uacp_send_stream_text  = int64(int64:conn, int32:stream_id, string:chunk);
+    func:aria_uacp_send_stream_stop  = int64(int64:conn, int32:stream_id);
+
+    // ── Receive ──
+    func:aria_uacp_recv            = int64(int64:conn);
+    func:aria_uacp_try_recv        = int64(int64:conn);
+    func:aria_uacp_recv_timeout    = int64(int64:conn, int32:timeout_ms);
+
+    // ── Message inspection ──
+    func:aria_uacp_msg_type        = int32(int64:msg);
+    func:aria_uacp_msg_seq         = int32(int64:msg);
+    func:aria_uacp_msg_flags       = int32(int64:msg);
+    func:aria_uacp_msg_payload_len = int32(int64:msg);
+    func:aria_uacp_msg_is_reply    = int32(int64:msg);
+    func:aria_uacp_msg_text        = string(int64:msg);
+    func:aria_uacp_msg_agent_name  = string(int64:msg);
+    func:aria_uacp_msg_agent_version = string(int64:msg);
+    func:aria_uacp_msg_tool_name   = string(int64:msg);
+    func:aria_uacp_msg_tool_params = string(int64:msg);
+    func:aria_uacp_msg_result_status = int32(int64:msg);
+    func:aria_uacp_msg_result_data = string(int64:msg);
+    func:aria_uacp_msg_status_code = int32(int64:msg);
+    func:aria_uacp_msg_status_text = string(int64:msg);
+    func:aria_uacp_msg_error_code  = int32(int64:msg);
+    func:aria_uacp_msg_error_text  = string(int64:msg);
+    func:aria_uacp_msg_stream_id   = int32(int64:msg);
+    func:aria_uacp_msg_stream_data = string(int64:msg);
+    func:aria_uacp_msg_release     = void(int64:msg);
+
+    // ── Utilities ──
+    func:aria_uacp_type_name       = string(int32:msg_type);
+
+    // ── Type constants ──
+    func:aria_uacp_TYPE_HELLO        = int32();
+    func:aria_uacp_TYPE_HELLO_ACK    = int32();
+    func:aria_uacp_TYPE_PING         = int32();
+    func:aria_uacp_TYPE_PONG         = int32();
+    func:aria_uacp_TYPE_TEXT         = int32();
+    func:aria_uacp_TYPE_BINARY       = int32();
+    func:aria_uacp_TYPE_TENSOR       = int32();
+    func:aria_uacp_TYPE_TOOL_CALL    = int32();
+    func:aria_uacp_TYPE_TOOL_RESULT  = int32();
+    func:aria_uacp_TYPE_STREAM_START = int32();
+    func:aria_uacp_TYPE_STREAM_CHUNK = int32();
+    func:aria_uacp_TYPE_STREAM_END   = int32();
+    func:aria_uacp_TYPE_STATUS       = int32();
+    func:aria_uacp_TYPE_ERROR        = int32();
+}
+
+// ── Public API wrappers ──
+
+pub func:uacp_last_error = string() { string:r = aria_uacp_last_error(); pass(r); };
+pub func:uacp_version = int32() { pass(aria_uacp_version()); };
+pub func:uacp_default_port = int32() { pass(aria_uacp_default_port()); };
+
+// Server
+pub func:uacp_server_create = int64(int32:port) { pass(aria_uacp_server_create(port)); };
+pub func:uacp_server_create_unix = int64(string:path) { pass(aria_uacp_server_create_unix(path)); };
+pub func:uacp_accept = int64(int64:server_id) { pass(aria_uacp_accept(server_id)); };
+pub func:uacp_try_accept = int64(int64:server_id) { pass(aria_uacp_try_accept(server_id)); };
+
+// Client
+pub func:uacp_conn = int64(string:host, int32:port) { pass(aria_uacp_conn(host, port)); };
+pub func:uacp_conn_unix = int64(string:path) { pass(aria_uacp_conn_unix(path)); };
+pub func:uacp_conn_loopback = int64(int32:port) { pass(aria_uacp_conn_loopback(port)); };
+
+// Connection management
+pub func:uacp_shutdown = void(int64:id) { aria_uacp_shutdown(id); };
+pub func:uacp_is_alive = int32(int64:id) { pass(aria_uacp_is_alive(id)); };
+
+// Send
+pub func:uacp_send_hello = int64(int64:c, string:name, string:ver) { pass(aria_uacp_send_hello(c, name, ver)); };
+pub func:uacp_send_hello_ack = int64(int64:c, string:name, string:ver) { pass(aria_uacp_send_hello_ack(c, name, ver)); };
+pub func:uacp_send_text = int64(int64:c, string:text) { pass(aria_uacp_send_text(c, text)); };
+pub func:uacp_send_binary = int64(int64:c, string:tag, int64:ptr, int32:len) { pass(aria_uacp_send_binary(c, tag, ptr, len)); };
+pub func:uacp_send_tool_call = int64(int64:c, string:name, string:params) { pass(aria_uacp_send_tool_call(c, name, params)); };
+pub func:uacp_send_tool_result = int64(int64:c, int32:seq, int32:st, string:data) { pass(aria_uacp_send_tool_result(c, seq, st, data)); };
+pub func:uacp_send_status = int64(int64:c, int32:code, string:msg) { pass(aria_uacp_send_status(c, code, msg)); };
+pub func:uacp_send_error = int64(int64:c, int32:seq, int32:code, string:msg) { pass(aria_uacp_send_error(c, seq, code, msg)); };
+pub func:uacp_send_ping = int64(int64:c) { pass(aria_uacp_send_ping(c)); };
+pub func:uacp_send_pong = int64(int64:c, int32:seq) { pass(aria_uacp_send_pong(c, seq)); };
+pub func:uacp_send_stream_start = int64(int64:c, int32:sid, string:tag) { pass(aria_uacp_send_stream_start(c, sid, tag)); };
+pub func:uacp_send_stream_text = int64(int64:c, int32:sid, string:chunk) { pass(aria_uacp_send_stream_text(c, sid, chunk)); };
+pub func:uacp_send_stream_stop = int64(int64:c, int32:sid) { pass(aria_uacp_send_stream_stop(c, sid)); };
+
+// Receive
+pub func:uacp_recv = int64(int64:c) { pass(aria_uacp_recv(c)); };
+pub func:uacp_try_recv = int64(int64:c) { pass(aria_uacp_try_recv(c)); };
+pub func:uacp_recv_timeout = int64(int64:c, int32:ms) { pass(aria_uacp_recv_timeout(c, ms)); };
+
+// Message inspection
+pub func:uacp_msg_type = int32(int64:m) { pass(aria_uacp_msg_type(m)); };
+pub func:uacp_msg_seq = int32(int64:m) { pass(aria_uacp_msg_seq(m)); };
+pub func:uacp_msg_flags = int32(int64:m) { pass(aria_uacp_msg_flags(m)); };
+pub func:uacp_msg_payload_len = int32(int64:m) { pass(aria_uacp_msg_payload_len(m)); };
+pub func:uacp_msg_is_reply = int32(int64:m) { pass(aria_uacp_msg_is_reply(m)); };
+pub func:uacp_msg_text = string(int64:m) { string:r = aria_uacp_msg_text(m); pass(r); };
+pub func:uacp_msg_agent_name = string(int64:m) { string:r = aria_uacp_msg_agent_name(m); pass(r); };
+pub func:uacp_msg_agent_version = string(int64:m) { string:r = aria_uacp_msg_agent_version(m); pass(r); };
+pub func:uacp_msg_tool_name = string(int64:m) { string:r = aria_uacp_msg_tool_name(m); pass(r); };
+pub func:uacp_msg_tool_params = string(int64:m) { string:r = aria_uacp_msg_tool_params(m); pass(r); };
+pub func:uacp_msg_result_status = int32(int64:m) { pass(aria_uacp_msg_result_status(m)); };
+pub func:uacp_msg_result_data = string(int64:m) { string:r = aria_uacp_msg_result_data(m); pass(r); };
+pub func:uacp_msg_status_code = int32(int64:m) { pass(aria_uacp_msg_status_code(m)); };
+pub func:uacp_msg_status_text = string(int64:m) { string:r = aria_uacp_msg_status_text(m); pass(r); };
+pub func:uacp_msg_error_code = int32(int64:m) { pass(aria_uacp_msg_error_code(m)); };
+pub func:uacp_msg_error_text = string(int64:m) { string:r = aria_uacp_msg_error_text(m); pass(r); };
+pub func:uacp_msg_stream_id = int32(int64:m) { pass(aria_uacp_msg_stream_id(m)); };
+pub func:uacp_msg_stream_data = string(int64:m) { string:r = aria_uacp_msg_stream_data(m); pass(r); };
+pub func:uacp_msg_release = void(int64:m) { aria_uacp_msg_release(m); };
+
+// Utilities
+pub func:uacp_type_name = string(int32:t) { string:r = aria_uacp_type_name(t); pass(r); };
+
+// Type constants
+pub func:uacp_TYPE_HELLO = int32() { pass(aria_uacp_TYPE_HELLO()); };
+pub func:uacp_TYPE_HELLO_ACK = int32() { pass(aria_uacp_TYPE_HELLO_ACK()); };
+pub func:uacp_TYPE_PING = int32() { pass(aria_uacp_TYPE_PING()); };
+pub func:uacp_TYPE_PONG = int32() { pass(aria_uacp_TYPE_PONG()); };
+pub func:uacp_TYPE_TEXT = int32() { pass(aria_uacp_TYPE_TEXT()); };
+pub func:uacp_TYPE_BINARY = int32() { pass(aria_uacp_TYPE_BINARY()); };
+pub func:uacp_TYPE_TENSOR = int32() { pass(aria_uacp_TYPE_TENSOR()); };
+pub func:uacp_TYPE_TOOL_CALL = int32() { pass(aria_uacp_TYPE_TOOL_CALL()); };
+pub func:uacp_TYPE_TOOL_RESULT = int32() { pass(aria_uacp_TYPE_TOOL_RESULT()); };
+pub func:uacp_TYPE_STREAM_START = int32() { pass(aria_uacp_TYPE_STREAM_START()); };
+pub func:uacp_TYPE_STREAM_CHUNK = int32() { pass(aria_uacp_TYPE_STREAM_CHUNK()); };
+pub func:uacp_TYPE_STREAM_END = int32() { pass(aria_uacp_TYPE_STREAM_END()); };
+pub func:uacp_TYPE_STATUS = int32() { pass(aria_uacp_TYPE_STATUS()); };
+pub func:uacp_TYPE_ERROR = int32() { pass(aria_uacp_TYPE_ERROR()); };

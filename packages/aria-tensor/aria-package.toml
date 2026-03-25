@@ -1,0 +1,15 @@
+[package]
+name = "aria-tensor"
+version = "0.2.10"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "CPU float32 tensor library — create, reshape, matmul, activations, reductions"
+keywords = ["tensor", "matrix", "linear-algebra", "ml", "neural-network"]
+categories = ["math", "ml"]
+
+[dependencies]
+
+[build]
+type = "library"
+entry = "src/aria_tensor.aria"
+link_libraries = ["aria_tensor_shim", "m"]

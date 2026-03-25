@@ -1,0 +1,313 @@
+// test_aria_uacp.aria — UACP protocol test suite
+//
+// Tests loopback client-server communication.
+// Server listens on port 19317 (test port), client connects, messages exchanged.
+//
+// Compile:
+//   ariac test_aria_uacp.aria -o test_uacp -L../shim -laria_uacp_shim -lpthread
+// Run:
+//   LD_LIBRARY_PATH=../shim ./test_uacp
+
+use "print_utils.aria".*;
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_uacp_shim" {
+    func:aria_uacp_last_error     = string();
+    func:aria_uacp_version        = int32();
+    func:aria_uacp_default_port   = int32();
+
+    func:aria_uacp_server_create  = int64(int32:port);
+    func:aria_uacp_accept         = int64(int64:server_id);
+    func:aria_uacp_try_accept     = int64(int64:server_id);
+    func:aria_uacp_conn_loopback  = int64(int32:port);
+    func:aria_uacp_shutdown       = void(int64:id);
+    func:aria_uacp_is_alive       = int32(int64:id);
+
+    func:aria_uacp_send_hello     = int64(int64:conn, string:name, string:version);
+    func:aria_uacp_send_hello_ack = int64(int64:conn, string:name, string:version);
+    func:aria_uacp_send_text      = int64(int64:conn, string:text);
+    func:aria_uacp_send_tool_call = int64(int64:conn, string:tool_name, string:params_json);
+    func:aria_uacp_send_tool_result = int64(int64:conn, int32:orig_seq, int32:status, string:data);
+    func:aria_uacp_send_status    = int64(int64:conn, int32:code, string:msg);
+    func:aria_uacp_send_error     = int64(int64:conn, int32:orig_seq, int32:code, string:msg);
+    func:aria_uacp_send_ping      = int64(int64:conn);
+    func:aria_uacp_send_pong      = int64(int64:conn, int32:seq);
+    func:aria_uacp_send_stream_start = int64(int64:conn, int32:sid, string:tag);
+    func:aria_uacp_send_stream_text  = int64(int64:conn, int32:sid, string:chunk);
+    func:aria_uacp_send_stream_stop  = int64(int64:conn, int32:sid);
+
+    func:aria_uacp_recv           = int64(int64:conn);
+    func:aria_uacp_recv_timeout   = int64(int64:conn, int32:timeout_ms);
+
+    func:aria_uacp_msg_type       = int32(int64:msg);
+    func:aria_uacp_msg_seq        = int32(int64:msg);
+    func:aria_uacp_msg_is_reply   = int32(int64:msg);
+    func:aria_uacp_msg_text       = string(int64:msg);
+    func:aria_uacp_msg_agent_name = string(int64:msg);
+    func:aria_uacp_msg_agent_version = string(int64:msg);
+    func:aria_uacp_msg_tool_name  = string(int64:msg);
+    func:aria_uacp_msg_tool_params = string(int64:msg);
+    func:aria_uacp_msg_result_status = int32(int64:msg);
+    func:aria_uacp_msg_result_data = string(int64:msg);
+    func:aria_uacp_msg_status_code = int32(int64:msg);
+    func:aria_uacp_msg_status_text = string(int64:msg);
+    func:aria_uacp_msg_error_code = int32(int64:msg);
+    func:aria_uacp_msg_error_text = string(int64:msg);
+    func:aria_uacp_msg_stream_id  = int32(int64:msg);
+    func:aria_uacp_msg_stream_data = string(int64:msg);
+    func:aria_uacp_msg_release    = void(int64:msg);
+
+    func:aria_uacp_type_name      = string(int32:t);
+
+    func:aria_uacp_TYPE_HELLO     = int32();
+    func:aria_uacp_TYPE_HELLO_ACK = int32();
+    func:aria_uacp_TYPE_TEXT      = int32();
+    func:aria_uacp_TYPE_TOOL_CALL = int32();
+    func:aria_uacp_TYPE_TOOL_RESULT = int32();
+    func:aria_uacp_TYPE_STATUS    = int32();
+    func:aria_uacp_TYPE_ERROR     = int32();
+    func:aria_uacp_TYPE_PING      = int32();
+    func:aria_uacp_TYPE_PONG      = int32();
+    func:aria_uacp_TYPE_STREAM_START = int32();
+    func:aria_uacp_TYPE_STREAM_CHUNK = int32();
+    func:aria_uacp_TYPE_STREAM_END   = int32();
+}
+
+func:main = int32() {
+    int32:passed = 0i32;
+    int32:total  = 0i32;
+    int32:test_port = 19317i32;
+
+    println("=== aria-uacp test suite ===");
+    println("");
+
+    // ── Test 1: Version + default port ──
+    total += 1i32;
+    int32:ver = aria_uacp_version();
+    int32:dp = aria_uacp_default_port();
+    print("Test 1 — Version=");
+    print(string_from_int(@cast<int64>(ver)));
+    print(" DefaultPort=");
+    println(string_from_int(@cast<int64>(dp)));
+    if (ver == 1i32) {
+        if (dp == 9317i32) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 2: Type name lookup ──
+    total += 1i32;
+    string:tn = aria_uacp_type_name(aria_uacp_TYPE_TEXT());
+    print("Test 2 — TypeName(TEXT)=");
+    println(tn);
+    if (tn == "TEXT") {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 3: Create server ──
+    total += 1i32;
+    int64:srv = aria_uacp_server_create(test_port);
+    print("Test 3 — Server create: id=");
+    println(string_from_int(srv));
+    if (srv >= 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 4: Client connect ──
+    total += 1i32;
+    int64:cli = aria_uacp_conn_loopback(test_port);
+    print("Test 4 — Client connect: id=");
+    println(string_from_int(cli));
+    if (cli >= 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 5: Accept connection ──
+    total += 1i32;
+    int64:peer = aria_uacp_accept(srv);
+    print("Test 5 — Accept: peer_id=");
+    println(string_from_int(peer));
+    if (peer >= 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 6: HELLO handshake ──
+    total += 1i32;
+    aria_uacp_send_hello(cli, "TestClient", "1.0.0");
+    int64:m1 = aria_uacp_recv(peer);
+    int32:m1t = aria_uacp_msg_type(m1);
+    string:m1name = aria_uacp_msg_agent_name(m1);
+    string:m1ver = aria_uacp_msg_agent_version(m1);
+    print("Test 6 — HELLO: name=");
+    print(m1name);
+    print(" ver=");
+    println(m1ver);
+    if (m1t == aria_uacp_TYPE_HELLO()) {
+        if (m1name == "TestClient") {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+    aria_uacp_msg_release(m1);
+
+    // ── Test 7: HELLO_ACK ──
+    total += 1i32;
+    aria_uacp_send_hello_ack(peer, "TestServer", "1.0.0");
+    int64:m2 = aria_uacp_recv(cli);
+    int32:m2t = aria_uacp_msg_type(m2);
+    string:m2name = aria_uacp_msg_agent_name(m2);
+    print("Test 7 — HELLO_ACK: name=");
+    println(m2name);
+    if (m2t == aria_uacp_TYPE_HELLO_ACK()) {
+        if (m2name == "TestServer") {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+    aria_uacp_msg_release(m2);
+
+    // ── Test 8: TEXT message roundtrip ──
+    total += 1i32;
+    aria_uacp_send_text(cli, "Hello from Aria!");
+    int64:m3 = aria_uacp_recv(peer);
+    int32:m3t = aria_uacp_msg_type(m3);
+    string:m3text = aria_uacp_msg_text(m3);
+    print("Test 8 — TEXT: '");
+    print(m3text);
+    println("'");
+    if (m3t == aria_uacp_TYPE_TEXT()) {
+        if (m3text == "Hello from Aria!") {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+    aria_uacp_msg_release(m3);
+
+    // ── Test 9: TOOL_CALL + TOOL_RESULT ──
+    total += 1i32;
+    aria_uacp_send_tool_call(cli, "compile", "{\"file\":\"test.aria\"}");
+    int64:m4 = aria_uacp_recv(peer);
+    string:m4tool = aria_uacp_msg_tool_name(m4);
+    string:m4params = aria_uacp_msg_tool_params(m4);
+    int32:m4seq = aria_uacp_msg_seq(m4);
+    print("Test 9 — TOOL_CALL: tool=");
+    print(m4tool);
+    print(" params=");
+    println(m4params);
+    // Send result back
+    aria_uacp_send_tool_result(peer, m4seq, 0i32, "compiled OK");
+    int64:m5 = aria_uacp_recv(cli);
+    int32:m5status = aria_uacp_msg_result_status(m5);
+    string:m5data = aria_uacp_msg_result_data(m5);
+    int32:m5reply = aria_uacp_msg_is_reply(m5);
+    if (m4tool == "compile") {
+        if (m5status == 0i32) {
+            if (m5reply == 1i32) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+    }
+    aria_uacp_msg_release(m4);
+    aria_uacp_msg_release(m5);
+
+    // ── Test 10: STATUS message ──
+    total += 1i32;
+    aria_uacp_send_status(peer, 0i32, "all systems nominal");
+    int64:m6 = aria_uacp_recv(cli);
+    int32:m6code = aria_uacp_msg_status_code(m6);
+    string:m6text = aria_uacp_msg_status_text(m6);
+    print("Test 10 — STATUS: code=");
+    print(string_from_int(@cast<int64>(m6code)));
+    print(" msg=");
+    println(m6text);
+    if (m6code == 0i32) {
+        if (m6text == "all systems nominal") {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+    aria_uacp_msg_release(m6);
+
+    // ── Test 11: ERROR message ──
+    total += 1i32;
+    aria_uacp_send_error(peer, 1i32, 3i32, "tool not found");
+    int64:m7 = aria_uacp_recv(cli);
+    int32:m7ec = aria_uacp_msg_error_code(m7);
+    string:m7et = aria_uacp_msg_error_text(m7);
+    int32:m7rp = aria_uacp_msg_is_reply(m7);
+    print("Test 11 — ERROR: code=");
+    print(string_from_int(@cast<int64>(m7ec)));
+    print(" msg=");
+    println(m7et);
+    if (m7ec == 3i32) {
+        if (m7rp == 1i32) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+    aria_uacp_msg_release(m7);
+
+    // ── Test 12: STREAM messages ──
+    total += 1i32;
+    aria_uacp_send_stream_start(cli, 42i32, "token_stream");
+    aria_uacp_send_stream_text(cli, 42i32, "Hello ");
+    aria_uacp_send_stream_text(cli, 42i32, "World");
+    aria_uacp_send_stream_stop(cli, 42i32);
+
+    int64:s1 = aria_uacp_recv(peer);
+    int64:s2 = aria_uacp_recv(peer);
+    int64:s3 = aria_uacp_recv(peer);
+    int64:s4 = aria_uacp_recv(peer);
+
+    int32:s1t = aria_uacp_msg_type(s1);
+    int32:s2id = aria_uacp_msg_stream_id(s2);
+    string:s2d = aria_uacp_msg_stream_data(s2);
+    string:s3d = aria_uacp_msg_stream_data(s3);
+    int32:s4t = aria_uacp_msg_type(s4);
+
+    print("Test 12 — STREAM: chunk1='");
+    print(s2d);
+    print("' chunk2='");
+    print(s3d);
+    println("'");
+
+    if (s1t == aria_uacp_TYPE_STREAM_START()) {
+        if (s2d == "Hello ") {
+            if (s4t == aria_uacp_TYPE_STREAM_END()) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+    }
+
+    aria_uacp_msg_release(s1);
+    aria_uacp_msg_release(s2);
+    aria_uacp_msg_release(s3);
+    aria_uacp_msg_release(s4);
+
+    // ── Cleanup ──
+    aria_uacp_shutdown(cli);
+    aria_uacp_shutdown(peer);
+    aria_uacp_shutdown(srv);
+
+    // ── Summary ──
+    println("");
+    print("=== Results: ");
+    print(string_from_int(@cast<int64>(passed)));
+    print("/");
+    print(string_from_int(@cast<int64>(total)));
+    println(" passed ===");
+
+    if (passed == total) {
+        println("ALL TESTS PASSED");
+        pass(0i32);
+    }
+    pass(1i32);
+};

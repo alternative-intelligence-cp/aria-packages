@@ -1,0 +1,287 @@
+// test_aria_cuda.aria — CUDA runtime + cuBLAS integration test
+//
+// Tests: device detection, memory alloc/release, host buffer management,
+//        host↔device transfer roundtrip, cuBLAS dot product, cuBLAS sgemm.
+//
+// Compile:
+//   ariac test_aria_cuda.aria -o test_cuda \
+//     -L../shim -laria_cuda_shim \
+//     -L/usr/local/cuda/lib64 -lcudart -lcublas
+//
+// Run:
+//   LD_LIBRARY_PATH=../shim:/usr/local/cuda/lib64 ./test_cuda
+
+use "print_utils.aria".*;
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_cuda_shim" {
+    func:aria_cuda_last_error       = string();
+    func:aria_cuda_device_count     = int32();
+    func:aria_cuda_set_device       = int32(int32:device);
+    func:aria_cuda_get_device       = int32();
+    func:aria_cuda_device_name      = string(int32:device);
+    func:aria_cuda_device_total_memory = int64(int32:device);
+    func:aria_cuda_device_compute_major = int32(int32:device);
+    func:aria_cuda_device_compute_minor = int32(int32:device);
+    func:aria_cuda_device_max_threads = int32(int32:device);
+    func:aria_cuda_device_sm_count  = int32(int32:device);
+    func:aria_cuda_device_warp_size = int32(int32:device);
+    func:aria_cuda_device_sync      = int32();
+    func:aria_cuda_malloc           = int64(int64:size_bytes);
+    func:aria_cuda_release          = int32(int64:device_ptr);
+    func:aria_cuda_memset           = int32(int64:device_ptr, int32:value, int64:size_bytes);
+    func:aria_cuda_mem_get_free     = int64();
+    func:aria_cuda_mem_get_total    = int64();
+    func:aria_cuda_host_alloc       = int64(int32:count);
+    func:aria_cuda_host_release     = void(int64:handle);
+    func:aria_cuda_host_set         = void(int64:handle, int32:index, flt64:value);
+    func:aria_cuda_host_get         = flt64(int64:handle, int32:index);
+    func:aria_cuda_host_upload      = int64(int64:host_handle, int32:count);
+    func:aria_cuda_host_download    = int32(int64:host_handle, int64:device_handle, int32:count);
+    func:aria_cuda_blas_init        = int32();
+    func:aria_cuda_blas_shutdown    = int32();
+    func:aria_cuda_blas_sdot        = flt64(int32:n, int64:d_x, int64:d_y);
+    func:aria_cuda_blas_snrm2       = flt64(int32:n, int64:d_x);
+    func:aria_cuda_blas_sgemm       = int32(int32:M, int32:N, int32:K, flt64:alpha, int64:d_A, int32:lda, int64:d_B, int32:ldb, flt64:beta, int64:d_C, int32:ldc);
+    func:aria_cuda_vec_add          = int32(int32:n, int64:d_x, int64:d_y);
+}
+
+func:main = int32() {
+    int32:passed = 0i32;
+    int32:total  = 0i32;
+
+    println("=== aria-cuda test suite ===");
+    println("");
+
+    // ── Test 1: Device count ──
+    total += 1i32;
+    int32:count = aria_cuda_device_count();
+    print("Test 1 — Device count: ");
+    println(string_from_int(@cast<int64>(count)));
+    if (count > 0i32) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 2: Set/get device ──
+    total += 1i32;
+    int32:rc_set = aria_cuda_set_device(0i32);
+    int32:dev = aria_cuda_get_device();
+    print("Test 2 — Set/get device 0: got ");
+    println(string_from_int(@cast<int64>(dev)));
+    if (dev == 0i32) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 3: Device name ──
+    total += 1i32;
+    string:nm = aria_cuda_device_name(0i32);
+    print("Test 3 — Device name: ");
+    println(nm);
+    if (string_length(nm) > 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 4: Device properties ──
+    total += 1i32;
+    int32:cmaj = aria_cuda_device_compute_major(0i32);
+    int32:cmin = aria_cuda_device_compute_minor(0i32);
+    int64:tmem = aria_cuda_device_total_memory(0i32);
+    int32:sms  = aria_cuda_device_sm_count(0i32);
+    int32:warpsz = aria_cuda_device_warp_size(0i32);
+    print("Test 4 — Compute: ");
+    print(string_from_int(@cast<int64>(cmaj)));
+    print(".");
+    println(string_from_int(@cast<int64>(cmin)));
+    print("  Total memory: ");
+    println(string_from_int(tmem));
+    print("  SMs: ");
+    println(string_from_int(@cast<int64>(sms)));
+    print("  Warp size: ");
+    println(string_from_int(@cast<int64>(warpsz)));
+    if (cmaj > 0i32) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 5: Memory info ──
+    total += 1i32;
+    int64:mem_total = aria_cuda_mem_get_total();
+    int64:mem_avail = aria_cuda_mem_get_free();
+    print("Test 5 — GPU total mem: ");
+    println(string_from_int(mem_total));
+    print("  GPU available: ");
+    println(string_from_int(mem_avail));
+    if (mem_total > 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 6: GPU malloc + release ──
+    total += 1i32;
+    int64:d_ptr = aria_cuda_malloc(1024i64);
+    print("Test 6 — GPU malloc 1024 bytes: handle=");
+    println(string_from_int(d_ptr));
+    if (d_ptr != 0i64) {
+        int32:rc_rel = aria_cuda_release(d_ptr);
+        if (rc_rel == 0i32) {
+            println("  Released OK — PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 7: Host buffer alloc/set/get ──
+    total += 1i32;
+    int64:h = aria_cuda_host_alloc(4i32);
+    aria_cuda_host_set(h, 0i32, 1.5);
+    aria_cuda_host_set(h, 1i32, 2.5);
+    aria_cuda_host_set(h, 2i32, 3.5);
+    aria_cuda_host_set(h, 3i32, 4.5);
+    flt64:v0 = aria_cuda_host_get(h, 0i32);
+    flt64:v1 = aria_cuda_host_get(h, 1i32);
+    flt64:v2 = aria_cuda_host_get(h, 2i32);
+    flt64:v3 = aria_cuda_host_get(h, 3i32);
+    print("Test 7 — Host buffer [");
+    print(string_from_int(@cast<int64>(v0)));
+    print(", ");
+    print(string_from_int(@cast<int64>(v1)));
+    print(", ");
+    print(string_from_int(@cast<int64>(v2)));
+    print(", ");
+    print(string_from_int(@cast<int64>(v3)));
+    println("]");
+    // v0 truncated to int should be 1
+    if (@cast<int64>(v0) == 1i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 8: Host → Device → Host roundtrip ──
+    total += 1i32;
+    int64:d_vec = aria_cuda_host_upload(h, 4i32);
+    print("Test 8 — Upload 4 floats to GPU: device_ptr=");
+    println(string_from_int(d_vec));
+
+    // Create fresh host buffer for download
+    int64:h2 = aria_cuda_host_alloc(4i32);
+    int32:rc_dl = aria_cuda_host_download(h2, d_vec, 4i32);
+
+    flt64:r0 = aria_cuda_host_get(h2, 0i32);
+    flt64:r1 = aria_cuda_host_get(h2, 1i32);
+    flt64:r2 = aria_cuda_host_get(h2, 2i32);
+    flt64:r3 = aria_cuda_host_get(h2, 3i32);
+    print("  Downloaded: [");
+    print(string_from_int(@cast<int64>(r0)));
+    print(", ");
+    print(string_from_int(@cast<int64>(r1)));
+    print(", ");
+    print(string_from_int(@cast<int64>(r2)));
+    print(", ");
+    print(string_from_int(@cast<int64>(r3)));
+    println("]");
+    // Roundtrip should preserve truncated values
+    if (@cast<int64>(r0) == 1i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 9: cuBLAS dot product ──
+    total += 1i32;
+    int32:rc_blas = aria_cuda_blas_init();
+    print("Test 9 — cuBLAS init: ");
+    println(string_from_int(@cast<int64>(rc_blas)));
+
+    // dot([1.5, 2.5, 3.5, 4.5], [1.5, 2.5, 3.5, 4.5])
+    // = 1.5*1.5 + 2.5*2.5 + 3.5*3.5 + 4.5*4.5
+    // = 2.25 + 6.25 + 12.25 + 20.25 = 41.0
+    flt64:dot = aria_cuda_blas_sdot(4i32, d_vec, d_vec);
+    print("  dot product = ");
+    println(string_from_int(@cast<int64>(dot)));
+    // Truncated to int64 should be 41
+    if (@cast<int64>(dot) == 41i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 10: cuBLAS SGEMM (2x2 matrix multiply) ──
+    total += 1i32;
+    // A = [[1, 2], [3, 4]]  (column-major: [1, 3, 2, 4])
+    // B = [[5, 6], [7, 8]]  (column-major: [5, 7, 6, 8])
+    // C = A * B = [[19, 22], [43, 50]]  (column-major: [19, 43, 22, 50])
+    int64:hA = aria_cuda_host_alloc(4i32);
+    aria_cuda_host_set(hA, 0i32, 1.0);
+    aria_cuda_host_set(hA, 1i32, 3.0);
+    aria_cuda_host_set(hA, 2i32, 2.0);
+    aria_cuda_host_set(hA, 3i32, 4.0);
+
+    int64:hB = aria_cuda_host_alloc(4i32);
+    aria_cuda_host_set(hB, 0i32, 5.0);
+    aria_cuda_host_set(hB, 1i32, 7.0);
+    aria_cuda_host_set(hB, 2i32, 6.0);
+    aria_cuda_host_set(hB, 3i32, 8.0);
+
+    int64:hC = aria_cuda_host_alloc(4i32);
+    aria_cuda_host_set(hC, 0i32, 0.0);
+    aria_cuda_host_set(hC, 1i32, 0.0);
+    aria_cuda_host_set(hC, 2i32, 0.0);
+    aria_cuda_host_set(hC, 3i32, 0.0);
+
+    int64:dA = aria_cuda_host_upload(hA, 4i32);
+    int64:dB = aria_cuda_host_upload(hB, 4i32);
+    int64:dC = aria_cuda_host_upload(hC, 4i32);
+
+    // sgemm: C = 1.0 * A * B + 0.0 * C
+    int32:rc_gemm = aria_cuda_blas_sgemm(2i32, 2i32, 2i32, 1.0, dA, 2i32, dB, 2i32, 0.0, dC, 2i32);
+    print("Test 10 — SGEMM rc=");
+    println(string_from_int(@cast<int64>(rc_gemm)));
+
+    int32:rc_dl2 = aria_cuda_host_download(hC, dC, 4i32);
+    flt64:c00 = aria_cuda_host_get(hC, 0i32);
+    flt64:c10 = aria_cuda_host_get(hC, 1i32);
+    flt64:c01 = aria_cuda_host_get(hC, 2i32);
+    flt64:c11 = aria_cuda_host_get(hC, 3i32);
+    print("  C = [[");
+    print(string_from_int(@cast<int64>(c00)));
+    print(", ");
+    print(string_from_int(@cast<int64>(c01)));
+    print("], [");
+    print(string_from_int(@cast<int64>(c10)));
+    print(", ");
+    print(string_from_int(@cast<int64>(c11)));
+    println("]]");
+    // C[0][0] should be 19
+    if (@cast<int64>(c00) == 19i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Cleanup ──
+    int32:rc_rel1 = aria_cuda_release(dA);
+    int32:rc_rel2 = aria_cuda_release(dB);
+    int32:rc_rel3 = aria_cuda_release(dC);
+    int32:rc_rel4 = aria_cuda_release(d_vec);
+    aria_cuda_host_release(h);
+    aria_cuda_host_release(h2);
+    aria_cuda_host_release(hA);
+    aria_cuda_host_release(hB);
+    aria_cuda_host_release(hC);
+    int32:rc_bshut = aria_cuda_blas_shutdown();
+    int32:rc_reset = aria_cuda_device_sync();
+
+    // ── Summary ──
+    println("");
+    print("=== Results: ");
+    print(string_from_int(@cast<int64>(passed)));
+    print("/");
+    print(string_from_int(@cast<int64>(total)));
+    println(" passed ===");
+
+    if (passed == total) {
+        println("ALL TESTS PASSED");
+        pass(0i32);
+    }
+    pass(1i32);
+};

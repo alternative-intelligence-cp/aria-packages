@@ -1,0 +1,284 @@
+// test_aria_jamba.aria — Jamba hybrid model test suite
+//
+// Compile:
+//   ariac test_aria_jamba.aria -o test_jamba -L../shim -laria_jamba_shim -lm
+// Run:
+//   LD_LIBRARY_PATH=../shim ./test_jamba
+
+use "print_utils.aria".*;
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern "aria_jamba_shim" {
+    func:aria_jamba_last_error     = string();
+    func:aria_jamba_set_seed       = void(int32:seed);
+    func:aria_jamba_create         = int64(int32:d_model, int32:n_heads, int32:d_inner, int32:d_state, int32:dt_rank, int32:conv_k, int32:n_layers, int32:attn_every, int32:n_experts, int32:top_k, int32:vocab_size, int32:max_seq);
+    func:aria_jamba_destroy        = void(int64:id);
+    func:aria_jamba_d_model        = int32(int64:id);
+    func:aria_jamba_n_heads        = int32(int64:id);
+    func:aria_jamba_d_inner        = int32(int64:id);
+    func:aria_jamba_n_layers       = int32(int64:id);
+    func:aria_jamba_vocab_size     = int32(int64:id);
+    func:aria_jamba_n_experts      = int32(int64:id);
+    func:aria_jamba_top_k          = int32(int64:id);
+    func:aria_jamba_attn_every     = int32(int64:id);
+    func:aria_jamba_layer_is_attn  = int32(int64:id, int32:layer);
+    func:aria_jamba_param_count    = int64(int64:id);
+    func:aria_jamba_scratch_create = int64(int32:rows, int32:cols);
+    func:aria_jamba_scratch_destroy = void(int64:id);
+    func:aria_jamba_scratch_set    = void(int64:id, int32:idx, flt64:val);
+    func:aria_jamba_scratch_get    = flt64(int64:id, int32:idx);
+    func:aria_jamba_scratch_rows   = int32(int64:id);
+    func:aria_jamba_scratch_cols   = int32(int64:id);
+    func:aria_jamba_forward        = int64(int64:model, int64:input);
+    func:aria_jamba_argmax         = int32(int64:scratch, int32:row);
+    func:aria_jamba_softmax_row    = void(int64:scratch, int32:row);
+}
+
+func:main = int32() {
+    int32:passed = 0i32;
+    int32:total  = 0i32;
+
+    println("=== aria-jamba test suite ===");
+    println("");
+
+    aria_jamba_set_seed(42i32);
+
+    // ── Test 1: Create model ──
+    // d_model=16, n_heads=4, d_inner=32, d_state=8, dt_rank=4, conv_k=4,
+    // n_layers=4, attn_every=2, n_experts=2, top_k=1, vocab=64, max_seq=16
+    total += 1i32;
+    int64:model = aria_jamba_create(16i32, 4i32, 32i32, 8i32, 4i32, 4i32, 4i32, 2i32, 2i32, 1i32, 64i32, 16i32);
+    print("Test 1 — Create model: id=");
+    println(string_from_int(model));
+    if (model >= 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 2: Metadata ──
+    total += 1i32;
+    int32:dm = aria_jamba_d_model(model);
+    int32:nh = aria_jamba_n_heads(model);
+    int32:di = aria_jamba_d_inner(model);
+    int32:nl = aria_jamba_n_layers(model);
+    int32:vs = aria_jamba_vocab_size(model);
+    int32:ne = aria_jamba_n_experts(model);
+    int32:tk = aria_jamba_top_k(model);
+    int32:ae = aria_jamba_attn_every(model);
+    print("Test 2 — d_model=");
+    print(string_from_int(@cast<int64>(dm)));
+    print(" n_heads=");
+    print(string_from_int(@cast<int64>(nh)));
+    print(" layers=");
+    print(string_from_int(@cast<int64>(nl)));
+    print(" experts=");
+    print(string_from_int(@cast<int64>(ne)));
+    print(" attn_every=");
+    println(string_from_int(@cast<int64>(ae)));
+    if (dm == 16i32) {
+        if (nh == 4i32) {
+            if (nl == 4i32) {
+                if (ne == 2i32) {
+                    println("  PASS");
+                    passed += 1i32;
+                }
+            }
+        }
+    }
+
+    // ── Test 3: Layer type pattern ──
+    total += 1i32;
+    // attn_every=2 → layers 0,2 are attn; layers 1,3 are mamba
+    int32:l0 = aria_jamba_layer_is_attn(model, 0i32);
+    int32:l1 = aria_jamba_layer_is_attn(model, 1i32);
+    int32:l2 = aria_jamba_layer_is_attn(model, 2i32);
+    int32:l3 = aria_jamba_layer_is_attn(model, 3i32);
+    print("Test 3 — Layer types: [");
+    print(string_from_int(@cast<int64>(l0)));
+    print(",");
+    print(string_from_int(@cast<int64>(l1)));
+    print(",");
+    print(string_from_int(@cast<int64>(l2)));
+    print(",");
+    print(string_from_int(@cast<int64>(l3)));
+    println("]");
+    if (l0 == 1i32) {
+        if (l1 == 0i32) {
+            if (l2 == 1i32) {
+                if (l3 == 0i32) {
+                    println("  PASS");
+                    passed += 1i32;
+                }
+            }
+        }
+    }
+
+    // ── Test 4: Parameter count ──
+    total += 1i32;
+    int64:params = aria_jamba_param_count(model);
+    print("Test 4 — Param count: ");
+    println(string_from_int(params));
+    if (params > 0i64) {
+        println("  PASS");
+        passed += 1i32;
+    }
+
+    // ── Test 5: Create input & forward ──
+    total += 1i32;
+    int64:inp = aria_jamba_scratch_create(4i32, 1i32);
+    aria_jamba_scratch_set(inp, 0i32, 1.0);
+    aria_jamba_scratch_set(inp, 1i32, 5.0);
+    aria_jamba_scratch_set(inp, 2i32, 10.0);
+    aria_jamba_scratch_set(inp, 3i32, 3.0);
+    int64:logits = aria_jamba_forward(model, inp);
+    print("Test 5 — Forward pass: logits_id=");
+    println(string_from_int(logits));
+    if (logits >= 0i64) {
+        int32:lr = aria_jamba_scratch_rows(logits);
+        int32:lc = aria_jamba_scratch_cols(logits);
+        print("  Output shape: [");
+        print(string_from_int(@cast<int64>(lr)));
+        print(" x ");
+        print(string_from_int(@cast<int64>(lc)));
+        println("]");
+        if (lr == 4i32) {
+            if (lc == 64i32) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+    }
+
+    // ── Test 6: Argmax ──
+    total += 1i32;
+    int32:pred0 = aria_jamba_argmax(logits, 0i32);
+    int32:pred3 = aria_jamba_argmax(logits, 3i32);
+    print("Test 6 — Predictions: pos0=");
+    print(string_from_int(@cast<int64>(pred0)));
+    print(" pos3=");
+    println(string_from_int(@cast<int64>(pred3)));
+    if (pred0 >= 0i32) {
+        if (pred0 < 64i32) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 7: Softmax ──
+    total += 1i32;
+    aria_jamba_softmax_row(logits, 1i32);
+    flt64:prob_sum = 0.0;
+    int32:pi = 0i32;
+    for (pi = 0i32; pi < 64i32; pi += 1i32) {
+        prob_sum = prob_sum + aria_jamba_scratch_get(logits, 64i32 + pi);
+    }
+    print("Test 7 — Softmax row1 sum=");
+    println(string_from_int(@cast<int64>(prob_sum * 1000.0)));
+    if (prob_sum > 0.99) {
+        if (prob_sum < 1.01) {
+            println("  PASS");
+            passed += 1i32;
+        }
+    }
+
+    // ── Test 8: Different input → different output ──
+    total += 1i32;
+    int64:inp2 = aria_jamba_scratch_create(4i32, 1i32);
+    aria_jamba_scratch_set(inp2, 0i32, 50.0);
+    aria_jamba_scratch_set(inp2, 1i32, 30.0);
+    aria_jamba_scratch_set(inp2, 2i32, 20.0);
+    aria_jamba_scratch_set(inp2, 3i32, 60.0);
+    int64:logits2 = aria_jamba_forward(model, inp2);
+    if (logits2 >= 0i64) {
+        int32:p2 = aria_jamba_argmax(logits2, 0i32);
+        print("Test 8 — Different input pred: ");
+        println(string_from_int(@cast<int64>(p2)));
+        if (p2 >= 0i32) {
+            if (p2 < 64i32) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+        aria_jamba_scratch_destroy(logits2);
+    }
+    aria_jamba_scratch_destroy(inp2);
+
+    // ── Test 9: Longer sequence ──
+    total += 1i32;
+    int64:inp3 = aria_jamba_scratch_create(10i32, 1i32);
+    int32:si = 0i32;
+    for (si = 0i32; si < 10i32; si += 1i32) {
+        aria_jamba_scratch_set(inp3, si, @cast<flt64>(si) * 2.0);
+    }
+    int64:logits3 = aria_jamba_forward(model, inp3);
+    print("Test 9 — Longer seq (len=10): ");
+    if (logits3 >= 0i64) {
+        int32:lr3 = aria_jamba_scratch_rows(logits3);
+        int32:lc3 = aria_jamba_scratch_cols(logits3);
+        print("[");
+        print(string_from_int(@cast<int64>(lr3)));
+        print(" x ");
+        print(string_from_int(@cast<int64>(lc3)));
+        println("]");
+        if (lr3 == 10i32) {
+            if (lc3 == 64i32) {
+                println("  PASS");
+                passed += 1i32;
+            }
+        }
+        aria_jamba_scratch_destroy(logits3);
+    }
+    aria_jamba_scratch_destroy(inp3);
+
+    // ── Test 10: Larger Jamba model ──
+    total += 1i32;
+    // d_model=32 n_heads=8 d_inner=64 d_state=16 dt_rank=8 conv_k=4
+    // 6 layers attn_every=3 → layers 0,3 attn; 1,2,4,5 mamba
+    // 4 experts top_k=2 vocab=128 max_seq=32
+    int64:big = aria_jamba_create(32i32, 8i32, 64i32, 16i32, 8i32, 4i32, 6i32, 3i32, 4i32, 2i32, 128i32, 32i32);
+    print("Test 10 — Larger Jamba (d=32 L=6 E=4): ");
+    if (big >= 0i64) {
+        int64:bp = aria_jamba_param_count(big);
+        print("params=");
+        println(string_from_int(bp));
+        int64:binp = aria_jamba_scratch_create(6i32, 1i32);
+        int32:bi = 0i32;
+        for (bi = 0i32; bi < 6i32; bi += 1i32) {
+            aria_jamba_scratch_set(binp, bi, @cast<flt64>(bi) * 7.0);
+        }
+        int64:bout = aria_jamba_forward(big, binp);
+        if (bout >= 0i64) {
+            int32:br = aria_jamba_scratch_rows(bout);
+            int32:bc = aria_jamba_scratch_cols(bout);
+            if (br == 6i32) {
+                if (bc == 128i32) {
+                    println("  PASS");
+                    passed += 1i32;
+                }
+            }
+            aria_jamba_scratch_destroy(bout);
+        }
+        aria_jamba_scratch_destroy(binp);
+        aria_jamba_destroy(big);
+    }
+
+    // ── Cleanup ──
+    aria_jamba_scratch_destroy(logits);
+    aria_jamba_scratch_destroy(inp);
+    aria_jamba_destroy(model);
+
+    // ── Summary ──
+    println("");
+    print("=== Results: ");
+    print(string_from_int(@cast<int64>(passed)));
+    print("/");
+    print(string_from_int(@cast<int64>(total)));
+    println(" passed ===");
+
+    if (passed == total) {
+        println("ALL TESTS PASSED");
+        pass(0i32);
+    }
+    pass(1i32);
+};

@@ -1,0 +1,48 @@
+// aria_mamba.aria — Mamba (Selective State Space Model)
+//
+// Linear-time sequence modeling with selective state spaces.
+// Based on Gu & Dao 2023.
+
+extern "aria_mamba_shim" {
+    func:aria_mamba_last_error     = string();
+    func:aria_mamba_set_seed       = void(int32:seed);
+    func:aria_mamba_create         = int64(int32:d_model, int32:d_inner, int32:d_state, int32:dt_rank, int32:n_layers, int32:conv_k, int32:vocab_size, int32:max_seq);
+    func:aria_mamba_destroy        = void(int64:id);
+    func:aria_mamba_d_model        = int32(int64:id);
+    func:aria_mamba_d_inner        = int32(int64:id);
+    func:aria_mamba_d_state        = int32(int64:id);
+    func:aria_mamba_n_layers       = int32(int64:id);
+    func:aria_mamba_vocab_size     = int32(int64:id);
+    func:aria_mamba_param_count    = int64(int64:id);
+    func:aria_mamba_scratch_create = int64(int32:rows, int32:cols);
+    func:aria_mamba_scratch_destroy = void(int64:id);
+    func:aria_mamba_scratch_set    = void(int64:id, int32:idx, flt64:val);
+    func:aria_mamba_scratch_get    = flt64(int64:id, int32:idx);
+    func:aria_mamba_scratch_rows   = int32(int64:id);
+    func:aria_mamba_scratch_cols   = int32(int64:id);
+    func:aria_mamba_forward        = int64(int64:model, int64:input);
+    func:aria_mamba_argmax         = int32(int64:scratch, int32:row);
+    func:aria_mamba_softmax_row    = void(int64:scratch, int32:row);
+}
+
+pub func:mamba_last_error = string() { string:r = aria_mamba_last_error(); pass(r); };
+pub func:mamba_set_seed = void(int32:s) { aria_mamba_set_seed(s); };
+pub func:mamba_create = int64(int32:d_model, int32:d_inner, int32:d_state, int32:dt_rank, int32:n_layers, int32:conv_k, int32:vocab_size, int32:max_seq) {
+    pass(aria_mamba_create(d_model, d_inner, d_state, dt_rank, n_layers, conv_k, vocab_size, max_seq));
+};
+pub func:mamba_destroy = void(int64:id) { aria_mamba_destroy(id); };
+pub func:mamba_d_model = int32(int64:id) { pass(aria_mamba_d_model(id)); };
+pub func:mamba_d_inner = int32(int64:id) { pass(aria_mamba_d_inner(id)); };
+pub func:mamba_d_state = int32(int64:id) { pass(aria_mamba_d_state(id)); };
+pub func:mamba_n_layers = int32(int64:id) { pass(aria_mamba_n_layers(id)); };
+pub func:mamba_vocab_size = int32(int64:id) { pass(aria_mamba_vocab_size(id)); };
+pub func:mamba_param_count = int64(int64:id) { pass(aria_mamba_param_count(id)); };
+pub func:mamba_scratch_create = int64(int32:r, int32:c) { pass(aria_mamba_scratch_create(r, c)); };
+pub func:mamba_scratch_destroy = void(int64:id) { aria_mamba_scratch_destroy(id); };
+pub func:mamba_scratch_set = void(int64:id, int32:idx, flt64:val) { aria_mamba_scratch_set(id, idx, val); };
+pub func:mamba_scratch_get = flt64(int64:id, int32:idx) { pass(aria_mamba_scratch_get(id, idx)); };
+pub func:mamba_scratch_rows = int32(int64:id) { pass(aria_mamba_scratch_rows(id)); };
+pub func:mamba_scratch_cols = int32(int64:id) { pass(aria_mamba_scratch_cols(id)); };
+pub func:mamba_forward = int64(int64:m, int64:inp) { pass(aria_mamba_forward(m, inp)); };
+pub func:mamba_argmax = int32(int64:s, int32:row) { pass(aria_mamba_argmax(s, row)); };
+pub func:mamba_softmax_row = void(int64:s, int32:row) { aria_mamba_softmax_row(s, row); };
