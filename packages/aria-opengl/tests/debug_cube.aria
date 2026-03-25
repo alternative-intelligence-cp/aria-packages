@@ -1,0 +1,212 @@
+// debug_cube.aria — Diagnostic for black screen issue
+//
+// Step 1: calls render_test_frame() which does everything in C
+// Step 2: tries the Aria-driven pipeline with debug output
+
+extern func:println = int32(string:msg);
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern func:aria_gl_init      = int32(int32:w, int32:h, string:title);
+extern func:aria_gl_quit      = void();
+extern func:aria_gl_swap      = void();
+extern func:aria_gl_set_vsync = int32(int32:on);
+extern func:aria_gl_viewport  = void(int32:x, int32:y, int32:w, int32:h);
+extern func:aria_gl_clear_color = void(flt32:r, flt32:g, flt32:b, flt32:a);
+extern func:aria_gl_clear     = void(int32:mask);
+extern func:aria_gl_enable    = void(int32:cap);
+
+extern func:aria_gl_build_program = int32(string:vert, string:frag);
+extern func:aria_gl_use_program   = void(int32:prog);
+extern func:aria_gl_delete_program = void(int32:prog);
+
+extern func:aria_gl_gen_vao       = int32();
+extern func:aria_gl_bind_vao      = void(int32:vao);
+extern func:aria_gl_delete_vao    = void(int32:vao);
+extern func:aria_gl_gen_buffer    = int32();
+extern func:aria_gl_bind_buffer   = void(int32:target, int32:buf);
+extern func:aria_gl_delete_buffer = void(int32:buf);
+
+extern func:aria_gl_buf_clear     = void();
+extern func:aria_gl_load_cube_geometry = void();
+extern func:aria_gl_buffer_data_f = void(int32:target, int32:usage);
+extern func:aria_gl_buf_count     = int32();
+
+extern func:aria_gl_vertex_attrib_pointer = void(int32:idx, int32:size,
+                                                  int32:stride, int32:offset);
+extern func:aria_gl_enable_vertex_attrib  = void(int32:idx);
+
+extern func:aria_gl_draw_arrays = void(int32:mode, int32:first, int32:count);
+
+extern func:aria_gl_get_uniform_location = int32(int32:prog, string:name);
+extern func:aria_gl_uniform_matrix4fv    = void(int32:loc);
+
+extern func:aria_gl_mat4_identity    = void();
+extern func:aria_gl_mat4_perspective = void(flt32:fov, flt32:aspect, flt32:near, flt32:far);
+extern func:aria_gl_mat4_translate   = void(flt32:x, flt32:y, flt32:z);
+extern func:aria_gl_mat4_rotate_y    = void(flt32:deg);
+extern func:aria_gl_mat4_rotate_x    = void(flt32:deg);
+extern func:aria_gl_mat4_store       = void(int32:slot);
+extern func:aria_gl_mat4_load        = void(int32:slot);
+extern func:aria_gl_mat4_mul_slots   = void(int32:a, int32:b);
+
+extern func:aria_gl_delay = void(int32:ms);
+
+extern func:aria_gl_COLOR_BUFFER_BIT = int32();
+extern func:aria_gl_DEPTH_BUFFER_BIT = int32();
+extern func:aria_gl_DEPTH_TEST       = int32();
+extern func:aria_gl_ARRAY_BUFFER     = int32();
+extern func:aria_gl_STATIC_DRAW      = int32();
+extern func:aria_gl_TRIANGLES        = int32();
+
+// diagnostics
+extern func:aria_gl_get_error       = int32();
+extern func:aria_gl_debug_matrix    = void();
+extern func:aria_gl_debug_float_arg = void(flt32:val);
+extern func:aria_gl_render_test_frame = int32(flt32:angle_y, flt32:angle_x);
+
+func:main = int32() {
+
+    drop(println("=== OpenGL Debug Test ==="));
+
+    // Step 0: test float argument passing
+    drop(println("Step 0: Testing float argument passing..."));
+    aria_gl_debug_float_arg(45.0f32);
+    aria_gl_debug_float_arg(1.333f32);
+    aria_gl_debug_float_arg(0.0f32 - 6.0f32);
+
+    // Step 1: Init window
+    drop(println("Step 1: Creating GL context..."));
+    int32:init_ok = aria_gl_init(800i32, 600i32, "Debug Cube");
+    if (init_ok != 0i32) {
+        drop(println("FAILED to create GL context"));
+        pass(1i32);
+    }
+    drop(println("  GL context OK"));
+
+    // Set viewport explicitly
+    aria_gl_viewport(0i32, 0i32, 800i32, 600i32);
+
+    // Step 2: render_test_frame (pure C rendering)
+    drop(println("Step 2: Running pure-C test frame (60 frames)..."));
+    int32:ctest = aria_gl_render_test_frame(0.0f32, 0.0f32);
+    if (ctest == 0i32) {
+        drop(println("  C test frame: OK"));
+    }
+    if (ctest != 0i32) {
+        drop(println("  C test frame: FAILED"));
+    }
+
+    // Step 3: Now try Aria-driven rendering
+    drop(println("Step 3: Aria-driven rendering (60 frames)..."));
+
+    // build shader
+    string:vs = "#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nuniform mat4 uMVP;\nout vec3 vColor;\nvoid main(){gl_Position=uMVP*vec4(aPos,1.0);vColor=aColor;}";
+    string:fs = "#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){FragColor=vec4(vColor,1.0);}";
+    int32:prog = aria_gl_build_program(vs, fs);
+    if (prog <= 0i32) {
+        drop(println("  Shader build FAILED"));
+        aria_gl_quit();
+        pass(1i32);
+    }
+    drop(println("  Shader compiled OK"));
+
+    int32:mvp_loc = aria_gl_get_uniform_location(prog, "uMVP");
+
+    // geometry
+    int32:vao = aria_gl_gen_vao();
+    int32:vbo = aria_gl_gen_buffer();
+    aria_gl_bind_vao(vao);
+    aria_gl_bind_buffer(aria_gl_ARRAY_BUFFER(), vbo);
+    aria_gl_buf_clear();
+    aria_gl_load_cube_geometry();
+    aria_gl_buffer_data_f(aria_gl_ARRAY_BUFFER(), aria_gl_STATIC_DRAW());
+    aria_gl_vertex_attrib_pointer(0i32, 3i32, 6i32, 0i32);
+    aria_gl_enable_vertex_attrib(0i32);
+    aria_gl_vertex_attrib_pointer(1i32, 3i32, 6i32, 3i32);
+    aria_gl_enable_vertex_attrib(1i32);
+
+    int32:clear_mask = aria_gl_COLOR_BUFFER_BIT() + aria_gl_DEPTH_BUFFER_BIT();
+    int32:tri_mode = aria_gl_TRIANGLES();
+
+    aria_gl_enable(aria_gl_DEPTH_TEST());
+    aria_gl_viewport(0i32, 0i32, 800i32, 600i32);
+
+    flt32:angle_y = 0.0f32;
+    flt32:angle_x = 0.0f32;
+
+    // debug: test perspective matrix
+    drop(println("  Testing perspective matrix:"));
+    aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
+    aria_gl_debug_matrix();
+
+    // debug: test translate matrix
+    drop(println("  Testing translate matrix:"));
+    aria_gl_mat4_translate(0.0f32, 0.0f32, 0.0f32 - 6.0f32);
+    aria_gl_debug_matrix();
+
+    // render 60 frames
+    loop(0i32, 60i32, 1i32) {
+        angle_y = angle_y + 2.0f32;
+        angle_x = angle_x + 1.2f32;
+
+        // MVP = proj * view * Ry * Rx
+        aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_translate(0.0f32, 0.0f32, 0.0f32 - 6.0f32);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_rotate_y(angle_y);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_rotate_x(angle_x);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+
+        // first frame: dump the MVP
+        if ($ == 0i32) {
+            drop(println("  First frame MVP:"));
+            aria_gl_debug_matrix();
+        }
+
+        aria_gl_clear_color(0.15f32, 0.15f32, 0.2f32, 1.0f32);
+        aria_gl_clear(clear_mask);
+        aria_gl_use_program(prog);
+        aria_gl_uniform_matrix4fv(mvp_loc);
+        aria_gl_bind_vao(vao);
+        aria_gl_draw_arrays(tri_mode, 0i32, 36i32);
+        aria_gl_swap();
+
+        // check GL error on first frame
+        if ($ == 0i32) {
+            int32:err = aria_gl_get_error();
+            if (err != 0i32) {
+                drop(println("  GL ERROR on first frame!"));
+            }
+            if (err == 0i32) {
+                drop(println("  No GL errors on first frame"));
+            }
+        }
+
+        aria_gl_delay(16i32);
+    }
+
+    drop(println("  Aria rendering done"));
+
+    // cleanup
+    aria_gl_delete_buffer(vbo);
+    aria_gl_delete_vao(vao);
+    aria_gl_delete_program(prog);
+    aria_gl_quit();
+
+    drop(println("=== Debug Test Complete ==="));
+    pass(0i32);
+};

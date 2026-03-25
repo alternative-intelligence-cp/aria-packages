@@ -1,0 +1,248 @@
+// rotating_cube.aria — 3D spinning cube demo using aria-opengl
+//
+// Renders a colored cube rotating on two axes with depth testing.
+// Press ESC or close the window to exit.
+//
+// Build:
+//   ariac examples/rotating_cube.aria -o /tmp/rotating_cube \
+//     -L shim -laria_opengl_shim -lSDL2 -lGL -lm
+
+extern func:println = int32(string:msg);
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+// ── shim externs ────────────────────────────────────────────────────
+
+// window + context
+extern func:aria_gl_init      = int32(int32:w, int32:h, string:title);
+extern func:aria_gl_quit      = void();
+extern func:aria_gl_swap      = void();
+extern func:aria_gl_set_vsync = int32(int32:on);
+
+// viewport + clear
+extern func:aria_gl_viewport    = void(int32:x, int32:y, int32:w, int32:h);
+extern func:aria_gl_clear_color = void(flt32:r, flt32:g, flt32:b, flt32:a);
+extern func:aria_gl_clear       = void(int32:mask);
+extern func:aria_gl_enable      = void(int32:cap);
+
+// shaders + programs
+extern func:aria_gl_build_program = int32(string:vert, string:frag);
+extern func:aria_gl_use_program   = void(int32:prog);
+extern func:aria_gl_delete_program = void(int32:prog);
+
+// buffers
+extern func:aria_gl_gen_vao       = int32();
+extern func:aria_gl_bind_vao      = void(int32:vao);
+extern func:aria_gl_delete_vao    = void(int32:vao);
+extern func:aria_gl_gen_buffer    = int32();
+extern func:aria_gl_bind_buffer   = void(int32:target, int32:buf);
+extern func:aria_gl_delete_buffer = void(int32:buf);
+
+// float buffer
+extern func:aria_gl_buf_clear     = void();
+extern func:aria_gl_load_cube_geometry = void();
+extern func:aria_gl_buffer_data_f = void(int32:target, int32:usage);
+extern func:aria_gl_buf_count     = int32();
+
+// vertex attributes
+extern func:aria_gl_vertex_attrib_pointer = void(int32:idx, int32:size,
+                                                  int32:stride, int32:offset);
+extern func:aria_gl_enable_vertex_attrib  = void(int32:idx);
+
+// drawing
+extern func:aria_gl_draw_arrays = void(int32:mode, int32:first, int32:count);
+
+// uniforms
+extern func:aria_gl_get_uniform_location = int32(int32:prog, string:name);
+extern func:aria_gl_uniform_matrix4fv    = void(int32:loc);
+
+// matrix helpers
+extern func:aria_gl_mat4_identity    = void();
+extern func:aria_gl_mat4_perspective = void(flt32:fov, flt32:aspect, flt32:near, flt32:far);
+extern func:aria_gl_mat4_translate   = void(flt32:x, flt32:y, flt32:z);
+extern func:aria_gl_mat4_rotate_y    = void(flt32:deg);
+extern func:aria_gl_mat4_rotate_x    = void(flt32:deg);
+extern func:aria_gl_mat4_multiply    = void();
+extern func:aria_gl_mat4_store       = void(int32:slot);
+extern func:aria_gl_mat4_load        = void(int32:slot);
+extern func:aria_gl_mat4_mul_slots   = void(int32:a, int32:b);
+
+// events + timing
+extern func:aria_gl_poll_event         = int32();
+extern func:aria_gl_event_type         = int32();
+extern func:aria_gl_event_key_keycode  = int32();
+extern func:aria_gl_get_ticks          = int32();
+extern func:aria_gl_delay              = void(int32:ms);
+
+// constants
+extern func:aria_gl_COLOR_BUFFER_BIT = int32();
+extern func:aria_gl_DEPTH_BUFFER_BIT = int32();
+extern func:aria_gl_DEPTH_TEST       = int32();
+extern func:aria_gl_ARRAY_BUFFER     = int32();
+extern func:aria_gl_STATIC_DRAW      = int32();
+extern func:aria_gl_TRIANGLES        = int32();
+
+// ── shader sources ──────────────────────────────────────────────────
+
+func:get_vert_shader = string() {
+    pass("#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nuniform mat4 uMVP;\nout vec3 vColor;\nvoid main(){\n  gl_Position = uMVP * vec4(aPos, 1.0);\n  vColor = aColor;\n}");
+};
+
+func:get_frag_shader = string() {
+    pass("#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){\n  FragColor = vec4(vColor, 1.0);\n}");
+};
+
+// ── main ────────────────────────────────────────────────────────────
+
+func:main = int32() {
+
+    // create window + GL context
+    int32:init_ok = aria_gl_init(800i32, 600i32, "Aria OpenGL - Rotating Cube");
+    if (init_ok != 0i32) {
+        drop(println("ERROR: Failed to create OpenGL context"));
+        pass(1i32);
+    }
+    drop(println("OpenGL context created (800x600)"));
+
+    // enable vsync
+    drop(aria_gl_set_vsync(1i32));
+
+    // enable depth testing
+    aria_gl_enable(aria_gl_DEPTH_TEST());
+
+    // set dark background
+    aria_gl_clear_color(0.1f32, 0.1f32, 0.15f32, 1.0f32);
+
+    // compile shaders
+    string:vs = raw(get_vert_shader());
+    string:fs = raw(get_frag_shader());
+    int32:prog = aria_gl_build_program(vs, fs);
+    if (prog <= 0i32) {
+        drop(println("ERROR: Failed to compile/link shaders"));
+        aria_gl_quit();
+        pass(1i32);
+    }
+    drop(println("Shaders compiled and linked"));
+
+    // get uniform locations
+    int32:mvp_loc = aria_gl_get_uniform_location(prog, "uMVP");
+
+    // create VAO + VBO and upload cube geometry
+    int32:vao = aria_gl_gen_vao();
+    int32:vbo = aria_gl_gen_buffer();
+    aria_gl_bind_vao(vao);
+    aria_gl_bind_buffer(aria_gl_ARRAY_BUFFER(), vbo);
+
+    // load pre-built cube: 36 verts × (pos xyz + color rgb)
+    aria_gl_buf_clear();
+    aria_gl_load_cube_geometry();
+    int32:vert_count = aria_gl_buf_count();
+    aria_gl_buffer_data_f(aria_gl_ARRAY_BUFFER(), aria_gl_STATIC_DRAW());
+    drop(println("Cube geometry uploaded"));
+
+    // vertex attributes: position (loc 0), color (loc 1)
+    // stride = 6 floats (3 pos + 3 color)
+    aria_gl_vertex_attrib_pointer(0i32, 3i32, 6i32, 0i32);
+    aria_gl_enable_vertex_attrib(0i32);
+    aria_gl_vertex_attrib_pointer(1i32, 3i32, 6i32, 3i32);
+    aria_gl_enable_vertex_attrib(1i32);
+
+    // number of triangles to draw (216 floats / 6 per vertex = 36 vertices)
+    int32:num_verts = 36i32;
+
+    // pre-compute clear mask
+    int32:clear_mask = aria_gl_COLOR_BUFFER_BIT();
+    int32:depth_bit = aria_gl_DEPTH_BUFFER_BIT();
+    clear_mask = clear_mask + depth_bit;
+
+    int32:tri_mode = aria_gl_TRIANGLES();
+
+    // animation state — flt32 angle rotation
+    flt32:angle_y = 0.0f32;
+    flt32:angle_x = 0.0f32;
+
+    // SDL event constants
+    int32:sdl_quit_type = 256i32;
+    int32:sdl_keydown_type = 768i32;
+    int32:sdlk_escape = 27i32;
+    int32:sdlk_q = 113i32;
+
+    int32:running = 1i32;
+
+    drop(println("Entering render loop..."));
+    drop(println("Press ESC or Q to exit, or close window."));
+
+    // ── render loop ─────────────────────────────────────────────────
+
+    while (running == 1i32) {
+        // poll events
+        int32:has_event = aria_gl_poll_event();
+        while (has_event != 0i32) {
+            int32:etype = aria_gl_event_type();
+            if (etype == sdl_quit_type) {
+                running = 0i32;
+            }
+            if (etype == sdl_keydown_type) {
+                int32:key = aria_gl_event_key_keycode();
+                if (key == sdlk_escape) {
+                    running = 0i32;
+                }
+                if (key == sdlk_q) {
+                    running = 0i32;
+                }
+            }
+            has_event = aria_gl_poll_event();
+        }
+
+        if (running == 0i32) {
+            continue;
+        }
+
+        // build MVP matrix: projection * view * rotY * rotX
+        aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_translate(0.0f32, 0.0f32, 0.0f32 - 6.0f32);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_rotate_y(angle_y);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+        aria_gl_mat4_store(0i32);
+
+        aria_gl_mat4_rotate_x(angle_x);
+        aria_gl_mat4_store(1i32);
+
+        aria_gl_mat4_mul_slots(0i32, 1i32);
+
+        // clear screen
+        aria_gl_clear(clear_mask);
+
+        // draw cube
+        aria_gl_use_program(prog);
+        aria_gl_uniform_matrix4fv(mvp_loc);
+        aria_gl_bind_vao(vao);
+        aria_gl_draw_arrays(tri_mode, 0i32, num_verts);
+
+        // swap buffers
+        aria_gl_swap();
+
+        // advance rotation angles
+        angle_y = angle_y + 0.5f32;
+        angle_x = angle_x + 0.3f32;
+    }
+
+    // ── cleanup ─────────────────────────────────────────────────────
+    drop(println("Cleaning up..."));
+    aria_gl_delete_buffer(vbo);
+    aria_gl_delete_vao(vao);
+    aria_gl_delete_program(prog);
+    aria_gl_quit();
+    drop(println("Done. Cube rendered successfully."));
+
+    pass(0i32);
+};

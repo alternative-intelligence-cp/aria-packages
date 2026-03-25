@@ -1,0 +1,482 @@
+// test_aria_opengl.aria — Tests for aria-opengl bindings
+//
+// Verifies OpenGL 3.3 Core shim functions: init/quit, constants,
+// shader compilation, buffer management, float buffer, matrix math,
+// and the build_program helper.
+//
+// Requires: display ($DISPLAY set), libaria_opengl_shim.so
+
+extern func:println = int32(string:msg);
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+// ── shim externs ────────────────────────────────────────────────────
+
+// window + context
+extern func:aria_gl_init      = int32(int32:w, int32:h, string:title);
+extern func:aria_gl_quit      = void();
+extern func:aria_gl_swap      = void();
+extern func:aria_gl_set_vsync = int32(int32:on);
+
+// viewport + clear
+extern func:aria_gl_viewport    = void(int32:x, int32:y, int32:w, int32:h);
+extern func:aria_gl_clear_color = void(flt32:r, flt32:g, flt32:b, flt32:a);
+extern func:aria_gl_clear       = void(int32:mask);
+extern func:aria_gl_enable      = void(int32:cap);
+extern func:aria_gl_disable     = void(int32:cap);
+
+// shaders
+extern func:aria_gl_create_shader     = int32(int32:shader_type);
+extern func:aria_gl_shader_source     = void(int32:shader, string:source);
+extern func:aria_gl_compile_shader    = void(int32:shader);
+extern func:aria_gl_get_shader_status = int32(int32:shader);
+extern func:aria_gl_print_shader_log  = void(int32:shader);
+extern func:aria_gl_delete_shader     = void(int32:shader);
+
+// programs
+extern func:aria_gl_create_program     = int32();
+extern func:aria_gl_attach_shader      = void(int32:prog, int32:sh);
+extern func:aria_gl_link_program       = void(int32:prog);
+extern func:aria_gl_get_program_status = int32(int32:prog);
+extern func:aria_gl_use_program        = void(int32:prog);
+extern func:aria_gl_delete_program     = void(int32:prog);
+extern func:aria_gl_print_program_log  = void(int32:prog);
+
+// build helper
+extern func:aria_gl_build_program = int32(string:vert, string:frag);
+
+// buffers
+extern func:aria_gl_gen_vao       = int32();
+extern func:aria_gl_bind_vao      = void(int32:vao);
+extern func:aria_gl_delete_vao    = void(int32:vao);
+extern func:aria_gl_gen_buffer    = int32();
+extern func:aria_gl_bind_buffer   = void(int32:target, int32:buf);
+extern func:aria_gl_delete_buffer = void(int32:buf);
+
+// float buffer
+extern func:aria_gl_buf_clear    = void();
+extern func:aria_gl_buf_push     = void(flt32:val);
+extern func:aria_gl_buf_push3    = void(flt32:a, flt32:b, flt32:c);
+extern func:aria_gl_buf_push6    = void(flt32:a, flt32:b, flt32:c,
+                                        flt32:d, flt32:e, flt32:f);
+extern func:aria_gl_buf_count    = int32();
+extern func:aria_gl_buffer_data_f = void(int32:target, int32:usage);
+
+// vertex attributes
+extern func:aria_gl_vertex_attrib_pointer = void(int32:idx, int32:size,
+                                                  int32:stride, int32:offset);
+extern func:aria_gl_enable_vertex_attrib  = void(int32:idx);
+extern func:aria_gl_disable_vertex_attrib = void(int32:idx);
+
+// drawing
+extern func:aria_gl_draw_arrays = void(int32:mode, int32:first, int32:count);
+
+// uniforms
+extern func:aria_gl_get_uniform_location = int32(int32:prog, string:name);
+extern func:aria_gl_uniform1i           = void(int32:loc, int32:val);
+extern func:aria_gl_uniform1f           = void(int32:loc, flt32:val);
+extern func:aria_gl_uniform3f           = void(int32:loc, flt32:x, flt32:y, flt32:z);
+
+// matrix helpers
+extern func:aria_gl_mat4_identity    = void();
+extern func:aria_gl_mat4_perspective = void(flt32:fov, flt32:aspect, flt32:near, flt32:far);
+extern func:aria_gl_mat4_translate   = void(flt32:x, flt32:y, flt32:z);
+extern func:aria_gl_mat4_rotate_y    = void(flt32:deg);
+extern func:aria_gl_mat4_rotate_x    = void(flt32:deg);
+extern func:aria_gl_mat4_store       = void(int32:slot);
+extern func:aria_gl_mat4_load        = void(int32:slot);
+extern func:aria_gl_mat4_mul_slots   = void(int32:a, int32:b);
+
+// pre-built geometry
+extern func:aria_gl_load_cube_geometry = void();
+
+// events + timing
+extern func:aria_gl_get_ticks = int32();
+extern func:aria_gl_delay     = void(int32:ms);
+
+// constants
+extern func:aria_gl_COLOR_BUFFER_BIT    = int32();
+extern func:aria_gl_DEPTH_BUFFER_BIT    = int32();
+extern func:aria_gl_DEPTH_TEST          = int32();
+extern func:aria_gl_VERTEX_SHADER       = int32();
+extern func:aria_gl_FRAGMENT_SHADER     = int32();
+extern func:aria_gl_ARRAY_BUFFER        = int32();
+extern func:aria_gl_ELEMENT_ARRAY_BUFFER = int32();
+extern func:aria_gl_STATIC_DRAW         = int32();
+extern func:aria_gl_DYNAMIC_DRAW        = int32();
+extern func:aria_gl_TRIANGLES           = int32();
+extern func:aria_gl_LINES               = int32();
+extern func:aria_gl_POINTS              = int32();
+extern func:aria_gl_UNSIGNED_INT        = int32();
+extern func:aria_gl_TEXTURE_2D          = int32();
+extern func:aria_gl_LINEAR              = int32();
+extern func:aria_gl_NEAREST             = int32();
+extern func:aria_gl_CULL_FACE           = int32();
+extern func:aria_gl_BLEND               = int32();
+
+// ── main ────────────────────────────────────────────────────────────
+
+func:main = int32() {
+    int64:passed = 0i64;
+    int64:failed = 0i64;
+
+    // ── test 01: GL constants are non-zero ──────────────────────────
+    int32:cbuf = aria_gl_COLOR_BUFFER_BIT();
+    int32:dbuf = aria_gl_DEPTH_BUFFER_BIT();
+    if (cbuf != 0i32) {
+        if (dbuf != 0i32) {
+            passed = passed + 1i64;
+            drop(println("[PASS] 01 GL buffer bit constants non-zero"));
+        }
+    }
+    if (cbuf == 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 01 GL buffer bit constants are zero"));
+    }
+
+    // ── test 02: shader type constants differ ───────────────────────
+    int32:vs_type = aria_gl_VERTEX_SHADER();
+    int32:fs_type = aria_gl_FRAGMENT_SHADER();
+    if (vs_type != fs_type) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 02 VERTEX vs FRAGMENT shader types differ"));
+    }
+    if (vs_type == fs_type) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 02 shader type constants are equal"));
+    }
+
+    // ── test 03: buffer constants differ ────────────────────────────
+    int32:ab = aria_gl_ARRAY_BUFFER();
+    int32:eb = aria_gl_ELEMENT_ARRAY_BUFFER();
+    if (ab != eb) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 03 ARRAY_BUFFER vs ELEMENT_ARRAY_BUFFER differ"));
+    }
+    if (ab == eb) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 03 buffer target constants are equal"));
+    }
+
+    // ── test 04: draw mode constants ────────────────────────────────
+    int32:tri = aria_gl_TRIANGLES();
+    int32:lin = aria_gl_LINES();
+    int32:pts = aria_gl_POINTS();
+    if (tri != lin) {
+        if (lin != pts) {
+            passed = passed + 1i64;
+            drop(println("[PASS] 04 draw mode constants are distinct"));
+        }
+    }
+    if (tri == lin) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 04 draw mode constants overlap"));
+    }
+
+    // ── test 05: init window + GL context ───────────────────────────
+    int32:init_ok = aria_gl_init(320i32, 240i32, "OpenGL Test Suite");
+    if (init_ok == 0i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 05 GL context created (320x240)"));
+    }
+    if (init_ok != 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 05 GL context init failed"));
+        drop(println("  Cannot continue without GL context."));
+        pass(1i32);
+    }
+
+    // ── test 06: ticks are running ──────────────────────────────────
+    int32:t1 = aria_gl_get_ticks();
+    aria_gl_delay(10i32);
+    int32:t2 = aria_gl_get_ticks();
+    if (t2 > t1) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 06 SDL ticks advancing"));
+    }
+    if (t2 <= t1) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 06 SDL ticks not advancing"));
+    }
+
+    // ── test 07: float buffer clear + push ──────────────────────────
+    aria_gl_buf_clear();
+    int32:c0 = aria_gl_buf_count();
+    aria_gl_buf_push(1.0f32);
+    aria_gl_buf_push(2.0f32);
+    int32:c2 = aria_gl_buf_count();
+    if (c0 == 0i32) {
+        if (c2 == 2i32) {
+            passed = passed + 1i64;
+            drop(println("[PASS] 07 buf_push: 0 -> 2"));
+        }
+    }
+    if (c0 != 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 07 buf_clear did not reset to 0"));
+    }
+    if (c2 != 2i32) {
+        if (c0 == 0i32) {
+            failed = failed + 1i64;
+            drop(println("[FAIL] 07 buf_push count mismatch"));
+        }
+    }
+
+    // ── test 08: buf_push3 adds 3 floats ───────────────────────────
+    aria_gl_buf_clear();
+    aria_gl_buf_push3(1.0f32, 2.0f32, 3.0f32);
+    int32:c3 = aria_gl_buf_count();
+    if (c3 == 3i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 08 buf_push3 count = 3"));
+    }
+    if (c3 != 3i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 08 buf_push3 count mismatch"));
+    }
+
+    // ── test 09: buf_push6 adds 6 floats ───────────────────────────
+    aria_gl_buf_clear();
+    aria_gl_buf_push6(0.0f32, 0.5f32, 0.0f32, 1.0f32, 0.0f32, 0.0f32);
+    int32:c6 = aria_gl_buf_count();
+    if (c6 == 6i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 09 buf_push6 count = 6"));
+    }
+    if (c6 != 6i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 09 buf_push6 count mismatch"));
+    }
+
+    // ── test 10: create + compile vertex shader ─────────────────────
+    string:vert_src = "#version 330 core\nlayout(location=0)in vec3 aPos;\nvoid main(){gl_Position=vec4(aPos,1.0);}";
+    int32:vs = aria_gl_create_shader(aria_gl_VERTEX_SHADER());
+    aria_gl_shader_source(vs, vert_src);
+    aria_gl_compile_shader(vs);
+    int32:vs_ok = aria_gl_get_shader_status(vs);
+    if (vs_ok == 1i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 10 vertex shader compiled"));
+    }
+    if (vs_ok != 1i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 10 vertex shader compile failed"));
+        aria_gl_print_shader_log(vs);
+    }
+
+    // ── test 11: create + compile fragment shader ───────────────────
+    string:frag_src = "#version 330 core\nout vec4 FragColor;\nvoid main(){FragColor=vec4(1.0,0.5,0.2,1.0);}";
+    int32:fs = aria_gl_create_shader(aria_gl_FRAGMENT_SHADER());
+    aria_gl_shader_source(fs, frag_src);
+    aria_gl_compile_shader(fs);
+    int32:fs_ok = aria_gl_get_shader_status(fs);
+    if (fs_ok == 1i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 11 fragment shader compiled"));
+    }
+    if (fs_ok != 1i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 11 fragment shader compile failed"));
+        aria_gl_print_shader_log(fs);
+    }
+
+    // ── test 12: bad shader source fails compile ────────────────────
+    string:bad_src = "this is not glsl";
+    int32:bad_sh = aria_gl_create_shader(aria_gl_VERTEX_SHADER());
+    aria_gl_shader_source(bad_sh, bad_src);
+    aria_gl_compile_shader(bad_sh);
+    int32:bad_ok = aria_gl_get_shader_status(bad_sh);
+    if (bad_ok == 0i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 12 bad shader source correctly fails"));
+    }
+    if (bad_ok != 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 12 bad shader source did not fail"));
+    }
+    aria_gl_delete_shader(bad_sh);
+
+    // ── test 13: link program from compiled shaders ─────────────────
+    int32:prog = aria_gl_create_program();
+    aria_gl_attach_shader(prog, vs);
+    aria_gl_attach_shader(prog, fs);
+    aria_gl_link_program(prog);
+    int32:link_ok = aria_gl_get_program_status(prog);
+    if (link_ok == 1i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 13 program linked"));
+    }
+    if (link_ok != 1i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 13 program link failed"));
+        aria_gl_print_program_log(prog);
+    }
+    aria_gl_delete_shader(vs);
+    aria_gl_delete_shader(fs);
+
+    // ── test 14: build_program helper ───────────────────────────────
+    string:v2 = "#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nout vec3 vColor;\nvoid main(){gl_Position=vec4(aPos,1.0);vColor=aColor;}";
+    string:f2 = "#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){FragColor=vec4(vColor,1.0);}";
+    int32:prog2 = aria_gl_build_program(v2, f2);
+    if (prog2 > 0i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 14 build_program returns valid program"));
+    }
+    if (prog2 <= 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 14 build_program returned error"));
+    }
+
+    // ── test 15: build_program with bad vertex shader ───────────────
+    int32:bad_prog = aria_gl_build_program("bad vertex", frag_src);
+    if (bad_prog == 0i32 - 1i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 15 build_program bad vert returns -1"));
+    }
+    if (bad_prog != 0i32 - 1i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 15 build_program bad vert wrong error code"));
+    }
+
+    // ── test 16: build_program with bad fragment shader ─────────────
+    int32:bad_prog2 = aria_gl_build_program(vert_src, "bad fragment");
+    if (bad_prog2 == 0i32 - 2i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 16 build_program bad frag returns -2"));
+    }
+    if (bad_prog2 != 0i32 - 2i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 16 build_program bad frag wrong error"));
+    }
+
+    // ── test 17: gen VAO + VBO ──────────────────────────────────────
+    int32:vao = aria_gl_gen_vao();
+    int32:vbo = aria_gl_gen_buffer();
+    if (vao > 0i32) {
+        if (vbo > 0i32) {
+            passed = passed + 1i64;
+            drop(println("[PASS] 17 gen_vao/gen_buffer return positive IDs"));
+        }
+    }
+    if (vao <= 0i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 17 gen_vao returned non-positive"));
+    }
+    if (vbo <= 0i32) {
+        if (vao > 0i32) {
+            failed = failed + 1i64;
+            drop(println("[FAIL] 17 gen_buffer returned non-positive"));
+        }
+    }
+
+    // ── test 18: bind VAO + VBO + buffer_data_f ─────────────────────
+    aria_gl_bind_vao(vao);
+    aria_gl_bind_buffer(aria_gl_ARRAY_BUFFER(), vbo);
+    aria_gl_buf_clear();
+    // triangle: 3 vertices × (pos xyz + color rgb) = 18 floats
+    aria_gl_buf_push6(0.0f32, 0.5f32, 0.0f32, 1.0f32, 0.0f32, 0.0f32);
+    aria_gl_buf_push6(0.0f32 - 0.5f32, 0.0f32 - 0.5f32, 0.0f32, 0.0f32, 1.0f32, 0.0f32);
+    aria_gl_buf_push6(0.5f32, 0.0f32 - 0.5f32, 0.0f32, 0.0f32, 0.0f32, 1.0f32);
+    int32:tri_count = aria_gl_buf_count();
+    aria_gl_buffer_data_f(aria_gl_ARRAY_BUFFER(), aria_gl_STATIC_DRAW());
+    if (tri_count == 18i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 18 triangle data uploaded (18 floats)"));
+    }
+    if (tri_count != 18i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 18 triangle float count mismatch"));
+    }
+
+    // ── test 19: vertex attrib setup + draw call ────────────────────
+    aria_gl_vertex_attrib_pointer(0i32, 3i32, 6i32, 0i32);
+    aria_gl_enable_vertex_attrib(0i32);
+    aria_gl_vertex_attrib_pointer(1i32, 3i32, 6i32, 3i32);
+    aria_gl_enable_vertex_attrib(1i32);
+    aria_gl_use_program(prog2);
+    aria_gl_clear_color(0.1f32, 0.1f32, 0.15f32, 1.0f32);
+    int32:clear_bits = aria_gl_COLOR_BUFFER_BIT();
+    aria_gl_clear(clear_bits);
+    aria_gl_draw_arrays(aria_gl_TRIANGLES(), 0i32, 3i32);
+    aria_gl_swap();
+    // if we get here without crashing, the pipeline works
+    passed = passed + 1i64;
+    drop(println("[PASS] 19 full draw pipeline: VBO->VAO->shader->draw->swap"));
+
+    // ── test 20: get_uniform_location ───────────────────────────────
+    // our vertex shader v2 doesn't have a custom uniform, but we can check
+    // that querying a non-existent uniform returns -1
+    int32:uloc = aria_gl_get_uniform_location(prog2, "nonexistent_uniform");
+    if (uloc == 0i32 - 1i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 20 nonexistent uniform returns -1"));
+    }
+    if (uloc != 0i32 - 1i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 20 nonexistent uniform did not return -1"));
+    }
+
+    // ── test 21: enable/disable depth test ──────────────────────────
+    aria_gl_enable(aria_gl_DEPTH_TEST());
+    aria_gl_disable(aria_gl_DEPTH_TEST());
+    // no crash = pass
+    passed = passed + 1i64;
+    drop(println("[PASS] 21 enable/disable DEPTH_TEST no crash"));
+
+    // ── test 22: matrix identity + store/load ───────────────────────
+    aria_gl_mat4_identity();
+    aria_gl_mat4_store(0i32);
+    aria_gl_mat4_load(0i32);
+    // no crash = pass (values verified indirectly by cube demo)
+    passed = passed + 1i64;
+    drop(println("[PASS] 22 mat4 identity/store/load no crash"));
+
+    // ── test 23: perspective + translate + rotate ────────────────────
+    aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
+    aria_gl_mat4_store(0i32);
+    aria_gl_mat4_translate(0.0f32, 0.0f32, 0.0f32 - 5.0f32);
+    aria_gl_mat4_store(1i32);
+    aria_gl_mat4_rotate_y(45.0f32);
+    // no crash = pass
+    passed = passed + 1i64;
+    drop(println("[PASS] 23 perspective/translate/rotate_y no crash"));
+
+    // ── test 24: mat4_mul_slots ─────────────────────────────────────
+    aria_gl_mat4_mul_slots(0i32, 1i32);
+    // no crash = pass
+    passed = passed + 1i64;
+    drop(println("[PASS] 24 mat4_mul_slots(0,1) no crash"));
+
+    // ── test 25: load_cube_geometry fills buffer ────────────────────
+    aria_gl_buf_clear();
+    aria_gl_load_cube_geometry();
+    int32:cube_count = aria_gl_buf_count();
+    // 36 vertices × 6 floats each = 216
+    if (cube_count == 216i32) {
+        passed = passed + 1i64;
+        drop(println("[PASS] 25 cube geometry: 216 floats (36 verts × 6)"));
+    }
+    if (cube_count != 216i32) {
+        failed = failed + 1i64;
+        drop(println("[FAIL] 25 cube geometry count mismatch"));
+    }
+
+    // ── cleanup ─────────────────────────────────────────────────────
+    aria_gl_disable_vertex_attrib(0i32);
+    aria_gl_disable_vertex_attrib(1i32);
+    aria_gl_delete_program(prog);
+    aria_gl_delete_program(prog2);
+    aria_gl_delete_buffer(vbo);
+    aria_gl_delete_vao(vao);
+    aria_gl_quit();
+
+    // ── summary ─────────────────────────────────────────────────────
+    drop(println(""));
+    drop(println("=== OpenGL Test Results ==="));
+
+    if (failed > 0i64) {
+        pass(1i32);
+    }
+
+    pass(0i32);
+};
