@@ -28,6 +28,12 @@ extern "aria_audio" {
     func:aria_audio_get_volume    = int32(int32:channel);
     func:aria_audio_square_sample = int32(int32:phase_sample, int32:freq_hz);
     func:aria_audio_lfsr_step     = int32(int32:state);
+    func:aria_audio_set_envelope  = int32(int32:channel, int32:attack_ms, int32:decay_ms, int32:sustain, int32:release_ms);
+    func:aria_audio_clear_envelope = int32(int32:channel);
+    func:aria_audio_has_envelope  = int32(int32:channel);
+    func:aria_audio_envelope_level = int32(int32:channel, int32:elapsed_ms);
+    func:aria_audio_envelope_release = int32(int32:channel, int32:release_elapsed_ms);
+    func:aria_audio_tick             = int32();
 }
 
 // ── Waveform constants ────────────────────────────────────────────────────────
@@ -125,5 +131,49 @@ pub func:audio_square_sample = int32(int32:phase_sample, int32:freq_hz) {
 // Advance a Galois LFSR state by one step; returns next state.
 pub func:audio_lfsr_step = int32(int32:state) {
     int32:r = aria_audio_lfsr_step(state);
+    pass(r);
+};
+
+// ── ADSR Envelope ─────────────────────────────────────────────────────────────
+
+// Set ADSR envelope for a channel.
+//   attack_ms   : ramp 0 → peak volume
+//   decay_ms    : ramp peak → sustain level
+//   sustain     : held level (0-15)
+//   release_ms  : ramp sustain → 0 after note off
+pub func:audio_set_envelope = int32(int32:channel, int32:attack_ms, int32:decay_ms, int32:sustain, int32:release_ms) {
+    int32:r = aria_audio_set_envelope(channel, attack_ms, decay_ms, sustain, release_ms);
+    pass(r);
+};
+
+// Clear envelope for a channel (revert to flat volume).
+pub func:audio_clear_envelope = int32(int32:channel) {
+    int32:r = aria_audio_clear_envelope(channel);
+    pass(r);
+};
+
+// Returns 1 if channel has an ADSR envelope set.
+pub func:audio_has_envelope = int32(int32:channel) {
+    int32:r = aria_audio_has_envelope(channel);
+    pass(r);
+};
+
+// Compute envelope level (0-15) at elapsed_ms since note-on.
+// Covers attack → decay → sustain phases.
+pub func:audio_envelope_level = int32(int32:channel, int32:elapsed_ms) {
+    int32:r = aria_audio_envelope_level(channel, elapsed_ms);
+    pass(r);
+};
+
+// Compute release envelope level (sus → 0) at release_elapsed_ms since note-off.
+pub func:audio_envelope_release = int32(int32:channel, int32:release_elapsed_ms) {
+    int32:r = aria_audio_envelope_release(channel, release_elapsed_ms);
+    pass(r);
+};
+
+// Render one frame of audio (735 samples) and write to ALSA (or no-op in dry).
+// Call once per game frame.
+pub func:audio_tick = int32() {
+    int32:r = aria_audio_tick();
     pass(r);
 };

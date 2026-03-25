@@ -1,6 +1,9 @@
 // aria_console.aria — virtual 8-bit console address map & frame scheduler (LIB-20)
 //
-// Pure Aria — no FFI, no C shim.
+// Mixed: pure Aria for address map + constants, C shim for bus memory.
+//
+// C shim: shim/aria_console_shim.c → shim/libaria_console.so
+// Link:   -L./shim -laria_console -Wl,-rpath,<path-to-shim>
 //
 // Virtual memory map (16-bit address space, 0x0000-0xFFFF):
 //
@@ -30,6 +33,19 @@
 //   bits 47:32 = joypad state (bit per button, active high)
 //   bits 31:16 = system flags (bit 0 = vblank active)
 //   bits 15:0  = last PC (program counter, informational)
+
+// ── FFI declarations for bus memory ───────────────────────────────────────────
+
+extern "aria_console" {
+    func:aria_console_bus_init    = int32();
+    func:aria_console_bus_is_init = int32();
+    func:aria_console_bus_read    = int32(int32:addr);
+    func:aria_console_bus_write   = int32(int32:addr, int32:value);
+    func:aria_console_bus_read16  = int32(int32:addr);
+    func:aria_console_bus_write16 = int32(int32:addr, int32:value);
+    func:aria_console_bus_fill    = int32(int32:start, int32:length, int32:value);
+    func:aria_console_bus_reset   = int32();
+}
 
 // ── Zone id constants ─────────────────────────────────────────────────────────
 
@@ -178,4 +194,54 @@ pub func:con_state_flags = int32(uint64:state) {
 pub func:con_state_pc = int32(uint64:state) {
     uint64:p = state & 65535u64;
     pass(@cast<int32>(p));
+};
+
+// ── Bus memory operations ─────────────────────────────────────────────────────
+
+// Initialize 64KB bus memory (zero-fill). Call once at startup.
+pub func:bus_init = int32() {
+    int32:r = aria_console_bus_init();
+    pass(r);
+};
+
+// Returns 1 if bus is initialized.
+pub func:bus_is_init = int32() {
+    int32:r = aria_console_bus_is_init();
+    pass(r);
+};
+
+// Read a byte (0-255) from a 16-bit bus address. Returns -1 if out of range.
+pub func:bus_read = int32(int32:addr) {
+    int32:r = aria_console_bus_read(addr);
+    pass(r);
+};
+
+// Write a byte to a 16-bit bus address. Returns 0 on success, -1 on error.
+pub func:bus_write = int32(int32:addr, int32:value) {
+    int32:r = aria_console_bus_write(addr, value);
+    pass(r);
+};
+
+// Read a 16-bit little-endian word from two consecutive addresses.
+pub func:bus_read16 = int32(int32:addr) {
+    int32:r = aria_console_bus_read16(addr);
+    pass(r);
+};
+
+// Write a 16-bit little-endian word to two consecutive addresses.
+pub func:bus_write16 = int32(int32:addr, int32:value) {
+    int32:r = aria_console_bus_write16(addr, value);
+    pass(r);
+};
+
+// Fill a range of addresses with a byte value.
+pub func:bus_fill = int32(int32:start, int32:length, int32:value) {
+    int32:r = aria_console_bus_fill(start, length, value);
+    pass(r);
+};
+
+// Reset entire bus memory to zero.
+pub func:bus_reset = int32() {
+    int32:r = aria_console_bus_reset();
+    pass(r);
 };

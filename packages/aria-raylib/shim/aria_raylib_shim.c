@@ -11,6 +11,8 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
 #include "raylib.h"
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
@@ -238,4 +240,301 @@ void aria_rl_set_mouse_position(int32_t x, int32_t y) {
 
 void aria_rl_set_mouse_cursor(int32_t cursor) {
     SetMouseCursor(cursor);
+}
+
+/* ── textures ────────────────────────────────────────────────────────── */
+
+#define ARIA_MAX_TEXTURES 256
+
+static Texture2D g_textures[ARIA_MAX_TEXTURES];
+static int32_t   g_texture_used[ARIA_MAX_TEXTURES];
+
+int32_t aria_rl_load_texture(const char *path) {
+    for (int32_t i = 0; i < ARIA_MAX_TEXTURES; i++) {
+        if (!g_texture_used[i]) {
+            g_textures[i] = LoadTexture(path);
+            if (g_textures[i].id == 0) return -1;
+            g_texture_used[i] = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void aria_rl_unload_texture(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle]) {
+        UnloadTexture(g_textures[handle]);
+        g_texture_used[handle] = 0;
+    }
+}
+
+int32_t aria_rl_is_texture_valid(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle]) {
+        return (g_textures[handle].id != 0) ? 1 : 0;
+    }
+    return 0;
+}
+
+int32_t aria_rl_get_texture_width(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        return g_textures[handle].width;
+    return 0;
+}
+
+int32_t aria_rl_get_texture_height(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        return g_textures[handle].height;
+    return 0;
+}
+
+void aria_rl_draw_texture(int32_t handle, int32_t x, int32_t y,
+                          int32_t r, int32_t g, int32_t b, int32_t a) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        DrawTexture(g_textures[handle], x, y, mk_color(r, g, b, a));
+}
+
+void aria_rl_draw_texture_ex(int32_t handle, float x, float y,
+                             float rotation, float scale,
+                             int32_t r, int32_t g, int32_t b, int32_t a) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        DrawTextureEx(g_textures[handle], (Vector2){x, y}, rotation, scale,
+                      mk_color(r, g, b, a));
+}
+
+void aria_rl_draw_texture_rec(int32_t handle,
+                              float sx, float sy, float sw, float sh,
+                              float dx, float dy,
+                              int32_t r, int32_t g, int32_t b, int32_t a) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        DrawTextureRec(g_textures[handle],
+                       (Rectangle){sx, sy, sw, sh},
+                       (Vector2){dx, dy},
+                       mk_color(r, g, b, a));
+}
+
+void aria_rl_draw_texture_pro(int32_t handle,
+                              float sx, float sy, float sw, float sh,
+                              float dx, float dy, float dw, float dh,
+                              float ox, float oy, float rotation,
+                              int32_t r, int32_t g, int32_t b, int32_t a) {
+    if (handle >= 0 && handle < ARIA_MAX_TEXTURES && g_texture_used[handle])
+        DrawTexturePro(g_textures[handle],
+                       (Rectangle){sx, sy, sw, sh},
+                       (Rectangle){dx, dy, dw, dh},
+                       (Vector2){ox, oy}, rotation,
+                       mk_color(r, g, b, a));
+}
+
+/* ── audio ───────────────────────────────────────────────────────────── */
+
+#define ARIA_MAX_SOUNDS 128
+#define ARIA_MAX_MUSIC  64
+
+static Sound   g_sounds[ARIA_MAX_SOUNDS];
+static int32_t g_sound_used[ARIA_MAX_SOUNDS];
+static Music   g_music[ARIA_MAX_MUSIC];
+static int32_t g_music_used[ARIA_MAX_MUSIC];
+
+void aria_rl_init_audio_device(void) {
+    InitAudioDevice();
+}
+
+void aria_rl_close_audio_device(void) {
+    CloseAudioDevice();
+}
+
+int32_t aria_rl_is_audio_device_ready(void) {
+    return IsAudioDeviceReady() ? 1 : 0;
+}
+
+void aria_rl_set_master_volume(float vol) {
+    SetMasterVolume(vol);
+}
+
+/* ── audio: sounds ───────────────────────────────────────────────────── */
+
+int32_t aria_rl_load_sound(const char *path) {
+    for (int32_t i = 0; i < ARIA_MAX_SOUNDS; i++) {
+        if (!g_sound_used[i]) {
+            g_sounds[i] = LoadSound(path);
+            g_sound_used[i] = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void aria_rl_unload_sound(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_SOUNDS && g_sound_used[handle]) {
+        UnloadSound(g_sounds[handle]);
+        g_sound_used[handle] = 0;
+    }
+}
+
+void aria_rl_play_sound(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_SOUNDS && g_sound_used[handle])
+        PlaySound(g_sounds[handle]);
+}
+
+void aria_rl_stop_sound(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_SOUNDS && g_sound_used[handle])
+        StopSound(g_sounds[handle]);
+}
+
+int32_t aria_rl_is_sound_playing(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_SOUNDS && g_sound_used[handle])
+        return IsSoundPlaying(g_sounds[handle]) ? 1 : 0;
+    return 0;
+}
+
+void aria_rl_set_sound_volume(int32_t handle, float vol) {
+    if (handle >= 0 && handle < ARIA_MAX_SOUNDS && g_sound_used[handle])
+        SetSoundVolume(g_sounds[handle], vol);
+}
+
+/* ── audio: music ────────────────────────────────────────────────────── */
+
+int32_t aria_rl_load_music(const char *path) {
+    for (int32_t i = 0; i < ARIA_MAX_MUSIC; i++) {
+        if (!g_music_used[i]) {
+            g_music[i] = LoadMusicStream(path);
+            g_music_used[i] = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void aria_rl_unload_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle]) {
+        UnloadMusicStream(g_music[handle]);
+        g_music_used[handle] = 0;
+    }
+}
+
+void aria_rl_play_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        PlayMusicStream(g_music[handle]);
+}
+
+void aria_rl_stop_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        StopMusicStream(g_music[handle]);
+}
+
+void aria_rl_update_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        UpdateMusicStream(g_music[handle]);
+}
+
+void aria_rl_pause_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        PauseMusicStream(g_music[handle]);
+}
+
+void aria_rl_resume_music(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        ResumeMusicStream(g_music[handle]);
+}
+
+int32_t aria_rl_is_music_playing(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        return IsMusicStreamPlaying(g_music[handle]) ? 1 : 0;
+    return 0;
+}
+
+void aria_rl_set_music_volume(int32_t handle, float vol) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        SetMusicVolume(g_music[handle], vol);
+}
+
+float aria_rl_get_music_time_length(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        return GetMusicTimeLength(g_music[handle]);
+    return 0.0f;
+}
+
+float aria_rl_get_music_time_played(int32_t handle) {
+    if (handle >= 0 && handle < ARIA_MAX_MUSIC && g_music_used[handle])
+        return GetMusicTimePlayed(g_music[handle]);
+    return 0.0f;
+}
+
+/* ── gamepad ─────────────────────────────────────────────────────────── */
+
+int32_t aria_rl_is_gamepad_available(int32_t gamepad) {
+    return IsGamepadAvailable(gamepad) ? 1 : 0;
+}
+
+int32_t aria_rl_is_gamepad_button_pressed(int32_t gamepad, int32_t button) {
+    return IsGamepadButtonPressed(gamepad, button) ? 1 : 0;
+}
+
+int32_t aria_rl_is_gamepad_button_down(int32_t gamepad, int32_t button) {
+    return IsGamepadButtonDown(gamepad, button) ? 1 : 0;
+}
+
+int32_t aria_rl_is_gamepad_button_released(int32_t gamepad, int32_t button) {
+    return IsGamepadButtonReleased(gamepad, button) ? 1 : 0;
+}
+
+float aria_rl_get_gamepad_axis_movement(int32_t gamepad, int32_t axis) {
+    return GetGamepadAxisMovement(gamepad, axis);
+}
+
+/* ── procedural beep generator ───────────────────────────────────────── */
+/* wave_type: 0=square  1=triangle  2=sawtooth  3=sine                   */
+/* volume: 0.0-1.0 (received as double because Aria flt32 ABI)           */
+
+int32_t aria_rl_gen_beep(int32_t freq_hz, int32_t duration_ms,
+                          int32_t wave_type, double volume) {
+    int sample_rate = 44100;
+    int num_samples = sample_rate * duration_ms / 1000;
+    if (num_samples <= 0 || freq_hz <= 0) return -1;
+
+    int16_t *data = (int16_t *)malloc((size_t)num_samples * sizeof(int16_t));
+    if (!data) return -1;
+
+    float amp    = (float)(volume * 32000.0);
+    float period = (float)sample_rate / (float)freq_hz;
+
+    for (int i = 0; i < num_samples; i++) {
+        float phase = fmodf((float)i, period) / period; /* 0..1 per period */
+        float sample = 0.0f;
+        /* fade-out in last 10% of clip to avoid clicks */
+        float env = 1.0f;
+        int fade_start = num_samples * 9 / 10;
+        if (i > fade_start && num_samples > fade_start)
+            env = (float)(num_samples - i) / (float)(num_samples - fade_start);
+        if (wave_type == 0) {        /* square */
+            sample = (phase < 0.5f) ? 1.0f : -1.0f;
+        } else if (wave_type == 1) { /* triangle */
+            sample = (phase < 0.5f) ? (4.0f * phase - 1.0f)
+                                    : (3.0f - 4.0f * phase);
+        } else if (wave_type == 2) { /* sawtooth */
+            sample = 2.0f * phase - 1.0f;
+        } else {                     /* sine */
+            float t = (float)i / (float)sample_rate;
+            sample = sinf(2.0f * 3.14159265f * (float)freq_hz * t);
+        }
+        data[i] = (int16_t)(sample * amp * env);
+    }
+
+    Wave wave;
+    wave.frameCount = (unsigned int)num_samples;
+    wave.sampleRate = (unsigned int)sample_rate;
+    wave.sampleSize = 16;
+    wave.channels   = 1;
+    wave.data       = data;
+
+    int32_t slot = -1;
+    for (int32_t s = 0; s < ARIA_MAX_SOUNDS; s++) {
+        if (!g_sound_used[s]) { slot = s; break; }
+    }
+    if (slot < 0) { free(data); return -1; }
+
+    g_sounds[slot]     = LoadSoundFromWave(wave);
+    g_sound_used[slot] = 1;
+    free(data);
+    return slot;
 }

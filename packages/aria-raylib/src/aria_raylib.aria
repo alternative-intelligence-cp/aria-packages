@@ -83,6 +83,64 @@ extern "aria_raylib_shim" {
     func:aria_rl_get_mouse_wheel_move     = flt32();
     func:aria_rl_set_mouse_position       = void(int32:x, int32:y);
     func:aria_rl_set_mouse_cursor         = void(int32:cursor);
+
+    // textures
+    func:aria_rl_load_texture      = int32(string:path);
+    func:aria_rl_unload_texture    = void(int32:handle);
+    func:aria_rl_is_texture_valid  = int32(int32:handle);
+    func:aria_rl_get_texture_width  = int32(int32:handle);
+    func:aria_rl_get_texture_height = int32(int32:handle);
+    func:aria_rl_draw_texture      = void(int32:handle, int32:x, int32:y,
+                                          int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_draw_texture_ex   = void(int32:handle, flt32:x, flt32:y,
+                                          flt32:rotation, flt32:scale,
+                                          int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_draw_texture_rec  = void(int32:handle,
+                                          flt32:sx, flt32:sy, flt32:sw, flt32:sh,
+                                          flt32:dx, flt32:dy,
+                                          int32:r, int32:g, int32:b, int32:a);
+    func:aria_rl_draw_texture_pro  = void(int32:handle,
+                                          flt32:sx, flt32:sy, flt32:sw, flt32:sh,
+                                          flt32:dx, flt32:dy, flt32:dw, flt32:dh,
+                                          flt32:ox, flt32:oy, flt32:rotation,
+                                          int32:r, int32:g, int32:b, int32:a);
+
+    // audio: device
+    func:aria_rl_init_audio_device     = void();
+    func:aria_rl_close_audio_device    = void();
+    func:aria_rl_is_audio_device_ready = int32();
+    func:aria_rl_set_master_volume     = void(flt32:vol);
+
+    // audio: sounds
+    func:aria_rl_load_sound       = int32(string:path);
+    func:aria_rl_unload_sound     = void(int32:handle);
+    func:aria_rl_play_sound       = void(int32:handle);
+    func:aria_rl_stop_sound       = void(int32:handle);
+    func:aria_rl_is_sound_playing = int32(int32:handle);
+    func:aria_rl_set_sound_volume = void(int32:handle, flt32:vol);
+
+    // audio: music
+    func:aria_rl_load_music             = int32(string:path);
+    func:aria_rl_unload_music           = void(int32:handle);
+    func:aria_rl_play_music             = void(int32:handle);
+    func:aria_rl_stop_music             = void(int32:handle);
+    func:aria_rl_update_music           = void(int32:handle);
+    func:aria_rl_pause_music            = void(int32:handle);
+    func:aria_rl_resume_music           = void(int32:handle);
+    func:aria_rl_is_music_playing       = int32(int32:handle);
+    func:aria_rl_set_music_volume       = void(int32:handle, flt32:vol);
+    func:aria_rl_get_music_time_length  = flt32(int32:handle);
+    func:aria_rl_get_music_time_played  = flt32(int32:handle);
+
+    // gamepad
+    func:aria_rl_is_gamepad_available        = int32(int32:gamepad);
+    func:aria_rl_is_gamepad_button_pressed   = int32(int32:gamepad, int32:button);
+    func:aria_rl_is_gamepad_button_down      = int32(int32:gamepad, int32:button);
+    func:aria_rl_is_gamepad_button_released  = int32(int32:gamepad, int32:button);
+    func:aria_rl_get_gamepad_axis_movement   = flt32(int32:gamepad, int32:axis);
+
+    // procedural beep (wave_type: 0=square 1=triangle 2=sawtooth 3=sine)
+    func:aria_rl_gen_beep = int32(int32:freq, int32:dur_ms, int32:wave, flt32:vol);
 }
 
 // ── public API: window ──────────────────────────────────────────────
@@ -325,3 +383,234 @@ pub func:KEY_Z      = int32() { pass(90i32); };
 pub func:MOUSE_LEFT   = int32() { pass(0i32); };
 pub func:MOUSE_RIGHT  = int32() { pass(1i32); };
 pub func:MOUSE_MIDDLE = int32() { pass(2i32); };
+
+// ── public API: textures ────────────────────────────────────────────
+
+pub func:rl_load_texture = int32(string:path) {
+    int32:r = aria_rl_load_texture(path);
+    pass(r);
+};
+
+pub func:rl_unload_texture = NIL(int32:handle) {
+    aria_rl_unload_texture(handle);
+    pass(NIL);
+};
+
+pub func:rl_is_texture_valid = int32(int32:handle) {
+    int32:r = aria_rl_is_texture_valid(handle);
+    pass(r);
+};
+
+pub func:rl_get_texture_width = int32(int32:handle) {
+    int32:r = aria_rl_get_texture_width(handle);
+    pass(r);
+};
+
+pub func:rl_get_texture_height = int32(int32:handle) {
+    int32:r = aria_rl_get_texture_height(handle);
+    pass(r);
+};
+
+pub func:rl_draw_texture = NIL(int32:handle, int32:x, int32:y,
+                                int32:r, int32:g, int32:b, int32:a) {
+    aria_rl_draw_texture(handle, x, y, r, g, b, a);
+    pass(NIL);
+};
+
+pub func:rl_draw_texture_ex = NIL(int32:handle, flt32:x, flt32:y,
+                                   flt32:rotation, flt32:scale,
+                                   int32:r, int32:g, int32:b, int32:a) {
+    aria_rl_draw_texture_ex(handle, x, y, rotation, scale, r, g, b, a);
+    pass(NIL);
+};
+
+pub func:rl_draw_texture_rec = NIL(int32:handle,
+                                    flt32:sx, flt32:sy, flt32:sw, flt32:sh,
+                                    flt32:dx, flt32:dy,
+                                    int32:r, int32:g, int32:b, int32:a) {
+    aria_rl_draw_texture_rec(handle, sx, sy, sw, sh, dx, dy, r, g, b, a);
+    pass(NIL);
+};
+
+pub func:rl_draw_texture_pro = NIL(int32:handle,
+                                    flt32:sx, flt32:sy, flt32:sw, flt32:sh,
+                                    flt32:dx, flt32:dy, flt32:dw, flt32:dh,
+                                    flt32:ox, flt32:oy, flt32:rotation,
+                                    int32:r, int32:g, int32:b, int32:a) {
+    aria_rl_draw_texture_pro(handle, sx, sy, sw, sh, dx, dy, dw, dh,
+                             ox, oy, rotation, r, g, b, a);
+    pass(NIL);
+};
+
+// ── public API: audio device ────────────────────────────────────────
+
+pub func:rl_init_audio_device = NIL() {
+    aria_rl_init_audio_device();
+    pass(NIL);
+};
+
+pub func:rl_close_audio_device = NIL() {
+    aria_rl_close_audio_device();
+    pass(NIL);
+};
+
+pub func:rl_is_audio_device_ready = int32() {
+    int32:r = aria_rl_is_audio_device_ready();
+    pass(r);
+};
+
+pub func:rl_set_master_volume = NIL(flt32:vol) {
+    aria_rl_set_master_volume(vol);
+    pass(NIL);
+};
+
+// ── public API: sounds ──────────────────────────────────────────────
+
+pub func:rl_load_sound = int32(string:path) {
+    int32:r = aria_rl_load_sound(path);
+    pass(r);
+};
+
+pub func:rl_unload_sound = NIL(int32:handle) {
+    aria_rl_unload_sound(handle);
+    pass(NIL);
+};
+
+pub func:rl_play_sound = NIL(int32:handle) {
+    aria_rl_play_sound(handle);
+    pass(NIL);
+};
+
+pub func:rl_stop_sound = NIL(int32:handle) {
+    aria_rl_stop_sound(handle);
+    pass(NIL);
+};
+
+pub func:rl_is_sound_playing = int32(int32:handle) {
+    int32:r = aria_rl_is_sound_playing(handle);
+    pass(r);
+};
+
+pub func:rl_set_sound_volume = NIL(int32:handle, flt32:vol) {
+    aria_rl_set_sound_volume(handle, vol);
+    pass(NIL);
+};
+
+// ── public API: music ───────────────────────────────────────────────
+
+pub func:rl_load_music = int32(string:path) {
+    int32:r = aria_rl_load_music(path);
+    pass(r);
+};
+
+pub func:rl_unload_music = NIL(int32:handle) {
+    aria_rl_unload_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_play_music = NIL(int32:handle) {
+    aria_rl_play_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_stop_music = NIL(int32:handle) {
+    aria_rl_stop_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_update_music = NIL(int32:handle) {
+    aria_rl_update_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_pause_music = NIL(int32:handle) {
+    aria_rl_pause_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_resume_music = NIL(int32:handle) {
+    aria_rl_resume_music(handle);
+    pass(NIL);
+};
+
+pub func:rl_is_music_playing = int32(int32:handle) {
+    int32:r = aria_rl_is_music_playing(handle);
+    pass(r);
+};
+
+pub func:rl_set_music_volume = NIL(int32:handle, flt32:vol) {
+    aria_rl_set_music_volume(handle, vol);
+    pass(NIL);
+};
+
+pub func:rl_get_music_time_length = flt32(int32:handle) {
+    flt32:r = aria_rl_get_music_time_length(handle);
+    pass(r);
+};
+
+pub func:rl_get_music_time_played = flt32(int32:handle) {
+    flt32:r = aria_rl_get_music_time_played(handle);
+    pass(r);
+};
+
+// ── public API: gamepad ───────────────────────────────────────────────
+
+pub func:rl_is_gamepad_available = int32(int32:gamepad) {
+    int32:r = aria_rl_is_gamepad_available(gamepad);
+    pass(r);
+};
+
+pub func:rl_is_gamepad_button_pressed = int32(int32:gamepad, int32:button) {
+    int32:r = aria_rl_is_gamepad_button_pressed(gamepad, button);
+    pass(r);
+};
+
+pub func:rl_is_gamepad_button_down = int32(int32:gamepad, int32:button) {
+    int32:r = aria_rl_is_gamepad_button_down(gamepad, button);
+    pass(r);
+};
+
+pub func:rl_is_gamepad_button_released = int32(int32:gamepad, int32:button) {
+    int32:r = aria_rl_is_gamepad_button_released(gamepad, button);
+    pass(r);
+};
+
+pub func:rl_get_gamepad_axis_movement = flt32(int32:gamepad, int32:axis) {
+    flt32:r = aria_rl_get_gamepad_axis_movement(gamepad, axis);
+    pass(r);
+};
+
+pub func:rl_gen_beep = int32(int32:freq, int32:dur_ms, int32:wave, flt32:vol) {
+    int32:r = aria_rl_gen_beep(freq, dur_ms, wave, vol);
+    pass(r);
+};
+
+// Gamepad button constants (raylib GamepadButton enum)
+// Left face (D-pad)
+pub func:GP_DPAD_UP    = int32() { pass(1i32); };
+pub func:GP_DPAD_RIGHT = int32() { pass(2i32); };
+pub func:GP_DPAD_DOWN  = int32() { pass(3i32); };
+pub func:GP_DPAD_LEFT  = int32() { pass(4i32); };
+// Right face buttons: △/Y=5  ○/B=6  ✕/A=7  □/X=8
+pub func:GP_FACE_Y     = int32() { pass(5i32); };   // △ / Y
+pub func:GP_FACE_B     = int32() { pass(6i32); };   // ○ / B
+pub func:GP_FACE_A     = int32() { pass(7i32); };   // ✕ / A
+pub func:GP_FACE_X     = int32() { pass(8i32); };   // □ / X
+// Shoulder / trigger
+pub func:GP_L1         = int32() { pass(9i32); };
+pub func:GP_L2         = int32() { pass(10i32); };
+pub func:GP_R1         = int32() { pass(11i32); };
+pub func:GP_R2         = int32() { pass(12i32); };
+// Middle
+pub func:GP_SELECT     = int32() { pass(13i32); };
+pub func:GP_HOME       = int32() { pass(14i32); };
+pub func:GP_START      = int32() { pass(15i32); };
+// Thumbsticks
+pub func:GP_L3         = int32() { pass(16i32); };
+pub func:GP_R3         = int32() { pass(17i32); };
+
+// Gamepad axis constants
+pub func:GP_AXIS_LEFT_X  = int32() { pass(0i32); };
+pub func:GP_AXIS_LEFT_Y  = int32() { pass(1i32); };
+pub func:GP_AXIS_RIGHT_X = int32() { pass(2i32); };
+pub func:GP_AXIS_RIGHT_Y = int32() { pass(3i32); };

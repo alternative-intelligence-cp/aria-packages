@@ -1,0 +1,159 @@
+// gml_bounce.aria — Bouncing ball demo using GML-style API
+//
+// Demonstrates the GML compatibility layer:
+//   - game_init / game_should_close / game_shutdown loop
+//   - draw_set_color with GML color constants
+//   - draw_circle, draw_rectangle, draw_text
+//   - keyboard_check for input
+//
+// Compile:
+//   ariac examples/gml_bounce.aria -o gml_bounce \
+//     -L shim -laria_gml_shim -lraylib -lm
+//
+// Run:
+//   LD_LIBRARY_PATH=shim ./gml_bounce
+
+use "../src/aria_gml.aria".*;
+
+// ── game state ──
+flt32:ball_x  = 400.0f32;
+flt32:ball_y  = 300.0f32;
+flt32:ball_dx = 3.5f32;
+flt32:ball_dy = 2.5f32;
+flt32:ball_r  = 20.0f32;
+int32:ball_color = 255i32;
+int32:score = 0i32;
+flt32:paddle_x  = 350.0f32;
+flt32:paddle_y  = 550.0f32;
+flt32:paddle_w  = 100.0f32;
+flt32:paddle_h  = 12.0f32;
+flt32:paddle_spd = 6.0f32;
+
+// ── create event ──
+func:game_create = NIL() {
+    game_set_target_fps(60i32);
+    randomize(42i32);
+    ball_color = make_color_rgb(0i32, 200i32, 255i32);
+    pass(NIL);
+};
+
+// ── step event ──
+func:game_step = NIL() {
+
+    // paddle input
+    if (keyboard_check(vk_left) == 1i32) {
+        paddle_x = paddle_x - paddle_spd;
+    }
+    if (keyboard_check(vk_right) == 1i32) {
+        paddle_x = paddle_x + paddle_spd;
+    }
+
+    // clamp paddle
+    if (paddle_x < 0.0f32) {
+        paddle_x = 0.0f32;
+    }
+    if (paddle_x + paddle_w > 800.0f32) {
+        paddle_x = 800.0f32 - paddle_w;
+    }
+
+    // move ball
+    ball_x = ball_x + ball_dx;
+    ball_y = ball_y + ball_dy;
+
+    // bounce off walls
+    if (ball_x - ball_r < 0.0f32) {
+        ball_dx = 0.0f32 - ball_dx;
+        ball_x = ball_r;
+    }
+    if (ball_x + ball_r > 800.0f32) {
+        ball_dx = 0.0f32 - ball_dx;
+        ball_x = 800.0f32 - ball_r;
+    }
+    if (ball_y - ball_r < 0.0f32) {
+        ball_dy = 0.0f32 - ball_dy;
+        ball_y = ball_r;
+    }
+
+    // bounce off paddle
+    if (ball_y + ball_r >= paddle_y) {
+        if (ball_x >= paddle_x) {
+            if (ball_x <= paddle_x + paddle_w) {
+                if (ball_dy > 0.0f32) {
+                    ball_dy = 0.0f32 - ball_dy;
+                    ball_y = paddle_y - ball_r;
+                    score = score + 10i32;
+                    // speed up slightly
+                    if (ball_dx > 0.0f32) {
+                        ball_dx = ball_dx + 0.1f32;
+                    }
+                    if (ball_dx < 0.0f32) {
+                        ball_dx = ball_dx - 0.1f32;
+                    }
+                    if (ball_dy < 0.0f32) {
+                        ball_dy = ball_dy - 0.1f32;
+                    }
+                }
+            }
+        }
+    }
+
+    // reset if ball falls off bottom
+    if (ball_y > 620.0f32) {
+        ball_x  = 400.0f32;
+        ball_y  = 100.0f32;
+        ball_dx = 3.5f32;
+        ball_dy = 2.5f32;
+        score = 0i32;
+    }
+
+    pass(NIL);
+};
+
+// ── draw event ──
+func:game_draw = NIL() {
+
+    draw_clear(c_black);
+
+    // draw paddle
+    draw_set_color(c_white);
+    draw_rectangle(paddle_x, paddle_y,
+                   paddle_x + paddle_w, paddle_y + paddle_h,
+                   0i32);
+
+    // draw ball
+    draw_set_color(ball_color);
+    draw_circle(ball_x, ball_y, ball_r, 0i32);
+
+    // draw score
+    draw_set_color(c_yellow);
+    draw_set_font_size(24i32);
+    draw_text(10.0f32, 10.0f32, "Score:");
+
+    // draw border
+    draw_set_color(c_dkgray);
+    draw_rectangle(0.0f32, 0.0f32, 800.0f32, 600.0f32, 1i32);
+
+    // draw FPS
+    draw_set_color(c_gray);
+    draw_set_font_size(16i32);
+    draw_text(720.0f32, 10.0f32, "FPS");
+
+    pass(NIL);
+};
+
+// ── main ──
+func:main = int32() {
+    game_init(800i32, 600i32, "GML Bounce - Aria");
+    drop(game_create());
+
+    while (game_should_close() == 0i32) {
+        game_begin_step();
+        drop(game_step());
+        game_begin_draw();
+        drop(game_draw());
+        game_end_draw();
+    }
+
+    game_shutdown();
+    pass(0i32);
+};
