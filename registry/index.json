@@ -2,7 +2,7 @@
   "packages": {
     "aria-args": {
       "latest": "0.2.0",
-      "description": "CLI argument parsing for Aria \u2014 reads /proc/self/cmdline and provides flag/value query functions",
+      "description": "CLI argument parsing for Aria — reads /proc/self/cmdline and provides flag/value query functions",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -22,7 +22,7 @@
     },
     "aria-audio": {
       "latest": "0.2.0",
-      "description": "Software audio synthesis for Aria virtual console \u2014 4-channel mixing, waveform generation via C shim",
+      "description": "Software audio synthesis for Aria virtual console — 4-channel mixing, waveform generation via C shim",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -50,6 +50,16 @@
         }
       }
     },
+    "aria-body-parser": {
+      "latest": "0.2.9",
+      "description": "Request body parsing: JSON field access, URL-encoded form data, raw body",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-buf": {
       "latest": "0.2.0",
       "description": "Byte and word packing/unpacking operations for uint64 buffers (little-endian)",
@@ -70,6 +80,16 @@
         }
       }
     },
+    "aria-cli": {
+      "latest": "0.2.6",
+      "description": "Rich CLI output — ANSI colors, bold/italic/underline, progress bars, and banners",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-color": {
       "latest": "0.2.0",
       "description": "RGBA color packing, unpacking, and pixel transforms for Aria",
@@ -80,9 +100,19 @@
         }
       }
     },
+    "aria-compress": {
+      "latest": "0.2.6",
+      "description": "Compression and decompression (gzip/deflate) via zlib for Aria",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-console": {
       "latest": "0.2.0",
-      "description": "Virtual 8-bit console address map and frame scheduler \u2014 16-bit memory-mapped address space, pure Aria",
+      "description": "Virtual 8-bit console address map and frame scheduler — 16-bit memory-mapped address space, pure Aria",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -100,9 +130,39 @@
         }
       }
     },
+    "aria-cookie": {
+      "latest": "0.2.9",
+      "description": "HTTP cookie parsing and Set-Cookie header generation for Aria servers",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-cors": {
+      "latest": "0.2.9",
+      "description": "CORS (Cross-Origin Resource Sharing) header generation for Aria HTTP servers",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-crypto": {
+      "latest": "0.2.6",
+      "description": "Cryptographic hashing — SHA-256, MD5, HMAC-SHA256 with hex output",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-csv": {
       "latest": "0.2.2",
-      "description": "CSV parser and writer for Aria \u2014 RFC 4180 compliant",
+      "description": "CSV parser and writer for Aria — RFC 4180 compliant",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -110,9 +170,19 @@
         }
       }
     },
+    "aria-cuda": {
+      "latest": "0.2.10",
+      "description": "CUDA runtime FFI bindings — device management, memory ops, cuBLAS linear algebra",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-datetime": {
       "latest": "0.2.2",
-      "description": "Date and time library for Aria \u2014 timestamps, formatting, components",
+      "description": "Date and time library for Aria — timestamps, formatting, components",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -122,7 +192,7 @@
     },
     "aria-decision-t": {
       "latest": "0.2.0",
-      "description": "DecisionGradientT \u2014 two-axis gradient decision construct with time-axis snapshot history",
+      "description": "DecisionGradientT — two-axis gradient decision construct with time-axis snapshot history",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -132,7 +202,17 @@
     },
     "aria-display": {
       "latest": "0.2.0",
-      "description": "Cross-platform terminal display library \u2014 ANSI/termios TUI primitives, cursor control, raw mode via C shim",
+      "description": "Cross-platform terminal display library — ANSI/termios TUI primitives, cursor control, raw mode via C shim",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-editor": {
+      "latest": "0.2.0",
+      "description": "Terminal-based text editor written in Aria",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -142,7 +222,7 @@
     },
     "aria-endian": {
       "latest": "0.2.0",
-      "description": "Byte-swap and rotation utilities \u2014 endian conversion, circular bit shifts on uint64",
+      "description": "Byte-swap and rotation utilities — endian conversion, circular bit shifts on uint64",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -152,9 +232,19 @@
     },
     "aria-entangled": {
       "latest": "0.2.0",
-      "description": "EntangledPair \u2014 two coupled DecisionGradients with tilt-axis propagation and joint crystallization",
+      "description": "EntangledPair — two coupled DecisionGradients with tilt-axis propagation and joint crystallization",
       "versions": {
         "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-env": {
+      "latest": "0.2.6",
+      "description": "Environment variable management — get, set, unset, with convenience accessors",
+      "versions": {
+        "0.2.6": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -190,9 +280,19 @@
         }
       }
     },
+    "aria-gml": {
+      "latest": "0.2.0",
+      "description": "GML (Game Maker Language) inspired 2D game framework for Aria",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-gradient-field": {
       "latest": "0.2.0",
-      "description": "GradientField \u2014 spatial decision field driven by a single DGT emitter (LIB-27)",
+      "description": "GradientField — spatial decision field driven by a single DGT emitter (LIB-27)",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -202,7 +302,7 @@
     },
     "aria-gtk4": {
       "latest": "0.2.2",
-      "description": "Aria bindings for GTK4 \u2014 native desktop GUI toolkit",
+      "description": "Aria bindings for GTK4 — native desktop GUI toolkit",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -212,7 +312,7 @@
     },
     "aria-hash": {
       "latest": "0.2.0",
-      "description": "Non-cryptographic hash functions \u2014 FNV-1a, djb2, bit-mixing for hash tables, checksums, and seeding",
+      "description": "Non-cryptographic hash functions — FNV-1a, djb2, bit-mixing for hash tables, checksums, and seeding",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -222,7 +322,7 @@
     },
     "aria-http": {
       "latest": "0.2.2",
-      "description": "HTTP client library for Aria \u2014 GET, POST, headers, status codes via libcurl",
+      "description": "HTTP client library for Aria — GET, POST, headers, status codes via libcurl",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -232,7 +332,7 @@
     },
     "aria-input": {
       "latest": "0.2.0",
-      "description": "Raw keyboard input for Aria virtual console \u2014 key detection with SNES-style button mapping via C shim",
+      "description": "Raw keyboard input for Aria virtual console — key detection with SNES-style button mapping via C shim",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -240,9 +340,19 @@
         }
       }
     },
+    "aria-jamba": {
+      "latest": "0.2.10",
+      "description": "Jamba hybrid model (Transformer attention + Mamba SSM + MoE) for Aria",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-json": {
       "latest": "0.2.0",
-      "description": "JSON tokeniser for Aria \u2014 byte-level scanning with malloc/free for zero-copy token-type arrays",
+      "description": "JSON tokeniser for Aria — byte-level scanning with malloc/free for zero-copy token-type arrays",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -252,7 +362,7 @@
     },
     "aria-log": {
       "latest": "0.2.2",
-      "description": "Structured logging library for Aria \u2014 levels, timestamps, formatted output",
+      "description": "Structured logging library for Aria — levels, timestamps, formatted output",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -260,11 +370,41 @@
         }
       }
     },
+    "aria-looping": {
+      "latest": "0.2.10",
+      "description": "Looping / iterative-refinement model (Universal Transformer style) for Aria",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-mamba": {
+      "latest": "0.2.10",
+      "description": "Mamba selective state space model for Aria",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-math": {
       "latest": "0.2.0",
-      "description": "Mathematical functions for Aria \u2014 trig, exponential, logarithm, rounding, and more via C libm",
+      "description": "Mathematical functions for Aria — trig, exponential, logarithm, rounding, and more via C libm",
       "versions": {
         "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-mime": {
+      "latest": "0.2.6",
+      "description": "MIME type detection from file extensions with 70+ registered types",
+      "versions": {
+        "0.2.6": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -282,7 +422,7 @@
     },
     "aria-mysql": {
       "latest": "0.1.0",
-      "description": "MySQL client library for Aria \u2014 SQL database via C shim wrapping libmysqlclient",
+      "description": "MySQL client library for Aria — SQL database via C shim wrapping libmysqlclient",
       "versions": {
         "0.1.0": {
           "depends": [],
@@ -293,9 +433,19 @@
         }
       }
     },
+    "aria-opengl": {
+      "latest": "0.1.0",
+      "description": "OpenGL 3.3 Core bindings for Aria — shaders, buffers, textures, 3D math, via SDL2 windowing + GLAD loader",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-postgres": {
       "latest": "0.1.0",
-      "description": "PostgreSQL client library for Aria \u2014 SQL database via C shim wrapping libpq",
+      "description": "PostgreSQL client library for Aria — SQL database via C shim wrapping libpq",
       "versions": {
         "0.1.0": {
           "depends": [],
@@ -316,9 +466,19 @@
         }
       }
     },
+    "aria-rate-limit": {
+      "latest": "0.2.9",
+      "description": "Token bucket rate limiting for Aria HTTP servers",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-raylib": {
       "latest": "0.2.2",
-      "description": "Raylib bindings for Aria \u2014 windowing, 2D drawing, input, and text rendering via C shim",
+      "description": "Raylib bindings for Aria — windowing, 2D drawing, input, and text rendering via C shim",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -328,7 +488,7 @@
     },
     "aria-redis": {
       "latest": "0.1.0",
-      "description": "Redis client library for Aria \u2014 key-value store via C shim wrapping hiredis",
+      "description": "Redis client library for Aria — key-value store via C shim wrapping hiredis",
       "versions": {
         "0.1.0": {
           "depends": [],
@@ -341,7 +501,7 @@
     },
     "aria-regex": {
       "latest": "0.2.2",
-      "description": "Regular expression library for Aria \u2014 POSIX extended regex",
+      "description": "Regular expression library for Aria — POSIX extended regex",
       "versions": {
         "0.2.2": {
           "depends": [],
@@ -351,7 +511,7 @@
     },
     "aria-resource-mem": {
       "latest": "0.2.0",
-      "description": "Consumable expiring memory cells \u2014 configurable read/write/TTL limits with Result-style access",
+      "description": "Consumable expiring memory cells — configurable read/write/TTL limits with Result-style access",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -359,11 +519,51 @@
         }
       }
     },
+    "aria-router": {
+      "latest": "0.2.9",
+      "description": "Express-style HTTP router with path parameters and middleware",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-sdl2": {
       "latest": "0.2.2",
-      "description": "Aria bindings for SDL2 \u2014 windowing, 2D rendering, events, and input",
+      "description": "Aria bindings for SDL2 — windowing, 2D rendering, events, and input",
       "versions": {
         "0.2.2": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-semver": {
+      "latest": "0.2.6",
+      "description": "Semantic versioning — parse, compare, satisfy constraints, and bump versions",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-server": {
+      "latest": "0.2.9",
+      "description": "HTTP server for Aria — listen, accept, parse requests, send responses",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-session": {
+      "latest": "0.2.9",
+      "description": "In-memory session management for Aria HTTP servers",
+      "versions": {
+        "0.2.9": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -381,7 +581,7 @@
     },
     "aria-sqlite": {
       "latest": "0.1.0",
-      "description": "SQLite3 client library for Aria \u2014 embedded SQL database via C shim wrapping libsqlite3",
+      "description": "SQLite3 client library for Aria — embedded SQL database via C shim wrapping libsqlite3",
       "versions": {
         "0.1.0": {
           "depends": [],
@@ -392,11 +592,41 @@
         }
       }
     },
+    "aria-static": {
+      "latest": "0.2.9",
+      "description": "Static file serving for Aria HTTP servers",
+      "versions": {
+        "0.2.9": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-str": {
       "latest": "0.2.0",
       "description": "High-level string manipulation library for Aria",
       "versions": {
         "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-template": {
+      "latest": "0.2.6",
+      "description": "String template engine with {{variable}} substitution",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-tensor": {
+      "latest": "0.2.10",
+      "description": "CPU float32 tensor library — create, reshape, matmul, activations, reductions",
+      "versions": {
+        "0.2.10": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -412,9 +642,59 @@
         }
       }
     },
+    "aria-tetris": {
+      "latest": "0.2.8",
+      "description": "Full Tetris clone — 7-bag randomizer, hold piece, ghost piece, high score, gamepad support, sound effects",
+      "versions": {
+        "0.2.8": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-toml": {
+      "latest": "0.2.6",
+      "description": "TOML configuration file parsing with dotted-key lookup, type-safe getters, and serialization",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-transformer": {
+      "latest": "0.2.10",
+      "description": "Transformer model — multi-head attention, FFN, layer norm, causal masking",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-uacp": {
+      "latest": "0.2.10",
+      "description": "Universal AI Communication Protocol — binary machine-to-machine protocol for AI-native systems",
+      "versions": {
+        "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-url": {
+      "latest": "0.2.6",
+      "description": "URL parsing, percent-encoding/decoding, and component extraction",
+      "versions": {
+        "0.2.6": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-uuid": {
       "latest": "0.2.0",
-      "description": "128-bit UUID arithmetic utilities \u2014 pack/unpack, hi/lo split, comparison, and version extraction",
+      "description": "128-bit UUID arithmetic utilities — pack/unpack, hi/lo split, comparison, and version extraction",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -432,16 +712,6 @@
         }
       }
     },
-    "aria-zigzag": {
-      "latest": "0.2.0",
-      "description": "Zigzag encoding/decoding \u2014 maps signed integers to unsigned for efficient varint serialization",
-      "versions": {
-        "0.2.0": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
     "aria-websocket": {
       "latest": "0.2.6",
       "description": "WebSocket client/server for Aria — RFC 6455 compliant with pure POSIX sockets",
@@ -452,9 +722,9 @@
         }
       }
     },
-    "aria-toml": {
+    "aria-xml": {
       "latest": "0.2.6",
-      "description": "TOML configuration file parsing with dotted-key lookup, type-safe getters, and serialization",
+      "description": "XML parsing with tag lookup, attribute extraction, path queries, and element counting",
       "versions": {
         "0.2.6": {
           "depends": [],
@@ -472,91 +742,11 @@
         }
       }
     },
-    "aria-compress": {
-      "latest": "0.2.6",
-      "description": "Compression and decompression (gzip/deflate) via zlib for Aria",
+    "aria-zigzag": {
+      "latest": "0.2.0",
+      "description": "Zigzag encoding/decoding — maps signed integers to unsigned for efficient varint serialization",
       "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-crypto": {
-      "latest": "0.2.6",
-      "description": "Cryptographic hashing — SHA-256, MD5, HMAC-SHA256 with hex output",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-url": {
-      "latest": "0.2.6",
-      "description": "URL parsing, percent-encoding/decoding, and component extraction",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-mime": {
-      "latest": "0.2.6",
-      "description": "MIME type detection from file extensions with 70+ registered types",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-semver": {
-      "latest": "0.2.6",
-      "description": "Semantic versioning — parse, compare, satisfy constraints, and bump versions",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-template": {
-      "latest": "0.2.6",
-      "description": "String template engine with {{variable}} substitution",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-cli": {
-      "latest": "0.2.6",
-      "description": "Rich CLI output — ANSI colors, bold/italic/underline, progress bars, and banners",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-env": {
-      "latest": "0.2.6",
-      "description": "Environment variable management — get, set, unset, with convenience accessors",
-      "versions": {
-        "0.2.6": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-xml": {
-      "latest": "0.2.6",
-      "description": "XML parsing with tag lookup, attribute extraction, path queries, and element counting",
-      "versions": {
-        "0.2.6": {
+        "0.2.0": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
