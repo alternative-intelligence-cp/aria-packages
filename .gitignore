@@ -11,6 +11,12 @@ packages/aria-tetris/aria_tetris
 packages/aria-gml/gml_bounce
 packages/aria-editor/aria_editor
 
+# Compiled test binaries
+packages/*/tests/test_*
+packages/*/tests/demo_*
+!packages/*/tests/test_*.aria
+!packages/*/tests/demo_*.aria
+
 # Editor
 .vscode/
 *.swp
