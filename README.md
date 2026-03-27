@@ -2,7 +2,7 @@
 
 Ecosystem package libraries for the [Aria programming language](https://github.com/alternative-intelligence-cp/aria).
 
-**74 packages** organized into utility, graphics/game, server/middleware, database, and AI/ML tiers.
+**80 packages** organized into utility, graphics/game, server/middleware, database, and AI/ML tiers.
 
 ## Packages
 
@@ -12,6 +12,7 @@ Ecosystem package libraries for the [Aria programming language](https://github.c
 | aria-ascii | ASCII character classification and conversion |
 | aria-audio | Software synthesis, MIDI note table, ALSA backend |
 | aria-base64 | Base64 encoding/decoding |
+| aria-bench | Benchmarking |
 | aria-bits | Bit test/set/clear/flip, nibble extraction, popcount |
 | aria-body-parser | HTTP body parsing middleware (JSON, URL-encoded, multipart) |
 | aria-buf | Byte/word packing for uint64 buffers |
@@ -43,16 +44,20 @@ Ecosystem package libraries for the [Aria programming language](https://github.c
 | aria-http | HTTP client (GET/POST requests) |
 | aria-input | Raw keyboard input with SNES-style button mapping |
 | aria-jamba | Hybrid Transformer + Mamba + Mixture of Experts model |
+| aria-jit | WildX JIT helpers |
 | aria-json | JSON encoding for basic types |
 | aria-log | Structured logging with severity levels |
 | aria-looping | Iterative refinement model with convergence stopping |
 | aria-mamba | Mamba selective state space model with SiLU gating |
+| aria-map | Map data structure |
 | aria-math | Trig, exp, log, rounding via C libm |
 | aria-mime | MIME type detection and mapping |
 | aria-mux | Bit-select, field insert/extract, mask ops, blend |
 | aria-mysql | MySQL/MariaDB client via libmysqlclient |
 | aria-opengl | OpenGL 3.3 Core via GLAD + SDL2 |
+| aria-path | Path manipulation | 
 | aria-postgres | PostgreSQL client via libpq (parameterized, LISTEN/NOTIFY) |
+| aria-queue | Queue data structure |
 | aria-rand | xorshift64 pseudo-random number generator |
 | aria-rate-limit | Token bucket rate limiting middleware |
 | aria-raylib | raylib v6.0 bindings: window, drawing, shapes, text, input, audio, gamepad |
@@ -65,6 +70,7 @@ Ecosystem package libraries for the [Aria programming language](https://github.c
 | aria-server | HTTP/1.1 server: listen, accept, parse, respond |
 | aria-session | In-memory session management with crypto IDs |
 | aria-socket | Socket abstraction layer |
+| aria-sort | Various sorting algorithms |
 | aria-sqlite | SQLite3 embedded database client (parameterized queries) |
 | aria-static | Static file serving with MIME detection and path traversal protection |
 | aria-str | String utilities (pad, trim, repeat, contains, split) |
