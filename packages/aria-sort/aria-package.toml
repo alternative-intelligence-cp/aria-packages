@@ -1,0 +1,13 @@
+[package]
+name = "aria-sort"
+version = "0.2.0"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Sorting algorithms for int64 arrays — quicksort, insertion sort, is_sorted check"
+keywords = ["sort", "algorithm", "array", "utility"]
+categories = ["algorithm"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_sort_shim"]

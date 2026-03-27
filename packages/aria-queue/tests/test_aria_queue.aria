@@ -1,0 +1,140 @@
+// test_aria_queue.aria — Tests for aria-queue
+
+use "../src/aria_queue.aria".*;
+
+func:failsafe = int32(int32:code) { pass(1); };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int32:fail_count = 0i32;
+
+    // test 01: new queue is empty
+    int64:q1 = queue_new();
+    int64:empty1 = queue_is_empty(q1);
+    if (empty1 == 1i64) {
+        println("[PASS] test 01: new queue is empty");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 01: new queue is empty");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 02: enqueue and length
+    queue_enqueue(q1, 10i64);
+    queue_enqueue(q1, 20i64);
+    queue_enqueue(q1, 30i64);
+    int64:len1 = queue_length(q1);
+    if (len1 == 3i64) {
+        println("[PASS] test 02: enqueue and length");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 02: enqueue and length");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 03: peek returns front
+    int64:front = queue_peek(q1);
+    if (front == 10i64) {
+        println("[PASS] test 03: peek returns front");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 03: peek returns front");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 04: dequeue returns FIFO order
+    int64:d1 = queue_dequeue(q1);
+    int64:d2 = queue_dequeue(q1);
+    int64:d3 = queue_dequeue(q1);
+    if (d1 == 10i64) {
+        if (d2 == 20i64) {
+            if (d3 == 30i64) {
+                println("[PASS] test 04: dequeue FIFO order");
+                pass_count = pass_count + 1i32;
+            } else {
+                println("[FAIL] test 04: dequeue FIFO (d3)");
+                fail_count = fail_count + 1i32;
+            }
+        } else {
+            println("[FAIL] test 04: dequeue FIFO (d2)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 04: dequeue FIFO (d1)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 05: empty after all dequeued
+    int64:empty2 = queue_is_empty(q1);
+    if (empty2 == 1i64) {
+        println("[PASS] test 05: empty after dequeue all");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 05: empty after dequeue all");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 06: clear resets queue
+    queue_enqueue(q1, 100i64);
+    queue_enqueue(q1, 200i64);
+    queue_clear(q1);
+    int64:len2 = queue_length(q1);
+    int64:empty3 = queue_is_empty(q1);
+    if (len2 == 0i64) {
+        if (empty3 == 1i64) {
+            println("[PASS] test 06: clear resets queue");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 06: clear (not empty)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 06: clear (length)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 07: wrap-around (enqueue/dequeue past capacity)
+    int64:q2 = queue_new();
+    int64:i = 0i64;
+    while (i < 20i64) {
+        queue_enqueue(q2, i);
+        i = i + 1i64;
+    }
+    // dequeue first 10
+    int64:j = 0i64;
+    while (j < 10i64) {
+        queue_dequeue(q2);
+        j = j + 1i64;
+    }
+    // enqueue 10 more (causes ring wrap)
+    int64:k = 20i64;
+    while (k < 30i64) {
+        queue_enqueue(q2, k);
+        k = k + 1i64;
+    }
+    int64:len3 = queue_length(q2);
+    int64:front2 = queue_peek(q2);
+    if (len3 == 20i64) {
+        if (front2 == 10i64) {
+            println("[PASS] test 07: ring buffer wrap-around");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 07: wrap-around (front)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 07: wrap-around (length)");
+        fail_count = fail_count + 1i32;
+    }
+    queue_free(q2);
+    queue_free(q1);
+
+    println("");
+    print("--- ");
+    print(string_from_int(@cast<int64>(pass_count)));
+    print(" passed, ");
+    print(string_from_int(@cast<int64>(fail_count)));
+    println(" failed ---");
+
+    pass(0i32);
+};

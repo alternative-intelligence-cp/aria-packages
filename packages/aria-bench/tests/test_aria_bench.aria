@@ -1,0 +1,41 @@
+// test_aria_bench.aria — Tests for aria-bench timing functions
+
+func:failsafe = NIL(int32:code) { pass(NIL); };
+
+extern func:aria_bench_now_ns = int64();
+extern func:aria_bench_elapsed_ns = int64(int64:start_ns);
+extern func:aria_bench_assert_true = void(int32:cond, string:msg);
+extern func:aria_bench_assert_gt = void(int64:a, int64:b, string:msg);
+extern func:aria_bench_assert_eq = void(int64:a, int64:b, string:msg);
+extern func:aria_bench_test_summary = void();
+
+func:main = int32() {
+    // test 01: now_ns returns positive value
+    int64:t1 = aria_bench_now_ns();
+    aria_bench_assert_gt(t1, 0i64, "test 01: now_ns > 0");
+
+    // test 02: elapsed_ns > 0 after computation
+    int64:start1 = aria_bench_now_ns();
+    int64:sum = 0i64;
+    for(int64:i = 0i64; i < 10000i64; i = i + 1i64) {
+        sum = sum + i;
+    }
+    int64:elapsed1 = aria_bench_elapsed_ns(start1);
+    aria_bench_assert_gt(elapsed1, 0i64, "test 02: elapsed > 0 after 10K loop");
+
+    // test 03: second now_ns > first now_ns
+    int64:t2 = aria_bench_now_ns();
+    aria_bench_assert_gt(t2, t1, "test 03: second now_ns > first");
+
+    // test 04: longer loop takes more time
+    int64:start2 = aria_bench_now_ns();
+    int64:sum2 = 0i64;
+    for(int64:j = 0i64; j < 100000i64; j = j + 1i64) {
+        sum2 = sum2 + j;
+    }
+    int64:elapsed2 = aria_bench_elapsed_ns(start2);
+    aria_bench_assert_gt(elapsed2, elapsed1, "test 04: 100K loop > 10K loop");
+
+    aria_bench_test_summary();
+    pass(0i32);
+};

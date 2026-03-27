@@ -1,0 +1,63 @@
+// aria_sort.aria — Sorting utilities for int64 arrays
+//
+// Handle-based array with quicksort, insertion sort, is_sorted.
+// Uses C shim for array storage and sort algorithms.
+
+extern func:aria_sort_shim_create = int64();
+extern func:aria_sort_shim_free = void(int64:arr);
+extern func:aria_sort_shim_push = void(int64:arr, int64:val);
+extern func:aria_sort_shim_get = int64(int64:arr, int64:idx);
+extern func:aria_sort_shim_length = int64(int64:arr);
+extern func:aria_sort_shim_quicksort = void(int64:arr);
+extern func:aria_sort_shim_insertion_sort = void(int64:arr);
+extern func:aria_sort_shim_is_sorted = int64(int64:arr);
+extern func:aria_sort_shim_reverse = void(int64:arr);
+
+// ── Create / Destroy ────────────────────────────────────────────────
+
+pub func:sort_array_new = int64() {
+    pass(aria_sort_shim_create());
+};
+
+pub func:sort_array_free = NIL(int64:arr) {
+    aria_sort_shim_free(arr);
+    pass(NIL);
+};
+
+// ── Array Operations ────────────────────────────────────────────────
+
+pub func:sort_push = NIL(int64:arr, int64:val) {
+    aria_sort_shim_push(arr, val);
+    pass(NIL);
+};
+
+pub func:sort_get = int64(int64:arr, int64:idx) {
+    pass(aria_sort_shim_get(arr, idx));
+};
+
+pub func:sort_length = int64(int64:arr) {
+    pass(aria_sort_shim_length(arr));
+};
+
+// ── Sort Algorithms ─────────────────────────────────────────────────
+
+pub func:sort_quicksort = NIL(int64:arr) {
+    aria_sort_shim_quicksort(arr);
+    pass(NIL);
+};
+
+pub func:sort_insertion = NIL(int64:arr) {
+    aria_sort_shim_insertion_sort(arr);
+    pass(NIL);
+};
+
+// ── Queries ─────────────────────────────────────────────────────────
+
+pub func:sort_is_sorted = int64(int64:arr) {
+    pass(aria_sort_shim_is_sorted(arr));
+};
+
+pub func:sort_reverse = NIL(int64:arr) {
+    aria_sort_shim_reverse(arr);
+    pass(NIL);
+};

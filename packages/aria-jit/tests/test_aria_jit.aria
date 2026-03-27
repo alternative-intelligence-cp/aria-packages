@@ -1,0 +1,116 @@
+// test_aria_jit.aria — Tests for aria-jit builder functions
+
+use "../src/aria_jit.aria".*;
+
+func:failsafe = int32(int32:code) { pass(1); };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int32:fail_count = 0i32;
+
+    // test 01: jit_return_const(42) → 42
+    int64:c1 = jit_return_const(42i64);
+    int64:r1 = jit_exec(c1);
+    if (r1 == 42i64) {
+        println("[PASS] test 01: jit_return_const(42)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 01: jit_return_const(42)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c1);
+
+    // test 02: jit_add_two(17, 25) → 42
+    int64:c2 = jit_add_two();
+    int64:r2 = jit_exec2(c2, 17i64, 25i64);
+    if (r2 == 42i64) {
+        println("[PASS] test 02: jit_add_two(17, 25)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 02: jit_add_two(17, 25)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c2);
+
+    // test 03: jit_sub_two(100, 58) → 42
+    int64:c3 = jit_sub_two();
+    int64:r3 = jit_exec2(c3, 100i64, 58i64);
+    if (r3 == 42i64) {
+        println("[PASS] test 03: jit_sub_two(100, 58)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 03: jit_sub_two(100, 58)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c3);
+
+    // test 04: jit_identity(42) → 42
+    int64:c4 = jit_identity();
+    int64:r4 = jit_exec1(c4, 42i64);
+    if (r4 == 42i64) {
+        println("[PASS] test 04: jit_identity(42)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 04: jit_identity(42)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c4);
+
+    // test 05: jit_double(21) → 42
+    int64:c5 = jit_double();
+    int64:r5 = jit_exec1(c5, 21i64);
+    if (r5 == 42i64) {
+        println("[PASS] test 05: jit_double(21)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 05: jit_double(21)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c5);
+
+    // test 06: jit_negate(-42) → 42
+    int64:c6 = jit_negate();
+    int64:neg42 = 0i64 - 42i64;
+    int64:r6 = jit_exec1(c6, neg42);
+    if (r6 == 42i64) {
+        println("[PASS] test 06: jit_negate(-42)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 06: jit_negate(-42)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c6);
+
+    // test 07: jit_return_const(0) → 0
+    int64:c7 = jit_return_const(0i64);
+    int64:r7 = jit_exec(c7);
+    if (r7 == 0i64) {
+        println("[PASS] test 07: jit_return_const(0)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 07: jit_return_const(0)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c7);
+
+    // test 08: jit_add_two(0, 0) → 0
+    int64:c8 = jit_add_two();
+    int64:r8 = jit_exec2(c8, 0i64, 0i64);
+    if (r8 == 0i64) {
+        println("[PASS] test 08: jit_add_two(0, 0)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 08: jit_add_two(0, 0)");
+        fail_count = fail_count + 1i32;
+    }
+    jit_release(c8);
+
+    println("");
+    print("--- ");
+    print(string_from_int(@cast<int64>(pass_count)));
+    print(" passed, ");
+    print(string_from_int(@cast<int64>(fail_count)));
+    println(" failed ---");
+
+    pass(0i32);
+};

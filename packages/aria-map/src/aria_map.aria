@@ -1,0 +1,53 @@
+// aria_map.aria — String-keyed int64 hash map
+// Handle-based FNV-1a hashmap with automatic rehashing
+
+extern func:aria_map_shim_create = int64();
+extern func:aria_map_shim_destroy = NIL(int64:handle);
+extern func:aria_map_shim_set = NIL(int64:handle, string:key, int64:value);
+extern func:aria_map_shim_get = int64(int64:handle, string:key, int64:default_val);
+extern func:aria_map_shim_has = int64(int64:handle, string:key);
+extern func:aria_map_shim_remove = int64(int64:handle, string:key);
+extern func:aria_map_shim_length = int64(int64:handle);
+extern func:aria_map_shim_clear = NIL(int64:handle);
+
+// --- Public API ---
+
+pub func:hmap_new = int64() {
+    int64:h = aria_map_shim_create();
+    pass(h);
+};
+
+pub func:hmap_free = NIL(int64:handle) {
+    aria_map_shim_destroy(handle);
+    pass(NIL);
+};
+
+pub func:hmap_set = NIL(int64:handle, string:key, int64:value) {
+    aria_map_shim_set(handle, key, value);
+    pass(NIL);
+};
+
+pub func:hmap_get = int64(int64:handle, string:key, int64:default_val) {
+    int64:val = aria_map_shim_get(handle, key, default_val);
+    pass(val);
+};
+
+pub func:hmap_has = int64(int64:handle, string:key) {
+    int64:found = aria_map_shim_has(handle, key);
+    pass(found);
+};
+
+pub func:hmap_remove = int64(int64:handle, string:key) {
+    int64:removed = aria_map_shim_remove(handle, key);
+    pass(removed);
+};
+
+pub func:hmap_length = int64(int64:handle) {
+    int64:len = aria_map_shim_length(handle);
+    pass(len);
+};
+
+pub func:hmap_clear = NIL(int64:handle) {
+    aria_map_shim_clear(handle);
+    pass(NIL);
+};

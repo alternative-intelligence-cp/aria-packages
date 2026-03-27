@@ -1,0 +1,151 @@
+// test_aria_map.aria — Tests for aria-map
+
+use "../src/aria_map.aria".*;
+
+func:failsafe = int32(int32:code) { pass(1); };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int32:fail_count = 0i32;
+
+    // test 01: new map is empty
+    int64:m1 = hmap_new();
+    int64:len1 = hmap_length(m1);
+    if (len1 == 0i64) {
+        println("[PASS] test 01: new map is empty");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 01: new map is empty");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 02: set and get
+    hmap_set(m1, "hello", 42i64);
+    int64:v1 = hmap_get(m1, "hello", 0i64);
+    if (v1 == 42i64) {
+        println("[PASS] test 02: set and get");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 02: set and get");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 03: has key
+    int64:h1 = hmap_has(m1, "hello");
+    int64:h2 = hmap_has(m1, "missing");
+    if (h1 == 1i64) {
+        if (h2 == 0i64) {
+            println("[PASS] test 03: has key");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 03: has key (missing)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 03: has key (hello)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 04: get with default
+    int64:v2 = hmap_get(m1, "nope", -1i64);
+    if (v2 == -1i64) {
+        println("[PASS] test 04: get with default");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 04: get with default");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 05: overwrite value
+    hmap_set(m1, "hello", 99i64);
+    int64:v3 = hmap_get(m1, "hello", 0i64);
+    int64:len2 = hmap_length(m1);
+    if (v3 == 99i64) {
+        if (len2 == 1i64) {
+            println("[PASS] test 05: overwrite value");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 05: overwrite (length)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 05: overwrite (value)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 06: remove
+    hmap_set(m1, "world", 77i64);
+    int64:r1 = hmap_remove(m1, "hello");
+    int64:r2 = hmap_remove(m1, "nonexist");
+    int64:len3 = hmap_length(m1);
+    if (r1 == 1i64) {
+        if (r2 == 0i64) {
+            if (len3 == 1i64) {
+                println("[PASS] test 06: remove");
+                pass_count = pass_count + 1i32;
+            } else {
+                println("[FAIL] test 06: remove (length)");
+                fail_count = fail_count + 1i32;
+            }
+        } else {
+            println("[FAIL] test 06: remove (nonexist)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 06: remove (hello)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 07: clear
+    hmap_set(m1, "a", 1i64);
+    hmap_set(m1, "b", 2i64);
+    hmap_clear(m1);
+    int64:len4 = hmap_length(m1);
+    if (len4 == 0i64) {
+        println("[PASS] test 07: clear");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 07: clear");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 08: many keys (trigger rehash)
+    int64:m2 = hmap_new();
+    int64:i = 0i64;
+    while (i < 100i64) {
+        string:k = string_concat("key_", string_from_int(i));
+        hmap_set(m2, k, i);
+        i = i + 1i64;
+    }
+    int64:len5 = hmap_length(m2);
+    int64:v50 = hmap_get(m2, "key_50", -1i64);
+    int64:v99 = hmap_get(m2, "key_99", -1i64);
+    if (len5 == 100i64) {
+        if (v50 == 50i64) {
+            if (v99 == 99i64) {
+                println("[PASS] test 08: many keys (rehash)");
+                pass_count = pass_count + 1i32;
+            } else {
+                println("[FAIL] test 08: many keys (v99)");
+                fail_count = fail_count + 1i32;
+            }
+        } else {
+            println("[FAIL] test 08: many keys (v50)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 08: many keys (length)");
+        fail_count = fail_count + 1i32;
+    }
+    hmap_free(m2);
+    hmap_free(m1);
+
+    println("");
+    print("--- ");
+    print(string_from_int(@cast<int64>(pass_count)));
+    print(" passed, ");
+    print(string_from_int(@cast<int64>(fail_count)));
+    println(" failed ---");
+
+    pass(0i32);
+};

@@ -1,0 +1,9 @@
+[package]
+name = "aria-queue"
+version = "0.1.0"
+description = "FIFO queue data structure for Aria"
+authors = ["Randy"]
+license = "MIT"
+
+[build]
+link_libraries = ["aria_queue_shim"]

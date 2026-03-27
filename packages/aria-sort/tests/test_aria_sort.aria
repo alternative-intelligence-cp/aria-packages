@@ -1,0 +1,149 @@
+// test_aria_sort.aria — Tests for aria-sort
+
+use "../src/aria_sort.aria".*;
+
+func:failsafe = int32(int32:code) { pass(1); };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int32:fail_count = 0i32;
+
+    // test 01: create, push, get
+    int64:a1 = sort_array_new();
+    sort_push(a1, 3i64);
+    sort_push(a1, 1i64);
+    sort_push(a1, 2i64);
+    int64:v0 = sort_get(a1, 0i64);
+    if (v0 == 3i64) {
+        println("[PASS] test 01: push and get");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 01: push and get");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 02: length
+    int64:len1 = sort_length(a1);
+    if (len1 == 3i64) {
+        println("[PASS] test 02: length");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 02: length");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 03: is_sorted (unsorted)
+    int64:sorted1 = sort_is_sorted(a1);
+    if (sorted1 == 0i64) {
+        println("[PASS] test 03: is_sorted (unsorted)");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 03: is_sorted (unsorted)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 04: quicksort
+    sort_quicksort(a1);
+    int64:sorted2 = sort_is_sorted(a1);
+    int64:first = sort_get(a1, 0i64);
+    int64:last = sort_get(a1, 2i64);
+    if (sorted2 == 1i64) {
+        if (first == 1i64) {
+            if (last == 3i64) {
+                println("[PASS] test 04: quicksort");
+                pass_count = pass_count + 1i32;
+            } else {
+                println("[FAIL] test 04: quicksort (last)");
+                fail_count = fail_count + 1i32;
+            }
+        } else {
+            println("[FAIL] test 04: quicksort (first)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 04: quicksort (not sorted)");
+        fail_count = fail_count + 1i32;
+    }
+    sort_array_free(a1);
+
+    // test 05: insertion sort
+    int64:a2 = sort_array_new();
+    sort_push(a2, 5i64);
+    sort_push(a2, 2i64);
+    sort_push(a2, 8i64);
+    sort_push(a2, 1i64);
+    sort_push(a2, 9i64);
+    sort_insertion(a2);
+    int64:sorted3 = sort_is_sorted(a2);
+    int64:f2 = sort_get(a2, 0i64);
+    int64:l2 = sort_get(a2, 4i64);
+    if (sorted3 == 1i64) {
+        if (f2 == 1i64) {
+            if (l2 == 9i64) {
+                println("[PASS] test 05: insertion sort");
+                pass_count = pass_count + 1i32;
+            } else {
+                println("[FAIL] test 05: insertion sort (last)");
+                fail_count = fail_count + 1i32;
+            }
+        } else {
+            println("[FAIL] test 05: insertion sort (first)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 05: insertion sort (not sorted)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 06: reverse
+    sort_reverse(a2);
+    int64:rf = sort_get(a2, 0i64);
+    int64:rl = sort_get(a2, 4i64);
+    if (rf == 9i64) {
+        if (rl == 1i64) {
+            println("[PASS] test 06: reverse");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 06: reverse (last)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 06: reverse (first)");
+        fail_count = fail_count + 1i32;
+    }
+    sort_array_free(a2);
+
+    // test 07: empty array is sorted
+    int64:a3 = sort_array_new();
+    int64:sorted4 = sort_is_sorted(a3);
+    if (sorted4 == 1i64) {
+        println("[PASS] test 07: empty is sorted");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 07: empty is sorted");
+        fail_count = fail_count + 1i32;
+    }
+    sort_array_free(a3);
+
+    // test 08: single element is sorted
+    int64:a4 = sort_array_new();
+    sort_push(a4, 42i64);
+    int64:sorted5 = sort_is_sorted(a4);
+    if (sorted5 == 1i64) {
+        println("[PASS] test 08: single element sorted");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 08: single element sorted");
+        fail_count = fail_count + 1i32;
+    }
+    sort_array_free(a4);
+
+    println("");
+    print("--- ");
+    print(string_from_int(@cast<int64>(pass_count)));
+    print(" passed, ");
+    print(string_from_int(@cast<int64>(fail_count)));
+    println(" failed ---");
+
+    pass(0i32);
+};

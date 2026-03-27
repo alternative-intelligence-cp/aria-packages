@@ -1,0 +1,9 @@
+[package]
+name = "aria-map"
+version = "0.1.0"
+description = "String-keyed int64 hashmap for Aria"
+authors = ["Randy"]
+license = "MIT"
+
+[build]
+link_libraries = ["aria_map_shim"]

@@ -1,0 +1,125 @@
+// test_aria_path.aria — Tests for aria-path
+
+use "../src/aria_path.aria".*;
+
+func:failsafe = int32(int32:code) { pass(1); };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int32:fail_count = 0i32;
+
+    // test 01: path_join
+    string:j1 = path_join("/usr/bin", "ariac");
+    if (string_equals(j1, "/usr/bin/ariac")) {
+        println("[PASS] test 01: path_join basic");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 01: path_join basic");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 02: path_join with trailing slash
+    string:j2 = path_join("/usr/bin/", "ariac");
+    if (string_equals(j2, "/usr/bin/ariac")) {
+        println("[PASS] test 02: path_join trailing slash");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 02: path_join trailing slash");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 03: path_basename
+    string:b1 = path_basename("/usr/bin/ariac");
+    if (string_equals(b1, "ariac")) {
+        println("[PASS] test 03: path_basename");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 03: path_basename");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 04: path_dirname
+    string:d1 = path_dirname("/usr/bin/ariac");
+    if (string_equals(d1, "/usr/bin")) {
+        println("[PASS] test 04: path_dirname");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 04: path_dirname");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 05: path_extension
+    string:e1 = path_extension("main.aria");
+    if (string_equals(e1, ".aria")) {
+        println("[PASS] test 05: path_extension");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 05: path_extension");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 06: path_stem
+    string:s1 = path_stem("/src/main.aria");
+    if (string_equals(s1, "main")) {
+        println("[PASS] test 06: path_stem");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 06: path_stem");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 07: path_is_absolute
+    int64:abs1 = path_is_absolute("/usr/bin");
+    if (abs1 == 1i64) {
+        println("[PASS] test 07: path_is_absolute");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 07: path_is_absolute");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 08: path_is_relative
+    int64:rel1 = path_is_relative("src/main.aria");
+    if (rel1 == 1i64) {
+        println("[PASS] test 08: path_is_relative");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 08: path_is_relative");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 09: path_has_extension
+    int64:he1 = path_has_extension("main.aria");
+    int64:he2 = path_has_extension("Makefile");
+    if (he1 == 1i64) {
+        if (he2 == 0i64) {
+            println("[PASS] test 09: path_has_extension");
+            pass_count = pass_count + 1i32;
+        } else {
+            println("[FAIL] test 09: path_has_extension (Makefile)");
+            fail_count = fail_count + 1i32;
+        }
+    } else {
+        println("[FAIL] test 09: path_has_extension (main.aria)");
+        fail_count = fail_count + 1i32;
+    }
+
+    // test 10: path_dirname on bare filename
+    string:d2 = path_dirname("ariac");
+    if (string_equals(d2, ".")) {
+        println("[PASS] test 10: path_dirname bare");
+        pass_count = pass_count + 1i32;
+    } else {
+        println("[FAIL] test 10: path_dirname bare");
+        fail_count = fail_count + 1i32;
+    }
+
+    println("");
+    print("--- ");
+    print(string_from_int(@cast<int64>(pass_count)));
+    print(" passed, ");
+    print(string_from_int(@cast<int64>(fail_count)));
+    println(" failed ---");
+
+    pass(0i32);
+};

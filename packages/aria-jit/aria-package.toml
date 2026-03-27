@@ -1,0 +1,13 @@
+[package]
+name = "aria-jit"
+version = "0.2.0"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "High-level JIT code generation — SysV ABI constants, builder patterns, and convenience wrappers for runtime assembler"
+keywords = ["jit", "assembler", "codegen", "x86-64", "wildx"]
+categories = ["systems", "low-level"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_jit_shim"]

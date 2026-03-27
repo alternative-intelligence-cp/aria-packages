@@ -1,0 +1,53 @@
+// aria_queue.aria — FIFO queue data structure
+// Handle-based ring buffer queue for int64 values
+
+extern func:aria_queue_shim_create = int64();
+extern func:aria_queue_shim_destroy = NIL(int64:handle);
+extern func:aria_queue_shim_enqueue = NIL(int64:handle, int64:value);
+extern func:aria_queue_shim_dequeue = int64(int64:handle);
+extern func:aria_queue_shim_peek = int64(int64:handle);
+extern func:aria_queue_shim_length = int64(int64:handle);
+extern func:aria_queue_shim_is_empty = int64(int64:handle);
+extern func:aria_queue_shim_clear = NIL(int64:handle);
+
+// --- Public API ---
+
+pub func:queue_new = int64() {
+    int64:h = aria_queue_shim_create();
+    pass(h);
+};
+
+pub func:queue_free = NIL(int64:handle) {
+    aria_queue_shim_destroy(handle);
+    pass(NIL);
+};
+
+pub func:queue_enqueue = NIL(int64:handle, int64:value) {
+    aria_queue_shim_enqueue(handle, value);
+    pass(NIL);
+};
+
+pub func:queue_dequeue = int64(int64:handle) {
+    int64:val = aria_queue_shim_dequeue(handle);
+    pass(val);
+};
+
+pub func:queue_peek = int64(int64:handle) {
+    int64:val = aria_queue_shim_peek(handle);
+    pass(val);
+};
+
+pub func:queue_length = int64(int64:handle) {
+    int64:len = aria_queue_shim_length(handle);
+    pass(len);
+};
+
+pub func:queue_is_empty = int64(int64:handle) {
+    int64:e = aria_queue_shim_is_empty(handle);
+    pass(e);
+};
+
+pub func:queue_clear = NIL(int64:handle) {
+    aria_queue_shim_clear(handle);
+    pass(NIL);
+};

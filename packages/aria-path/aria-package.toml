@@ -1,0 +1,13 @@
+[package]
+name = "aria-path"
+version = "0.2.0"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Path string manipulation — join, basename, dirname, extension, normalize"
+keywords = ["path", "filesystem", "string", "utility"]
+categories = ["utility"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_path_shim"]

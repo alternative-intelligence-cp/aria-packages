@@ -1,0 +1,163 @@
+// aria_jit.aria — High-level JIT code generation for Aria
+//
+// Builder functions for common x86-64 patterns, SysV ABI constants,
+// and convenience wrappers around the runtime assembler.
+// Uses a C shim (shim/aria_jit_shim.c) for handle-based FFI.
+
+// ── JIT shim FFI (handle-based, no raw pointers) ───────────────────
+
+extern func:aria_jit_shim_create = int64();
+extern func:aria_jit_shim_destroy = void(int64:ctx);
+extern func:aria_jit_shim_mov_reg_imm = void(int64:ctx, int32:dst, int64:val);
+extern func:aria_jit_shim_mov_reg_reg = void(int64:ctx, int32:dst, int32:src);
+extern func:aria_jit_shim_add_reg_reg = void(int64:ctx, int32:dst, int32:src);
+extern func:aria_jit_shim_sub_reg_reg = void(int64:ctx, int32:dst, int32:src);
+extern func:aria_jit_shim_ret = void(int64:ctx);
+extern func:aria_jit_shim_jmp = void(int64:ctx, int32:label);
+extern func:aria_jit_shim_new_label = int32(int64:ctx);
+extern func:aria_jit_shim_bind_label = void(int64:ctx, int32:label);
+extern func:aria_jit_shim_finalize = int64(int64:ctx);
+extern func:aria_jit_shim_execute = int64(int64:guard);
+extern func:aria_jit_shim_execute_i64 = int64(int64:guard, int64:a);
+extern func:aria_jit_shim_execute_i64_i64 = int64(int64:guard, int64:a, int64:b);
+extern func:aria_jit_shim_free = void(int64:guard);
+
+// ── x86-64 Register Constants ───────────────────────────────────────
+
+int32:REG_RAX = 0i32;
+int32:REG_RCX = 1i32;
+int32:REG_RDX = 2i32;
+int32:REG_RBX = 3i32;
+int32:REG_RSP = 4i32;
+int32:REG_RBP = 5i32;
+int32:REG_RSI = 6i32;
+int32:REG_RDI = 7i32;
+int32:REG_R8  = 8i32;
+int32:REG_R9  = 9i32;
+int32:REG_R10 = 10i32;
+int32:REG_R11 = 11i32;
+int32:REG_R12 = 12i32;
+int32:REG_R13 = 13i32;
+int32:REG_R14 = 14i32;
+int32:REG_R15 = 15i32;
+
+// ── SysV x86-64 ABI: Calling Convention Aliases ─────────────────────
+
+int32:ABI_ARG1    = 7i32;   // RDI — first integer argument
+int32:ABI_ARG2    = 6i32;   // RSI — second integer argument
+int32:ABI_ARG3    = 2i32;   // RDX — third integer argument
+int32:ABI_ARG4    = 1i32;   // RCX — fourth integer argument
+int32:ABI_ARG5    = 8i32;   // R8  — fifth integer argument
+int32:ABI_ARG6    = 9i32;   // R9  — sixth integer argument
+int32:ABI_RETURN  = 0i32;   // RAX — return value register
+int32:ABI_SCRATCH1 = 10i32; // R10 — caller-saved scratch
+int32:ABI_SCRATCH2 = 11i32; // R11 — caller-saved scratch
+
+// ── Builder: return a constant ──────────────────────────────────────
+//
+// Creates a JIT function that takes no arguments and returns the
+// given constant value in RAX.
+
+pub func:jit_return_const = int64(int64:val) {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_imm(ctx, 0i32, val);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Builder: add two int64 arguments (SysV ABI) ────────────────────
+//
+// Creates a JIT function: f(a, b) → a + b
+// Arguments arrive in RDI (arg1) and RSI (arg2), result in RAX.
+
+pub func:jit_add_two = int64() {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_reg(ctx, 0i32, 7i32);
+    aria_jit_shim_add_reg_reg(ctx, 0i32, 6i32);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Builder: subtract two int64 arguments (arg1 - arg2) ────────────
+//
+// Creates a JIT function: f(a, b) → a - b
+
+pub func:jit_sub_two = int64() {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_reg(ctx, 0i32, 7i32);
+    aria_jit_shim_sub_reg_reg(ctx, 0i32, 6i32);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Builder: identity (return first argument) ───────────────────────
+//
+// Creates a JIT function: f(a) → a
+
+pub func:jit_identity = int64() {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_reg(ctx, 0i32, 7i32);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Builder: double the argument (arg * 2) ──────────────────────────
+//
+// Creates a JIT function: f(a) → a * 2
+// Implemented as a + a (add reg to itself).
+
+pub func:jit_double = int64() {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_reg(ctx, 0i32, 7i32);
+    aria_jit_shim_add_reg_reg(ctx, 0i32, 0i32);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Builder: negate the argument (0 - arg) ──────────────────────────
+//
+// Creates a JIT function: f(a) → -a
+
+pub func:jit_negate = int64() {
+    int64:ctx = aria_jit_shim_create();
+    aria_jit_shim_mov_reg_imm(ctx, 0i32, 0i64);
+    aria_jit_shim_sub_reg_reg(ctx, 0i32, 7i32);
+    aria_jit_shim_ret(ctx);
+    int64:code = aria_jit_shim_finalize(ctx);
+    aria_jit_shim_destroy(ctx);
+    pass(code);
+};
+
+// ── Execution Wrappers ──────────────────────────────────────────────
+
+pub func:jit_exec = int64(int64:code) {
+    int64:r = aria_jit_shim_execute(code);
+    pass(r);
+};
+
+pub func:jit_exec1 = int64(int64:code, int64:a) {
+    int64:r = aria_jit_shim_execute_i64(code, a);
+    pass(r);
+};
+
+pub func:jit_exec2 = int64(int64:code, int64:a, int64:b) {
+    int64:r = aria_jit_shim_execute_i64_i64(code, a, b);
+    pass(r);
+};
+
+// ── Cleanup ─────────────────────────────────────────────────────────
+
+pub func:jit_release = NIL(int64:code) {
+    aria_jit_shim_free(code);
+    pass(NIL);
+};

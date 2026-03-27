@@ -1,0 +1,13 @@
+[package]
+name = "aria-bench"
+version = "0.2.0"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "High-resolution benchmarking framework — monotonic nanosecond timing, elapsed measurement, and statistical helpers"
+keywords = ["benchmark", "timing", "performance", "nanosecond", "monotonic"]
+categories = ["development-tools", "profiling"]
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_bench_shim"]
