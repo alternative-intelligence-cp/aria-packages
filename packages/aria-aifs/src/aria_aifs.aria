@@ -1,0 +1,54 @@
+// aria_aifs.aria — High-level AI filesystem utilities
+//
+// Batch operations: annotate all models in a directory, compute/verify checksums
+// Streaming: sequential read with prefetch hints
+// Indexing: count annotated files, scan for model metadata
+//
+// Depends on: stdlib/aifs.aria for core operations
+
+extern func:aria_aifs_batch_annotate = int32(string:dir_path);
+extern func:aria_aifs_batch_checksum = int32(string:dir_path);
+extern func:aria_aifs_batch_verify = int32(string:dir_path);
+extern func:aria_aifs_batch_verify_failed = int32();
+extern func:aria_aifs_stream_read_all = int64(string:path, int64:chunk_size);
+extern func:aria_aifs_count_annotated = int32(string:dir_path);
+
+// Type:ModelOps — batch operations on model directories
+Type:ModelOps = {
+    // Auto-detect format for all files in dir, store as xattr
+    // Returns count of annotated files
+    func:annotate_dir = int32(string:dir_path) {
+        pass(aria_aifs_batch_annotate(dir_path));
+    };
+
+    // Compute SHA-256 for all files in dir, store as xattr
+    // Returns count of checksummed files
+    func:checksum_dir = int32(string:dir_path) {
+        pass(aria_aifs_batch_checksum(dir_path));
+    };
+
+    // Verify all stored checksums in dir
+    // Returns count of files that PASSED
+    func:verify_dir = int32(string:dir_path) {
+        pass(aria_aifs_batch_verify(dir_path));
+    };
+
+    // Get count of failed verifications from last verify_dir call
+    func:verify_failed = int32() {
+        pass(aria_aifs_batch_verify_failed());
+    };
+
+    // Count files with any AI metadata in dir
+    func:count_annotated = int32(string:dir_path) {
+        pass(aria_aifs_count_annotated(dir_path));
+    };
+};
+
+// Type:StreamReader — sequential file reading with kernel hints
+Type:StreamReader = {
+    // Read entire file sequentially in chunks, return total bytes read
+    // chunk_size: bytes per read (0 = default 64KB)
+    func:read_all = int64(string:path, int64:chunk_size) {
+        pass(aria_aifs_stream_read_all(path, chunk_size));
+    };
+};

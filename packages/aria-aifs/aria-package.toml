@@ -1,0 +1,12 @@
+[package]
+name = "aria-aifs"
+version = "0.1.0"
+description = "High-level AI filesystem utilities: model catalog, batch annotation, integrity verification"
+license = "MIT"
+authors = ["Aria Contributors"]
+
+[dependencies]
+stdlib = ["aifs"]
+
+[build]
+shim = "shim/aria_aifs_shim.c"
