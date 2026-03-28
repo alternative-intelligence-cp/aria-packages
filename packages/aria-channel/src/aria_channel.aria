@@ -1,0 +1,80 @@
+// aria-channel — High-level channel patterns
+// Fan-out, fan-in, and pipeline patterns built on stdlib channels.
+
+use "channel.aria".*;
+use "thread.aria".*;
+
+extern func:aria_chanpat_fanout_create = int64(int64:in_ch, int32:n_out, int32:out_capacity);
+extern func:aria_chanpat_fanout_get_output = int64(int64:slot, int32:index);
+extern func:aria_chanpat_fanout_destroy = int32(int64:slot);
+
+extern func:aria_chanpat_fanin_create2 = int64(int64:ch0, int64:ch1, int32:out_capacity);
+extern func:aria_chanpat_fanin_create3 = int64(int64:ch0, int64:ch1, int64:ch2, int32:out_capacity);
+extern func:aria_chanpat_fanin_get_output = int64(int64:slot);
+extern func:aria_chanpat_fanin_destroy = int32(int64:slot);
+
+extern func:aria_chanpat_pipe_stage = int64(int64:in_ch, int64:out_ch, wild ?*:transform_func);
+extern func:aria_chanpat_pipe_stage_join = int32(int64:slot);
+extern func:aria_chanpat_pipe_stage_destroy = int32(int64:slot);
+
+// Fan-out: distribute one input channel to N output channels round-robin.
+Type:FanOut = {
+    // Create fan-out from in_ch to n_out new channels (each with out_capacity).
+    // Returns fan-out handle. Use get_output() to retrieve output channels.
+    func:create = int64(int64:in_ch, int32:n_out, int32:out_capacity) {
+        pass(aria_chanpat_fanout_create(in_ch, n_out, out_capacity));
+    };
+
+    // Get output channel at index (0..n_out-1).
+    func:get_output = int64(int64:slot, int32:index) {
+        pass(aria_chanpat_fanout_get_output(slot, index));
+    };
+
+    // Stop and destroy fan-out (closes all output channels).
+    func:destroy = int32(int64:slot) {
+        pass(aria_chanpat_fanout_destroy(slot));
+    };
+};
+
+// Fan-in: merge N input channels into one output channel.
+Type:FanIn = {
+    // Merge 2 input channels into one output channel.
+    func:create2 = int64(int64:ch0, int64:ch1, int32:out_capacity) {
+        pass(aria_chanpat_fanin_create2(ch0, ch1, out_capacity));
+    };
+
+    // Merge 3 input channels into one output channel.
+    func:create3 = int64(int64:ch0, int64:ch1, int64:ch2, int32:out_capacity) {
+        pass(aria_chanpat_fanin_create3(ch0, ch1, ch2, out_capacity));
+    };
+
+    // Get the merged output channel handle.
+    func:get_output = int64(int64:slot) {
+        pass(aria_chanpat_fanin_get_output(slot));
+    };
+
+    // Destroy fan-in (waits for all merger threads, closes output).
+    func:destroy = int32(int64:slot) {
+        pass(aria_chanpat_fanin_destroy(slot));
+    };
+};
+
+// Pipeline: chain processing stages between channels.
+Type:Pipeline = {
+    // Create a stage: reads from in_ch, calls transform for each value.
+    // transform should have signature: func:name = NIL(int64:value) { ... }
+    // and send results to out_ch explicitly.
+    func:stage = int64(int64:in_ch, int64:out_ch, ?->:transform_func) {
+        pass(aria_chanpat_pipe_stage(in_ch, out_ch, transform_func));
+    };
+
+    // Wait for a pipeline stage to complete.
+    func:join = int32(int64:slot) {
+        pass(aria_chanpat_pipe_stage_join(slot));
+    };
+
+    // Destroy a pipeline stage.
+    func:destroy = int32(int64:slot) {
+        pass(aria_chanpat_pipe_stage_destroy(slot));
+    };
+};

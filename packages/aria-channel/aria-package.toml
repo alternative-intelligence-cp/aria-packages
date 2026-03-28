@@ -1,0 +1,12 @@
+[package]
+name = "aria-channel"
+version = "0.1.0"
+description = "Enhanced channel patterns for Aria concurrency — fan-out, fan-in, pipeline, tee"
+authors = ["Randy"]
+license = "MIT"
+
+[dependencies]
+stdlib = ["channel.aria", "thread.aria"]
+
+[build]
+link_libraries = ["aria_channel_shim"]

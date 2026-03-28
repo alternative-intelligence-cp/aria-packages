@@ -1,0 +1,12 @@
+[package]
+name = "aria-actor"
+version = "0.1.0"
+description = "Actor system for Aria — actor groups, request-reply, and supervision patterns"
+authors = ["Randy"]
+license = "MIT"
+
+[dependencies]
+stdlib = ["actor.aria", "channel.aria", "thread.aria"]
+
+[build]
+link_libraries = ["aria_actor_shim"]
