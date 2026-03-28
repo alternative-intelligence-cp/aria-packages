@@ -11,7 +11,7 @@
 
 use "../src/aria_resource_mem.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // One cell buffer (9 int64 slots) + one result buffer (6 int64 slots).
@@ -271,5 +271,5 @@ func:main = int32() {
 
     free(result);
     free(cell);
-    pass(0i32);
+    exit(0);
 };

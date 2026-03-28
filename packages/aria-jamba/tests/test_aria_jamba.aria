@@ -7,7 +7,7 @@
 
 use "print_utils.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_jamba_shim" {
     func:aria_jamba_last_error     = string();
@@ -278,7 +278,7 @@ func:main = int32() {
 
     if (passed == total) {
         println("ALL TESTS PASSED");
-        pass(0i32);
+        exit(0);
     }
     pass(1i32);
 };

@@ -54,7 +54,7 @@ func:disp_rows = int32(int64:packed) {
     pass(rows);
 };
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -209,5 +209,5 @@ func:main = int32() {
         print("[FAIL] T15 disp_cols(1<<32|1)!=1\n");
     }
 
-    pass(0i32);
+    exit(0);
 };

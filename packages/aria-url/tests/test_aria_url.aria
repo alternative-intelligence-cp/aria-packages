@@ -1,6 +1,6 @@
 // test_aria_url.aria — URL tests (8 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_url_shim" {
     func:aria_url_parse        = int32(string:url);
@@ -50,5 +50,5 @@ func:main = int32() {
     if (e == 0i32) { drop(println("[PASS] T08 empty url")); }
     if (e != 0i32) { drop(println("[FAIL] T08 empty url")); }
 
-    pass(0i32);
+    exit(0);
 };

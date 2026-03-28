@@ -32,7 +32,7 @@ extern "aria_audio" {
     func:aria_audio_lfsr_step      = int32(int32:state);
 }
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // ── T01: sample_rate returns 44100 ─────────────────────────────────────
@@ -171,5 +171,5 @@ func:main = int32() {
         print("[FAIL] T15 stop_all/shutdown state wrong\n");
     }
 
-    pass(0i32);
+    exit(0);
 };

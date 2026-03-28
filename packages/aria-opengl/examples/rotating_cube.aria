@@ -9,7 +9,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 // ── shim externs ────────────────────────────────────────────────────
 
@@ -244,5 +244,5 @@ func:main = int32() {
     aria_gl_quit();
     drop(println("Done. Cube rendered successfully."));
 
-    pass(0i32);
+    exit(0);
 };

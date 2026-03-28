@@ -1,4 +1,4 @@
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 // test_aria_redis.aria — Comprehensive Redis tests
 //
 // 40+ tests: connect, GET/SET, DEL, EXISTS, EXPIRE/TTL,
@@ -370,5 +370,5 @@ func:main = int32() {
     drop(test_phase8());
 
     aria_redis_test_summary();
-    pass(0i32);
+    exit(0);
 };

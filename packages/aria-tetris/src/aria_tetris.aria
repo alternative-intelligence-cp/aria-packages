@@ -56,7 +56,7 @@ extern "aria_raylib_shim" {
     func:aria_rl_play_sound           = void(int32:handle);
 }
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Piece colors: RGB for types 1-7 (0 = empty board cell)
@@ -924,5 +924,5 @@ func:main = int32() {
     // ── Cleanup ───────────────────────────────────────────────────────────────
     aria_rl_close_audio_device();
     aria_rl_close_window();
-    pass(0i32);
+    exit(0);
 };

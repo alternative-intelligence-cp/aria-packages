@@ -1,6 +1,6 @@
 use "../src/aria_vec.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     float64:eps = 0.000001;
@@ -140,5 +140,5 @@ func:main = int32() {
     if (c15 == 1i64) { drop(println("[PASS] T15 vec3_dot(2,2,1,2,2,1)=9")); }
     if (c15 == 0i64) { drop(println("[FAIL] T15 vec3_dot(2,2,1,2,2,1)=9")); }
 
-    pass(0i32);
+    exit(0);
 };

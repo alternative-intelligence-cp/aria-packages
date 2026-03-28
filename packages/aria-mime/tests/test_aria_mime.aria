@@ -1,6 +1,6 @@
 // test_aria_mime.aria — MIME type tests (7 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_mime_shim" {
     func:aria_mime_from_filename  = string(string:filename);
@@ -42,5 +42,5 @@ func:main = int32() {
     string:m7 = aria_mime_from_extension("aria");
     drop(println("[PASS] T07 aria extension"));
 
-    pass(0i32);
+    exit(0);
 };

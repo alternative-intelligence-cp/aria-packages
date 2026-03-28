@@ -1,6 +1,6 @@
 // test_aria_template.aria — Template engine tests (7 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_template_shim" {
     func:aria_template_set    = int32(string:key, string:value);
@@ -49,5 +49,5 @@ func:main = int32() {
     if (cnt3 == 0i32) { drop(println("[PASS] T07 clear")); }
     if (cnt3 != 0i32) { drop(println("[FAIL] T07 clear")); }
 
-    pass(0i32);
+    exit(0);
 };

@@ -31,7 +31,7 @@ func:has_button = int32(int32:bitmask, int32:btn) {
     pass(0i32);
 };
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // ── T01: BTN_RIGHT bit (1) present in bitmask 0b0001 ───────────────────
@@ -166,5 +166,5 @@ func:main = int32() {
         print("[FAIL] T15 poll returned error\n");
     }
 
-    pass(0i32);
+    exit(0);
 };

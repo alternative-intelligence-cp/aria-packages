@@ -1,6 +1,6 @@
 // test_aria_crypto.aria — Crypto tests (6 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_crypto_shim" {
     func:aria_crypto_sha256        = string(string:data);
@@ -40,5 +40,5 @@ func:main = int32() {
     if (v6 == 0i32) { drop(println("[PASS] T06 sha256 verify fail")); }
     if (v6 != 0i32) { drop(println("[FAIL] T06 sha256 verify fail")); }
 
-    pass(0i32);
+    exit(0);
 };

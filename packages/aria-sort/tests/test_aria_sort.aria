@@ -2,7 +2,7 @@
 
 use "../src/aria_sort.aria".*;
 
-func:failsafe = int32(int32:code) { pass(1); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     int32:pass_count = 0i32;
@@ -145,5 +145,5 @@ func:main = int32() {
     print(string_from_int(@cast<int64>(fail_count)));
     println(" failed ---");
 
-    pass(0i32);
+    exit(0);
 };

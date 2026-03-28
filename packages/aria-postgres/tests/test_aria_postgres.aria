@@ -9,7 +9,7 @@
 //   - "close" in function names: renamed to "disconnect"
 //   - String returns corrupt: column assertions done in C helpers
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_postgres_shim" {
     func:aria_postgres_connect    = int32(string:conninfo);
@@ -398,5 +398,5 @@ func:main = int32() {
     drop(test_phase7());
 
     aria_postgres_test_summary();
-    pass(0i32);
+    exit(0);
 };

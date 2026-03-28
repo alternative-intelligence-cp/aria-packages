@@ -1,6 +1,6 @@
 use "../src/aria_bits.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -94,5 +94,5 @@ func:main = int32() {
     if (f15 == 1u64) { drop(println("[PASS] T15 byte_popcount(180)=4")); }
     if (f15 == 0u64) { drop(println("[FAIL] T15 byte_popcount(180)=4")); }
 
-    pass(0i32);
+    exit(0);
 };

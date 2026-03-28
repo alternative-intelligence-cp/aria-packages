@@ -95,7 +95,7 @@ extern "libc" {
     func:fclose  = int32(int64:fp);
 }
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 // ═══════════════════════════════════════════════════════════════════════════════
 // Virtual key code constants
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -717,5 +717,5 @@ func:main = int32() {
     drop(aria_display_flush());
     drop(aria_input_exit_raw());
 
-    pass(0i32);
+    exit(0);
 };

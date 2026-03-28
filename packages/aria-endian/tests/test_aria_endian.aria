@@ -1,6 +1,6 @@
 use "../src/aria_endian.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -94,5 +94,5 @@ func:main = int32() {
     if (f15 == 1u64) { drop(println("[PASS] T15 be16 reverses bytes")); }
     if (f15 == 0u64) { drop(println("[FAIL] T15 be16 reverses bytes")); }
 
-    pass(0i32);
+    exit(0);
 };

@@ -14,7 +14,7 @@
 //   curl -X POST -d '{"name":"aria"}' http://localhost:8080/api/users
 //   curl http://localhost:8080/health
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_server_shim" {
     func:aria_server_listen  = int32(string:addr, int32:port, int32:backlog);
@@ -86,5 +86,5 @@ func:main = int32() {
         }
     }
 
-    pass(0i32);
+    exit(0);
 };

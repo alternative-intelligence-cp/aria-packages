@@ -1,6 +1,6 @@
 // test_aria_compress.aria — Compression tests (6 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_compress_shim" {
     func:aria_compress_deflate    = int32(string:data, int32:len);
@@ -45,5 +45,5 @@ func:main = int32() {
     if (gz > 0i32) { drop(println("[PASS] T06 gzip")); }
     if (gz <= 0i32) { drop(println("[FAIL] T06 gzip")); }
 
-    pass(0i32);
+    exit(0);
 };

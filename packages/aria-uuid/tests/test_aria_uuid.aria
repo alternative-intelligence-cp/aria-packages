@@ -1,6 +1,6 @@
 use "../src/aria_uuid.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -112,5 +112,5 @@ func:main = int32() {
     if (f15 == 1u64) { drop(println("[PASS] T15 uuid_product(3,7)==21")); }
     if (f15 == 0u64) { drop(println("[FAIL] T15 uuid_product(3,7)==21")); }
 
-    pass(0i32);
+    exit(0);
 };

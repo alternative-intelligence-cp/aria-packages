@@ -1,6 +1,6 @@
 // test_aria_http_headers.aria — Headers, POST/PUT/PATCH/DELETE against :8888
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern func:aria_http_init            = int32();
 extern func:aria_http_post            = int32(string:url, string:body);
@@ -33,5 +33,5 @@ func:main = int32() {
     aria_http_assert_body_contains("DELETE", "test 09: method=DELETE in echo");
 
     aria_http_test_summary();
-    pass(0i32);
+    exit(0);
 };

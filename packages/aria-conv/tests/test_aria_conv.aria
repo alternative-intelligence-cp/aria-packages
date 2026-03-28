@@ -3,7 +3,7 @@
 
 use "../src/aria_conv.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -107,5 +107,5 @@ func:main = int32() {
     if (f15 == 1i64) { drop(println("[PASS] T15 f64_to_i64(99.9)=99")); }
     if (f15 == 0i64) { drop(println("[FAIL] T15 f64_to_i64(99.9)=99")); }
 
-    pass(0i32);
+    exit(0);
 };

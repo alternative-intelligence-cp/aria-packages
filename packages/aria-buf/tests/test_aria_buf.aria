@@ -1,6 +1,6 @@
 use "../src/aria_buf.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -109,5 +109,5 @@ func:main = int32() {
     if (f15 == 1u64) { drop(println("[PASS] T15 pack_le4(0,0,0,1)=16777216")); }
     if (f15 == 0u64) { drop(println("[FAIL] T15 pack_le4(0,0,0,1)=16777216")); }
 
-    pass(0i32);
+    exit(0);
 };

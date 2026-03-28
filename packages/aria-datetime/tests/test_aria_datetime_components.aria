@@ -1,6 +1,6 @@
 // test_aria_datetime_components.aria — UTC component tests (C-side assertions)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern func:aria_datetime_utc_year    = int32(int64:epoch);
 extern func:aria_datetime_utc_month   = int32(int64:epoch);
@@ -38,5 +38,5 @@ func:main = int32() {
     aria_datetime_assert_int_eq(h2, 1i32, "test 08: utc_hour(90061)=1");
 
     aria_datetime_test_summary();
-    pass(0i32);
+    exit(0);
 };

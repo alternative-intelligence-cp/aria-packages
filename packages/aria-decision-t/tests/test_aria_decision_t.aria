@@ -8,7 +8,7 @@
 
 use "../src/aria_decision_t.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // Allocate shared buffers (reused across tests)
@@ -317,5 +317,5 @@ func:main = int32() {
     print(string_from_int(total));
     print(" tests passed\n");
 
-    pass(0i32);
+    exit(0);
 };

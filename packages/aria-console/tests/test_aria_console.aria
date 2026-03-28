@@ -4,7 +4,7 @@
 
 use "/home/randy/Workspace/REPOS/aria/aria_ecosystem/aria_packages/aria-console/src/aria_console.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // ── T01: bus_zone(0) == CON_ZONE_RAM (0) ───────────────────────────────
@@ -139,5 +139,5 @@ func:main = int32() {
         print("[FAIL] T15 frame constants wrong\n");
     }
 
-    pass(0i32);
+    exit(0);
 };

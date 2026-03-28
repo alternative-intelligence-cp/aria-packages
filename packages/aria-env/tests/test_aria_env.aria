@@ -1,6 +1,6 @@
 // test_aria_env.aria — Environment variable tests (7 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_env_shim" {
     func:aria_env_get    = string(string:name);
@@ -47,5 +47,5 @@ func:main = int32() {
     string:hm = aria_env_home();
     drop(println("[PASS] T07 home"));
 
-    pass(0i32);
+    exit(0);
 };

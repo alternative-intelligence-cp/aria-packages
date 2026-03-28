@@ -1,6 +1,6 @@
 use "../src/aria_clamp.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -103,5 +103,5 @@ func:main = int32() {
     if (f15 == 3i64) { drop(println("[PASS] T15 sign_i64 pos/neg/zero")); }
     if (f15 == 0i64) { drop(println("[FAIL] T15 sign_i64 pos/neg/zero")); }
 
-    pass(0i32);
+    exit(0);
 };

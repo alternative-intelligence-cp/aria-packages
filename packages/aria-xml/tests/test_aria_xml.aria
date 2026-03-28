@@ -1,6 +1,6 @@
 // test_aria_xml.aria — XML parser tests (8 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_xml_shim" {
     func:aria_xml_parse      = int32(string:xml);
@@ -54,5 +54,5 @@ func:main = int32() {
     if (nc2 == 0i32) { drop(println("[PASS] T08 clear")); }
     if (nc2 != 0i32) { drop(println("[FAIL] T08 clear")); }
 
-    pass(0i32);
+    exit(0);
 };

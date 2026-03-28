@@ -1,6 +1,6 @@
 use "../src/aria_zigzag.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
 
@@ -133,5 +133,5 @@ func:main = int32() {
         print("[FAIL] T15 zz_clamp (c1 wrong)\n");
     }
 
-    pass(0i32);
+    exit(0);
 };

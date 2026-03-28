@@ -12,7 +12,7 @@
 //
 // Bugs #16-#19: ALL RESOLVED. Full float64 param/return and extern coverage enabled.
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 // Extern declarations (also declared in aria_math.aria; duplicates are fine).
 // Note: fabs, acos, fmod now covered — Bugs #18/#19 resolved.
@@ -268,7 +268,7 @@ func:main = int32() {
     drop(println("---"));
     if (failed == 0i64) {
         drop(println("PASS: all 23 aria-math tests passed"));
-        pass(0i32);
+        exit(0);
     }
     drop(println("FAIL: some aria-math tests failed"));
     pass(1i32);

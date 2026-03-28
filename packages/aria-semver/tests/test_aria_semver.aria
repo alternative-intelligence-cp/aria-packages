@@ -1,6 +1,6 @@
 // test_aria_semver.aria — SemVer tests (8 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_semver_shim" {
     func:aria_semver_parse          = int32(string:version);
@@ -58,5 +58,5 @@ func:main = int32() {
     if (s1 == 1i32) { drop(println("[PASS] T08 satisfies")); }
     if (s1 != 1i32) { drop(println("[FAIL] T08 satisfies")); }
 
-    pass(0i32);
+    exit(0);
 };

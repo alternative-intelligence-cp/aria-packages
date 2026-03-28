@@ -1,6 +1,6 @@
 // test_aria_yaml.aria — YAML parser tests (8 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_yaml_shim" {
     func:aria_yaml_parse      = int32(string:text);
@@ -55,5 +55,5 @@ func:main = int32() {
     if (c2 == 0i32) { drop(println("[PASS] T08 clear")); }
     if (c2 != 0i32) { drop(println("[FAIL] T08 clear")); }
 
-    pass(0i32);
+    exit(0);
 };

@@ -40,7 +40,7 @@ extern func:aria_free  = void(wild float64*:ptr);
 extern func:malloc     = wild int64*(int64:size);
 extern func:free       = void(wild int64*:ptr);
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     int64:passed = 0i64;
@@ -461,5 +461,5 @@ func:main = int32() {
     free(em_meta);
     aria_free(em_snaps);
 
-    pass(0i32);
+    exit(0);
 };

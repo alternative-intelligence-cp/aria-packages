@@ -1,6 +1,6 @@
 // test_aria_cli.aria — CLI styling tests (6 tests)
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 extern "aria_cli_shim" {
     func:aria_cli_red      = string(string:text);
@@ -37,5 +37,5 @@ func:main = int32() {
     string:bn = aria_cli_banner("Aria CLI", 40i32);
     drop(println("[PASS] T06 banner"));
 
-    pass(0i32);
+    exit(0);
 };

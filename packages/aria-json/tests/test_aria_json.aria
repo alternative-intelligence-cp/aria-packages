@@ -8,7 +8,7 @@
 use "../src/aria_json.aria".*;
 use "stdlib/print_utils.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
+func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:main = int32() {
     // shared buffers
@@ -235,5 +235,5 @@ func:main = int32() {
     free(exp);
     free(ttypes);
     free(state);
-    pass(0i32);
+    exit(0);
 };
