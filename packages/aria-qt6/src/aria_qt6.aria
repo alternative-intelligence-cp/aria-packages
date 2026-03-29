@@ -1,0 +1,301 @@
+// aria_qt6.aria — Qt6 Widgets GUI toolkit bindings for Aria
+// Provides windows, controls (button, label, lineedit, checkbox, combobox),
+// layouts (vbox, hbox, grid), menus, status bar, and message boxes.
+// Requires: libaria_qt6_shim.so (linked against Qt6Widgets/Gui/Core)
+
+// ── init / quit ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_init        = int32();
+    func:aria_qt6_quit        = void();
+    func:aria_qt6_is_init     = int32();
+    func:aria_qt6_version     = str();
+}
+
+// ── windows ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_create_window      = int32(str:title, int32:w, int32:h);
+    func:aria_qt6_destroy_window     = void(int32:handle);
+    func:aria_qt6_show_window        = int32(int32:handle, int32:show);
+    func:aria_qt6_get_window_title   = str(int32:handle);
+    func:aria_qt6_set_window_title   = int32(int32:handle, str:title);
+    func:aria_qt6_get_window_width   = int32(int32:handle);
+    func:aria_qt6_get_window_height  = int32(int32:handle);
+    func:aria_qt6_set_window_size    = int32(int32:handle, int32:w, int32:h);
+}
+
+// ── controls ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_create_button      = int32(int32:win_h, str:label);
+    func:aria_qt6_create_label       = int32(int32:win_h, str:text);
+    func:aria_qt6_create_lineedit    = int32(int32:win_h, str:text);
+    func:aria_qt6_create_checkbox    = int32(int32:win_h, str:label);
+    func:aria_qt6_create_combobox    = int32(int32:win_h);
+    func:aria_qt6_destroy_control    = void(int32:handle);
+    func:aria_qt6_get_control_text   = str(int32:handle);
+    func:aria_qt6_set_control_text   = int32(int32:handle, str:text);
+    func:aria_qt6_set_control_enabled = int32(int32:handle, int32:enabled);
+    func:aria_qt6_is_control_enabled  = int32(int32:handle);
+}
+
+// ── checkbox / combobox specifics ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_checkbox_is_checked   = int32(int32:handle);
+    func:aria_qt6_checkbox_set_checked  = int32(int32:handle, int32:checked);
+    func:aria_qt6_combobox_add_item     = int32(int32:handle, str:text);
+    func:aria_qt6_combobox_current_index = int32(int32:handle);
+    func:aria_qt6_combobox_set_current  = int32(int32:handle, int32:idx);
+    func:aria_qt6_combobox_count        = int32(int32:handle);
+}
+
+// ── layouts ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_set_layout_vbox    = int32(int32:win_h);
+    func:aria_qt6_set_layout_hbox    = int32(int32:win_h);
+    func:aria_qt6_set_layout_grid    = int32(int32:win_h);
+    func:aria_qt6_layout_add_control = int32(int32:layout_h, int32:ctrl_h);
+    func:aria_qt6_grid_add_control   = int32(int32:layout_h, int32:ctrl_h, int32:row, int32:col);
+}
+
+// ── menus ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_add_menu           = int32(int32:win_h, str:title);
+    func:aria_qt6_menu_add_action    = int32(int32:menu_h, str:label);
+    func:aria_qt6_menu_add_separator = int32(int32:menu_h);
+    func:aria_qt6_action_get_text    = str(int32:action_h);
+}
+
+// ── status bar / dialogs / events ──
+
+extern "aria_qt6_shim" {
+    func:aria_qt6_statusbar_show   = int32(int32:win_h, str:msg);
+    func:aria_qt6_msgbox_info      = int32(str:title, str:text);
+    func:aria_qt6_msgbox_warning   = int32(str:title, str:text);
+    func:aria_qt6_process_events   = int32();
+}
+
+// ── public API ──
+
+pub func:qt6_init = int32() {
+    int32:r = aria_qt6_init();
+    pass(r);
+};
+
+pub func:qt6_quit = NIL() {
+    aria_qt6_quit();
+    pass(NIL);
+};
+
+pub func:qt6_is_init = int32() {
+    int32:r = aria_qt6_is_init();
+    pass(r);
+};
+
+pub func:qt6_version = str() {
+    str:v = aria_qt6_version();
+    pass(v);
+};
+
+// ── window API ──
+
+pub func:qt6_create_window = int32(str:title, int32:w, int32:h) {
+    int32:r = aria_qt6_create_window(title, w, h);
+    pass(r);
+};
+
+pub func:qt6_destroy_window = NIL(int32:handle) {
+    aria_qt6_destroy_window(handle);
+    pass(NIL);
+};
+
+pub func:qt6_show_window = int32(int32:handle, int32:show) {
+    int32:r = aria_qt6_show_window(handle, show);
+    pass(r);
+};
+
+pub func:qt6_get_window_title = str(int32:handle) {
+    str:t = aria_qt6_get_window_title(handle);
+    pass(t);
+};
+
+pub func:qt6_set_window_title = int32(int32:handle, str:title) {
+    int32:r = aria_qt6_set_window_title(handle, title);
+    pass(r);
+};
+
+pub func:qt6_get_window_width = int32(int32:handle) {
+    int32:r = aria_qt6_get_window_width(handle);
+    pass(r);
+};
+
+pub func:qt6_get_window_height = int32(int32:handle) {
+    int32:r = aria_qt6_get_window_height(handle);
+    pass(r);
+};
+
+pub func:qt6_set_window_size = int32(int32:handle, int32:w, int32:h) {
+    int32:r = aria_qt6_set_window_size(handle, w, h);
+    pass(r);
+};
+
+// ── control API ──
+
+pub func:qt6_create_button = int32(int32:win_h, str:label) {
+    int32:r = aria_qt6_create_button(win_h, label);
+    pass(r);
+};
+
+pub func:qt6_create_label = int32(int32:win_h, str:text) {
+    int32:r = aria_qt6_create_label(win_h, text);
+    pass(r);
+};
+
+pub func:qt6_create_lineedit = int32(int32:win_h, str:text) {
+    int32:r = aria_qt6_create_lineedit(win_h, text);
+    pass(r);
+};
+
+pub func:qt6_create_checkbox = int32(int32:win_h, str:label) {
+    int32:r = aria_qt6_create_checkbox(win_h, label);
+    pass(r);
+};
+
+pub func:qt6_create_combobox = int32(int32:win_h) {
+    int32:r = aria_qt6_create_combobox(win_h);
+    pass(r);
+};
+
+pub func:qt6_destroy_control = NIL(int32:handle) {
+    aria_qt6_destroy_control(handle);
+    pass(NIL);
+};
+
+pub func:qt6_get_text = str(int32:handle) {
+    str:s = aria_qt6_get_control_text(handle);
+    pass(s);
+};
+
+pub func:qt6_set_text = int32(int32:handle, str:text) {
+    int32:r = aria_qt6_set_control_text(handle, text);
+    pass(r);
+};
+
+pub func:qt6_set_enabled = int32(int32:handle, int32:enabled) {
+    int32:r = aria_qt6_set_control_enabled(handle, enabled);
+    pass(r);
+};
+
+pub func:qt6_is_enabled = int32(int32:handle) {
+    int32:r = aria_qt6_is_control_enabled(handle);
+    pass(r);
+};
+
+// ── checkbox API ──
+
+pub func:qt6_is_checked = int32(int32:handle) {
+    int32:r = aria_qt6_checkbox_is_checked(handle);
+    pass(r);
+};
+
+pub func:qt6_set_checked = int32(int32:handle, int32:checked) {
+    int32:r = aria_qt6_checkbox_set_checked(handle, checked);
+    pass(r);
+};
+
+// ── combobox API ──
+
+pub func:qt6_combo_add = int32(int32:handle, str:text) {
+    int32:r = aria_qt6_combobox_add_item(handle, text);
+    pass(r);
+};
+
+pub func:qt6_combo_index = int32(int32:handle) {
+    int32:r = aria_qt6_combobox_current_index(handle);
+    pass(r);
+};
+
+pub func:qt6_combo_set = int32(int32:handle, int32:idx) {
+    int32:r = aria_qt6_combobox_set_current(handle, idx);
+    pass(r);
+};
+
+pub func:qt6_combo_count = int32(int32:handle) {
+    int32:r = aria_qt6_combobox_count(handle);
+    pass(r);
+};
+
+// ── layout API ──
+
+pub func:qt6_layout_vbox = int32(int32:win_h) {
+    int32:r = aria_qt6_set_layout_vbox(win_h);
+    pass(r);
+};
+
+pub func:qt6_layout_hbox = int32(int32:win_h) {
+    int32:r = aria_qt6_set_layout_hbox(win_h);
+    pass(r);
+};
+
+pub func:qt6_layout_grid = int32(int32:win_h) {
+    int32:r = aria_qt6_set_layout_grid(win_h);
+    pass(r);
+};
+
+pub func:qt6_layout_add = int32(int32:layout_h, int32:ctrl_h) {
+    int32:r = aria_qt6_layout_add_control(layout_h, ctrl_h);
+    pass(r);
+};
+
+pub func:qt6_grid_add = int32(int32:layout_h, int32:ctrl_h, int32:row, int32:col) {
+    int32:r = aria_qt6_grid_add_control(layout_h, ctrl_h, row, col);
+    pass(r);
+};
+
+// ── menu API ──
+
+pub func:qt6_add_menu = int32(int32:win_h, str:title) {
+    int32:r = aria_qt6_add_menu(win_h, title);
+    pass(r);
+};
+
+pub func:qt6_menu_add_action = int32(int32:menu_h, str:label) {
+    int32:r = aria_qt6_menu_add_action(menu_h, label);
+    pass(r);
+};
+
+pub func:qt6_menu_add_separator = int32(int32:menu_h) {
+    int32:r = aria_qt6_menu_add_separator(menu_h);
+    pass(r);
+};
+
+pub func:qt6_action_text = str(int32:action_h) {
+    str:s = aria_qt6_action_get_text(action_h);
+    pass(s);
+};
+
+// ── status bar / dialogs / events ──
+
+pub func:qt6_statusbar = int32(int32:win_h, str:msg) {
+    int32:r = aria_qt6_statusbar_show(win_h, msg);
+    pass(r);
+};
+
+pub func:qt6_msgbox = int32(str:title, str:text) {
+    int32:r = aria_qt6_msgbox_info(title, text);
+    pass(r);
+};
+
+pub func:qt6_warning = int32(str:title, str:text) {
+    int32:r = aria_qt6_msgbox_warning(title, text);
+    pass(r);
+};
+
+pub func:qt6_process_events = int32() {
+    int32:r = aria_qt6_process_events();
+    pass(r);
+};

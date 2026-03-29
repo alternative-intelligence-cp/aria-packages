@@ -1,0 +1,12 @@
+// test_aria_qt6.aria — tests for aria-qt6 via shim test harness
+
+extern func:aria_test_qt6_run = int32();
+
+func:failsafe = int32(tbb32:err_code) {
+    exit(1);
+};
+
+func:main = int32() {
+    int32:fails = aria_test_qt6_run();
+    exit(fails);
+};
