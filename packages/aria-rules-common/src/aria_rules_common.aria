@@ -1,0 +1,182 @@
+// aria_rules_common.aria — Commonly used Rules<T> declarations
+//
+// USAGE: Rules declarations are file-scoped in Aria. To use these rules:
+//   1. Copy the Rules declarations you need into your source file, OR
+//   2. Use the pub validator functions exported here: use "aria_rules_common.aria".*;
+//
+// The validator functions provide runtime validation that can be imported.
+// The Rules declarations below serve as a reference library / copy-paste source.
+
+// ============================================================
+// Rules Declarations (copy into your source file to use with limit<>)
+// ============================================================
+
+// --- Signed integer ranges ---
+Rules<int8,int16,int32,int64>:signed_positive = {
+    $ > 0
+};
+
+Rules<int8,int16,int32,int64>:signed_non_negative = {
+    $ >= 0
+};
+
+Rules<int8,int16,int32,int64>:signed_negative = {
+    $ < 0
+};
+
+// --- Unsigned integer ranges ---
+Rules<uint8,uint16,uint32,uint64>:unsigned_positive = {
+    $ > 0
+};
+
+// --- Common bounds ---
+Rules<int32>:i32_percentage = {
+    $ >= 0,
+    $ <= 100
+};
+
+Rules<flt32,flt64>:float_unit = {
+    $ >= 0.0,
+    $ <= 1.0
+};
+
+Rules<flt32,flt64>:float_percentage = {
+    $ >= 0.0,
+    $ <= 100.0
+};
+
+Rules<int32>:i32_port = {
+    $ >= 0,
+    $ <= 65535
+};
+
+Rules<int32>:i32_permission = {
+    $ >= 0,
+    $ <= 511
+};
+
+Rules<int32>:i32_http_status = {
+    $ >= 100,
+    $ <= 599
+};
+
+Rules<int32>:i32_exit_code = {
+    $ >= 0,
+    $ <= 255
+};
+
+Rules<int32>:i32_bounded_count = {
+    $ > 0,
+    $ <= 1000000
+};
+
+Rules<int64>:i64_bounded_count = {
+    $ > 0,
+    $ <= 1000000
+};
+
+// --- String validation ---
+Rules<string>:str_non_empty = {
+    $.length > 0
+};
+
+// --- NIL safety ---
+Rules<int8,int16,int32,int64>:not_nil = {
+    $ != NIL
+};
+
+// --- Array constraints ---
+Rules<int32[]>:arr_i32_non_empty = {
+    $.length > 0
+};
+
+Rules<int64[]>:arr_i64_non_empty = {
+    $.length > 0
+};
+
+Rules<int32[]>:arr_i32_min2 = {
+    $.length >= 2
+};
+
+Rules<int32[]>:arr_i32_first_positive = {
+    $[0] > 0,
+    $.length > 0
+};
+
+// --- Float ranges ---
+Rules<flt32,flt64>:float_non_negative = {
+    $ >= 0.0
+};
+
+Rules<flt32,flt64>:float_positive = {
+    $ > 0.0
+};
+
+Rules<flt32,flt64>:float_normalized = {
+    $ >= -1.0,
+    $ <= 1.0
+};
+
+// ============================================================
+// Pub Validator Functions (importable via use "...".*;)
+// These provide runtime validation without limit<> syntax.
+// Return 1 if valid, 0 if invalid.
+// ============================================================
+
+pub func:validate_positive_i32 = int32(int32:val) {
+    if (val > 0i32) { pass(1i32); }
+    pass(0i32);
+};
+
+pub func:validate_non_negative_i32 = int32(int32:val) {
+    if (val >= 0i32) { pass(1i32); }
+    pass(0i32);
+};
+
+pub func:validate_percentage_i32 = int32(int32:val) {
+    if (val >= 0i32) {
+        if (val <= 100i32) { pass(1i32); }
+    }
+    pass(0i32);
+};
+
+pub func:validate_port_i32 = int32(int32:val) {
+    if (val >= 0i32) {
+        if (val <= 65535i32) { pass(1i32); }
+    }
+    pass(0i32);
+};
+
+pub func:validate_http_status_i32 = int32(int32:val) {
+    if (val >= 100i32) {
+        if (val <= 599i32) { pass(1i32); }
+    }
+    pass(0i32);
+};
+
+pub func:validate_exit_code_i32 = int32(int32:val) {
+    if (val >= 0i32) {
+        if (val <= 255i32) { pass(1i32); }
+    }
+    pass(0i32);
+};
+
+pub func:validate_unit_flt64 = int32(flt64:val) {
+    if (val >= 0.0) {
+        if (val <= 1.0) { pass(1i32); }
+    }
+    pass(0i32);
+};
+
+pub func:validate_positive_flt64 = int32(flt64:val) {
+    if (val > 0.0) { pass(1i32); }
+    pass(0i32);
+};
+
+pub func:validate_normalized_flt64 = int32(flt64:val) {
+    if (val >= -1.0) {
+        if (val <= 1.0) { pass(1i32); }
+    }
+    pass(0i32);
+};
+

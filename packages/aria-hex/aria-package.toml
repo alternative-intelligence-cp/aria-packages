@@ -1,0 +1,11 @@
+[package]
+name            = "aria-hex"
+version         = "0.3.0"
+description     = "Hexadecimal encoding and decoding for Aria — bytes to hex strings and back"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_hex_shim"]

@@ -1,0 +1,11 @@
+[package]
+name            = "aria-wxwidgets"
+version         = "0.0.1"
+description     = "Aria bindings for wxWidgets — cross-platform native GUI toolkit"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_wxwidgets_shim", "wx_baseu-3.3", "wx_gtk3u_core-3.3"]

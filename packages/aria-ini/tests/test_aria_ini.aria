@@ -1,0 +1,75 @@
+// test_aria_ini.aria — Tests for aria-ini (C-side assertions)
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_ini_parse         = int32(string:text);
+extern func:aria_ini_num_sections  = int32();
+extern func:aria_ini_has_key       = int32(string:section, string:key);
+extern func:aria_ini_cleanup       = void();
+extern func:aria_ini_assert_int_eq = void(int32:actual, int32:expected, string:msg);
+extern func:aria_ini_assert_str_eq = void(string:section, string:key, string:expected, string:msg);
+extern func:aria_ini_test_summary  = void();
+
+func:main = int32() {
+    // ── test 01: parse simple INI ──
+    int32:secs = aria_ini_parse("[server]\nhost = localhost\nport = 8080\n\n[database]\nname = mydb\n");
+    aria_ini_assert_int_eq(secs, 2i32, "test 01: parsed 2 sections");
+
+    // ── test 02: num_sections ──
+    int32:ns = aria_ini_num_sections();
+    aria_ini_assert_int_eq(ns, 2i32, "test 02: num_sections == 2");
+
+    // ── test 03: get server host ──
+    aria_ini_assert_str_eq("server", "host", "localhost", "test 03: server.host = localhost");
+
+    // ── test 04: get server port ──
+    aria_ini_assert_str_eq("server", "port", "8080", "test 04: server.port = 8080");
+
+    // ── test 05: get database name ──
+    aria_ini_assert_str_eq("database", "name", "mydb", "test 05: database.name = mydb");
+
+    // ── test 06: has_key positive ──
+    int32:hk = aria_ini_has_key("server", "host");
+    aria_ini_assert_int_eq(hk, 1i32, "test 06: has_key server.host == 1");
+
+    // ── test 07: has_key negative ──
+    int32:hk2 = aria_ini_has_key("server", "missing");
+    aria_ini_assert_int_eq(hk2, 0i32, "test 07: has_key server.missing == 0");
+
+    // ── test 08: comments ignored ──
+    int32:cs = aria_ini_parse("[app]\n; this is a comment\nname = test\n# another comment\nmode = dev\n");
+    aria_ini_assert_str_eq("app", "name", "test", "test 08: comment lines ignored, name = test");
+
+    // ── test 09: mode after comments ──
+    aria_ini_assert_str_eq("app", "mode", "dev", "test 09: mode = dev after comments");
+
+    // ── test 10: whitespace trimming ──
+    int32:ws = aria_ini_parse("[fmt]\n  key1  =  value1  \nkey2=value2\n");
+    aria_ini_assert_str_eq("fmt", "key1", "value1", "test 10: whitespace trimmed around key1");
+
+    // ── test 11: no-space equals ──
+    aria_ini_assert_str_eq("fmt", "key2", "value2", "test 11: key2=value2 no spaces");
+
+    // ── test 12: empty input ──
+    int32:ei = aria_ini_parse("");
+    aria_ini_assert_int_eq(ei, 0i32, "test 12: empty input 0 sections");
+
+    // ── test 13: global keys (no section header) ──
+    int32:gk = aria_ini_parse("key = globalval\n[sec]\nk = v\n");
+    aria_ini_assert_str_eq("", "key", "globalval", "test 13: global key before any section");
+
+    // ── test 14: section count with global ──
+    int32:gns = aria_ini_num_sections();
+    aria_ini_assert_int_eq(gns, 2i32, "test 14: 2 sections (global + sec)");
+
+    // ── test 15: multiple keys in section ──
+    int32:mk = aria_ini_parse("[multi]\na = 1\nb = 2\nc = 3\nd = 4\ne = 5\n");
+    int32:mks = aria_ini_has_key("multi", "e");
+    aria_ini_assert_int_eq(mks, 1i32, "test 15: 5 keys in section, key e exists");
+
+    // ── cleanup ──
+    aria_ini_cleanup();
+    aria_ini_test_summary();
+
+    exit(0);
+};

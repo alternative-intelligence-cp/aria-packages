@@ -1,0 +1,37 @@
+// aria_hex.aria — Hexadecimal encoding and decoding for Aria
+//
+// Encode bytes to hex strings, decode hex back to bytes.
+// Supports uppercase/lowercase output.
+// Requires: libaria_hex_shim.so
+
+extern "aria_hex_shim" {
+    func:aria_hex_encode_s   = int32(string:input, int32:uppercase);
+    func:aria_hex_decode_s   = int32(string:hex);
+    func:aria_hex_is_valid   = int32(string:hex);
+    func:aria_hex_last_result = string();
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:hex_encode = string(string:input) {
+    int32:len = aria_hex_encode_s(input, 0i32);
+    string:r = aria_hex_last_result();
+    pass(r);
+};
+
+pub func:hex_encode_upper = string(string:input) {
+    int32:len = aria_hex_encode_s(input, 1i32);
+    string:r = aria_hex_last_result();
+    pass(r);
+};
+
+pub func:hex_decode = string(string:hex) {
+    int32:len = aria_hex_decode_s(hex);
+    string:r = aria_hex_last_result();
+    pass(r);
+};
+
+pub func:hex_is_valid = int32(string:hex) {
+    int32:r = aria_hex_is_valid(hex);
+    pass(r);
+};

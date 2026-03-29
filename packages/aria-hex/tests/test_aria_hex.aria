@@ -1,0 +1,74 @@
+// test_aria_hex.aria — Tests for aria-hex (C-side assertions)
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_hex_encode_s     = int32(string:input, int32:uppercase);
+extern func:aria_hex_decode_s     = int32(string:hex);
+extern func:aria_hex_is_valid     = int32(string:hex);
+extern func:aria_hex_assert_int_eq    = void(int32:actual, int32:expected, string:msg);
+extern func:aria_hex_assert_result_eq = void(string:expected, string:msg);
+extern func:aria_hex_test_summary     = void();
+
+func:main = int32() {
+    // ── test 01: encode "Hello" lowercase ──
+    int32:len1 = aria_hex_encode_s("Hello", 0i32);
+    aria_hex_assert_int_eq(len1, 10i32, "test 01: encode Hello len=10");
+
+    // ── test 02: encode result check ──
+    aria_hex_assert_result_eq("48656c6c6f", "test 02: encode Hello = 48656c6c6f");
+
+    // ── test 03: encode uppercase ──
+    int32:len3 = aria_hex_encode_s("Hello", 1i32);
+    aria_hex_assert_result_eq("48656C6C6F", "test 03: encode Hello upper = 48656C6C6F");
+
+    // ── test 04: decode hex ──
+    int32:len4 = aria_hex_decode_s("48656c6c6f");
+    aria_hex_assert_int_eq(len4, 5i32, "test 04: decode len=5");
+
+    // ── test 05: decode result check ──
+    aria_hex_assert_result_eq("Hello", "test 05: decode 48656c6c6f = Hello");
+
+    // ── test 06: decode uppercase hex ──
+    int32:len6 = aria_hex_decode_s("48656C6C6F");
+    aria_hex_assert_result_eq("Hello", "test 06: decode uppercase = Hello");
+
+    // ── test 07: roundtrip ──
+    int32:e = aria_hex_encode_s("Aria", 0i32);
+    int32:d = aria_hex_decode_s("41726961");
+    aria_hex_assert_result_eq("Aria", "test 07: roundtrip Aria");
+
+    // ── test 08: empty string encode ──
+    int32:e8 = aria_hex_encode_s("", 0i32);
+    aria_hex_assert_int_eq(e8, 0i32, "test 08: encode empty len=0");
+
+    // ── test 09: is_valid positive ──
+    int32:v9 = aria_hex_is_valid("48656c6c6f");
+    aria_hex_assert_int_eq(v9, 1i32, "test 09: is_valid 48656c6c6f == 1");
+
+    // ── test 10: is_valid odd length ──
+    int32:v10 = aria_hex_is_valid("4865a");
+    aria_hex_assert_int_eq(v10, 0i32, "test 10: is_valid odd length == 0");
+
+    // ── test 11: is_valid bad chars ──
+    int32:v11 = aria_hex_is_valid("ZZZZ");
+    aria_hex_assert_int_eq(v11, 0i32, "test 11: is_valid ZZZZ == 0");
+
+    // ── test 12: is_valid empty ──
+    int32:v12 = aria_hex_is_valid("");
+    aria_hex_assert_int_eq(v12, 0i32, "test 12: is_valid empty == 0");
+
+    // ── test 13: decode invalid returns -1 ──
+    int32:d13 = aria_hex_decode_s("GG");
+    aria_hex_assert_int_eq(d13, -1i32, "test 13: decode invalid GG returns -1");
+
+    // ── test 14: decode odd length returns -1 ──
+    int32:d14 = aria_hex_decode_s("abc");
+    aria_hex_assert_int_eq(d14, -1i32, "test 14: decode odd length returns -1");
+
+    // ── test 15: encode single byte ──
+    int32:e15 = aria_hex_encode_s("A", 0i32);
+    aria_hex_assert_result_eq("41", "test 15: encode A = 41");
+
+    aria_hex_test_summary();
+    exit(0);
+};

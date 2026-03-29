@@ -1,0 +1,67 @@
+// aria_ringbuf.aria — Ring buffer (circular buffer) for Aria
+//
+// Handle-based fixed-size ring buffer with int64 elements.
+// FIFO order: push to back, pop from front.
+// Requires: libaria_ringbuf_shim.so
+
+extern "aria_ringbuf_shim" {
+    func:aria_ringbuf_create   = int64(int32:capacity);
+    func:aria_ringbuf_destroy  = void(int64:handle);
+    func:aria_ringbuf_push     = int32(int64:handle, int64:value);
+    func:aria_ringbuf_pop      = int64(int64:handle);
+    func:aria_ringbuf_peek     = int64(int64:handle);
+    func:aria_ringbuf_size     = int32(int64:handle);
+    func:aria_ringbuf_capacity = int32(int64:handle);
+}
+
+extern "aria_ringbuf_shim" {
+    func:aria_ringbuf_is_full  = int32(int64:handle);
+    func:aria_ringbuf_is_empty = int32(int64:handle);
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:ringbuf_create = int64(int32:capacity) {
+    int64:h = aria_ringbuf_create(capacity);
+    pass(h);
+};
+
+pub func:ringbuf_destroy = NIL(int64:handle) {
+    aria_ringbuf_destroy(handle);
+    pass(NIL);
+};
+
+pub func:ringbuf_push = int32(int64:handle, int64:value) {
+    int32:r = aria_ringbuf_push(handle, value);
+    pass(r);
+};
+
+pub func:ringbuf_pop = int64(int64:handle) {
+    int64:v = aria_ringbuf_pop(handle);
+    pass(v);
+};
+
+pub func:ringbuf_peek = int64(int64:handle) {
+    int64:v = aria_ringbuf_peek(handle);
+    pass(v);
+};
+
+pub func:ringbuf_size = int32(int64:handle) {
+    int32:r = aria_ringbuf_size(handle);
+    pass(r);
+};
+
+pub func:ringbuf_capacity = int32(int64:handle) {
+    int32:r = aria_ringbuf_capacity(handle);
+    pass(r);
+};
+
+pub func:ringbuf_is_full = int32(int64:handle) {
+    int32:r = aria_ringbuf_is_full(handle);
+    pass(r);
+};
+
+pub func:ringbuf_is_empty = int32(int64:handle) {
+    int32:r = aria_ringbuf_is_empty(handle);
+    pass(r);
+};

@@ -1,0 +1,11 @@
+[package]
+name            = "aria-ini"
+version         = "0.3.0"
+description     = "INI configuration file parser for Aria — sections, key-value pairs, comments"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_ini_shim"]

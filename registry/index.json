@@ -861,7 +861,75 @@
           "depends": [],
           "aria_version": ">=0.2.0"
         }
+      }    },
+    "aria-rules-common": {
+      "latest": "0.3.0",
+      "description": "Common Rules<T> declarations and runtime validators for Aria — numeric ranges, string validation, null safety, array constraints",
+      "versions": {
+        "0.3.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
       }
-    }
+    },
+    "aria-ini": {
+      "latest": "0.3.0",
+      "description": "INI configuration file parser for Aria — sections, key-value pairs, comments",
+      "versions": {
+        "0.3.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-hex": {
+      "latest": "0.3.0",
+      "description": "Hexadecimal encoding and decoding for Aria — bytes to hex strings and back",
+      "versions": {
+        "0.3.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-ringbuf": {
+      "latest": "0.3.0",
+      "description": "Fixed-size ring buffer (circular buffer) for Aria — handle-based, int64 elements",
+      "versions": {
+        "0.3.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-pqueue": {
+      "latest": "0.3.0",
+      "description": "Priority queue for Aria — min-heap based, handle-based, int64 elements with int32 priorities",
+      "versions": {
+        "0.3.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-wxwidgets": {
+      "latest": "0.0.1",
+      "description": "Aria bindings for wxWidgets — cross-platform native GUI toolkit",
+      "versions": {
+        "0.0.1": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-webkit-wpe": {
+      "latest": "0.0.1",
+      "description": "Aria bindings for WPE WebKit — lightweight headless web engine",
+      "versions": {
+        "0.0.1": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }    }
   }
 }
