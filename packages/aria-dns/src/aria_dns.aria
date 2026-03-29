@@ -1,0 +1,52 @@
+// aria_dns.aria — DNS resolution for Aria
+//
+// Hostname→IP resolution via system resolver (getaddrinfo).
+// Supports IPv4, IPv6, and reverse lookups.
+// Requires: libaria_dns_shim.so
+
+extern "aria_dns_shim" {
+    func:aria_dns_resolve       = int32(string:hostname);
+    func:aria_dns_resolve4      = int32(string:hostname);
+    func:aria_dns_resolve6      = int32(string:hostname);
+    func:aria_dns_get_addr      = string(int32:index);
+    func:aria_dns_get_family    = int32(int32:index);
+    func:aria_dns_result_count  = int32();
+    func:aria_dns_reverse       = string(string:ip_addr);
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:dns_resolve = int32(string:hostname) {
+    int32:n = aria_dns_resolve(hostname);
+    pass(n);
+};
+
+pub func:dns_resolve4 = int32(string:hostname) {
+    int32:n = aria_dns_resolve4(hostname);
+    pass(n);
+};
+
+pub func:dns_resolve6 = int32(string:hostname) {
+    int32:n = aria_dns_resolve6(hostname);
+    pass(n);
+};
+
+pub func:dns_get_addr = string(int32:index) {
+    string:a = aria_dns_get_addr(index);
+    pass(a);
+};
+
+pub func:dns_get_family = int32(int32:index) {
+    int32:f = aria_dns_get_family(index);
+    pass(f);
+};
+
+pub func:dns_result_count = int32() {
+    int32:n = aria_dns_result_count();
+    pass(n);
+};
+
+pub func:dns_reverse = string(string:ip_addr) {
+    string:h = aria_dns_reverse(ip_addr);
+    pass(h);
+};

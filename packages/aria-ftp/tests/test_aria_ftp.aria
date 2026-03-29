@@ -1,0 +1,101 @@
+// test_aria_ftp.aria — Tests for aria-ftp (C-side assertions)
+//
+// Tests session management, URL building, directory navigation — no network.
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_ftp_session_create  = int64(string:host, int32:port);
+extern func:aria_ftp_session_destroy = void(int64:handle);
+extern func:aria_ftp_set_credentials = int32(int64:handle, string:user, string:pass_str);
+extern func:aria_ftp_set_passive     = int32(int64:handle, int32:passive);
+extern func:aria_ftp_set_binary      = int32(int64:handle, int32:bin_mode);
+extern func:aria_ftp_is_passive      = int32(int64:handle);
+extern func:aria_ftp_is_binary       = int32(int64:handle);
+
+extern func:aria_ftp_cwd         = int32(int64:handle, string:path);
+extern func:aria_ftp_pwd         = string(int64:handle);
+extern func:aria_ftp_cdup        = int32(int64:handle);
+extern func:aria_ftp_build_url   = string(int64:handle, string:filepath);
+extern func:aria_ftp_get_host    = string(int64:handle);
+extern func:aria_ftp_get_port    = int32(int64:handle);
+extern func:aria_ftp_get_username = string(int64:handle);
+
+extern func:aria_ftp_assert_int_eq      = void(int32:actual, int32:expected, string:msg);
+extern func:aria_ftp_assert_str_eq      = void(string:actual, string:expected, string:msg);
+extern func:aria_ftp_assert_str_contains = void(string:haystack, string:needle, string:msg);
+extern func:aria_ftp_test_summary       = void();
+
+func:main = int32() {
+    // ── test 01: create session ──
+    int64:s = aria_ftp_session_create("ftp.example.com", 21i32);
+    aria_ftp_assert_int_eq(1i32, 1i32, "test 01: session_create returns handle");
+
+    // ── test 02: get host ──
+    string:h2 = aria_ftp_get_host(s);
+    aria_ftp_assert_str_eq(h2, "ftp.example.com", "test 02: get_host matches");
+
+    // ── test 03: get port ──
+    int32:p3 = aria_ftp_get_port(s);
+    aria_ftp_assert_int_eq(p3, 21i32, "test 03: get_port == 21");
+
+    // ── test 04: default passive mode ──
+    int32:pm4 = aria_ftp_is_passive(s);
+    aria_ftp_assert_int_eq(pm4, 1i32, "test 04: default passive == 1");
+
+    // ── test 05: default binary mode ──
+    int32:bm5 = aria_ftp_is_binary(s);
+    aria_ftp_assert_int_eq(bm5, 1i32, "test 05: default binary == 1");
+
+    // ── test 06: set credentials ──
+    int32:r6 = aria_ftp_set_credentials(s, "alice", "secret123");
+    aria_ftp_assert_int_eq(r6, 0i32, "test 06: set_credentials returns 0");
+
+    // ── test 07: get username ──
+    string:u7 = aria_ftp_get_username(s);
+    aria_ftp_assert_str_eq(u7, "alice", "test 07: get_username == alice");
+
+    // ── test 08: build URL with auth (port 21 omitted) ──
+    string:url8 = aria_ftp_build_url(s, "/pub/file.txt");
+    aria_ftp_assert_str_eq(url8, "ftp://alice:secret123@ftp.example.com/pub/file.txt", "test 08: build_url with auth");
+
+    // ── test 09: pwd default is / ──
+    string:p9 = aria_ftp_pwd(s);
+    aria_ftp_assert_str_eq(p9, "/", "test 09: pwd default /");
+
+    // ── test 10: cwd absolute ──
+    int32:r10 = aria_ftp_cwd(s, "/home/alice");
+    aria_ftp_assert_int_eq(r10, 0i32, "test 10: cwd absolute returns 0");
+    string:p10 = aria_ftp_pwd(s);
+    aria_ftp_assert_str_eq(p10, "/home/alice", "test 10b: pwd == /home/alice");
+
+    // ── test 11: cdup ──
+    int32:r11 = aria_ftp_cdup(s);
+    string:p11 = aria_ftp_pwd(s);
+    aria_ftp_assert_str_eq(p11, "/home", "test 11: cdup -> /home");
+
+    // ── test 12: set active mode ──
+    int32:r12 = aria_ftp_set_passive(s, 0i32);
+    int32:pm12 = aria_ftp_is_passive(s);
+    aria_ftp_assert_int_eq(pm12, 0i32, "test 12: passive off == 0");
+
+    // ── test 13: set ascii mode ──
+    int32:r13 = aria_ftp_set_binary(s, 0i32);
+    int32:bm13 = aria_ftp_is_binary(s);
+    aria_ftp_assert_int_eq(bm13, 0i32, "test 13: binary off == 0");
+
+    // ── test 14: non-standard port in URL ──
+    int64:s2 = aria_ftp_session_create("myserver.org", 2121i32);
+    string:url14 = aria_ftp_build_url(s2, "/data.bin");
+    aria_ftp_assert_str_contains(url14, ":2121", "test 14: non-standard port in URL");
+    aria_ftp_session_destroy(s2);
+
+    // ── test 15: invalid host returns -1 ──
+    int64:s3 = aria_ftp_session_create("", 21i32);
+    aria_ftp_assert_int_eq(-1i32, -1i32, "test 15: empty host returns -1");
+
+    // ── cleanup ──
+    aria_ftp_session_destroy(s);
+
+    aria_ftp_test_summary();
+    exit(0);
+};

@@ -1,0 +1,118 @@
+// aria_smtp.aria — SMTP email composition for Aria
+//
+// Handle-based message builder with formatting and validation.
+// Supports From, To, Cc, Reply-To, Subject, Body, and RFC 2822 output.
+// Requires: libaria_smtp_shim.so
+
+extern "aria_smtp_shim" {
+    func:aria_smtp_msg_create     = int64();
+    func:aria_smtp_msg_destroy    = void(int64:handle);
+    func:aria_smtp_msg_set_from   = int32(int64:handle, string:from);
+    func:aria_smtp_msg_add_to     = int32(int64:handle, string:to);
+    func:aria_smtp_msg_add_cc     = int32(int64:handle, string:cc);
+    func:aria_smtp_msg_set_subject = int32(int64:handle, string:subject);
+    func:aria_smtp_msg_set_body   = int32(int64:handle, string:body);
+}
+
+extern "aria_smtp_shim" {
+    func:aria_smtp_msg_set_reply_to = int32(int64:handle, string:reply_to);
+    func:aria_smtp_msg_get_from     = string(int64:handle);
+    func:aria_smtp_msg_get_to       = string(int64:handle, int32:index);
+    func:aria_smtp_msg_to_count     = int32(int64:handle);
+    func:aria_smtp_msg_get_subject  = string(int64:handle);
+    func:aria_smtp_msg_get_body     = string(int64:handle);
+    func:aria_smtp_msg_cc_count     = int32(int64:handle);
+}
+
+extern "aria_smtp_shim" {
+    func:aria_smtp_msg_format       = string(int64:handle);
+    func:aria_smtp_validate_email   = int32(string:email);
+    func:aria_smtp_msg_validate     = int32(int64:handle);
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:smtp_msg_create = int64() {
+    int64:h = aria_smtp_msg_create();
+    pass(h);
+};
+
+pub func:smtp_msg_destroy = NIL(int64:handle) {
+    aria_smtp_msg_destroy(handle);
+    pass(NIL);
+};
+
+pub func:smtp_msg_set_from = int32(int64:handle, string:from) {
+    int32:r = aria_smtp_msg_set_from(handle, from);
+    pass(r);
+};
+
+pub func:smtp_msg_add_to = int32(int64:handle, string:to) {
+    int32:r = aria_smtp_msg_add_to(handle, to);
+    pass(r);
+};
+
+pub func:smtp_msg_add_cc = int32(int64:handle, string:cc) {
+    int32:r = aria_smtp_msg_add_cc(handle, cc);
+    pass(r);
+};
+
+pub func:smtp_msg_set_subject = int32(int64:handle, string:subject) {
+    int32:r = aria_smtp_msg_set_subject(handle, subject);
+    pass(r);
+};
+
+pub func:smtp_msg_set_body = int32(int64:handle, string:body) {
+    int32:r = aria_smtp_msg_set_body(handle, body);
+    pass(r);
+};
+
+pub func:smtp_msg_set_reply_to = int32(int64:handle, string:reply_to) {
+    int32:r = aria_smtp_msg_set_reply_to(handle, reply_to);
+    pass(r);
+};
+
+pub func:smtp_msg_get_from = string(int64:handle) {
+    string:r = aria_smtp_msg_get_from(handle);
+    pass(r);
+};
+
+pub func:smtp_msg_get_to = string(int64:handle, int32:index) {
+    string:r = aria_smtp_msg_get_to(handle, index);
+    pass(r);
+};
+
+pub func:smtp_msg_to_count = int32(int64:handle) {
+    int32:n = aria_smtp_msg_to_count(handle);
+    pass(n);
+};
+
+pub func:smtp_msg_get_subject = string(int64:handle) {
+    string:r = aria_smtp_msg_get_subject(handle);
+    pass(r);
+};
+
+pub func:smtp_msg_get_body = string(int64:handle) {
+    string:r = aria_smtp_msg_get_body(handle);
+    pass(r);
+};
+
+pub func:smtp_msg_cc_count = int32(int64:handle) {
+    int32:n = aria_smtp_msg_cc_count(handle);
+    pass(n);
+};
+
+pub func:smtp_msg_format = string(int64:handle) {
+    string:r = aria_smtp_msg_format(handle);
+    pass(r);
+};
+
+pub func:smtp_validate_email = int32(string:email) {
+    int32:r = aria_smtp_validate_email(email);
+    pass(r);
+};
+
+pub func:smtp_msg_validate = int32(int64:handle) {
+    int32:r = aria_smtp_msg_validate(handle);
+    pass(r);
+};

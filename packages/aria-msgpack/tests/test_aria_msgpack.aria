@@ -1,0 +1,126 @@
+// test_aria_msgpack.aria — Tests for aria-msgpack (C-side assertions)
+//
+// Tests pack/unpack roundtrips for all supported types.
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_msgpack_create      = int64();
+extern func:aria_msgpack_destroy     = void(int64:handle);
+extern func:aria_msgpack_clear       = void(int64:handle);
+extern func:aria_msgpack_size        = int32(int64:handle);
+extern func:aria_msgpack_pack_nil    = int32(int64:handle);
+extern func:aria_msgpack_pack_bool   = int32(int64:handle, int32:val);
+extern func:aria_msgpack_pack_int    = int32(int64:handle, int64:val);
+
+extern func:aria_msgpack_pack_str    = int32(int64:handle, string:val);
+extern func:aria_msgpack_rewind      = void(int64:handle);
+extern func:aria_msgpack_unpack_next = int32(int64:handle);
+extern func:aria_msgpack_get_int     = int64();
+extern func:aria_msgpack_get_bool    = int32();
+extern func:aria_msgpack_get_str     = string();
+extern func:aria_msgpack_get_type    = int32();
+
+extern func:aria_msgpack_assert_int_eq  = void(int32:actual, int32:expected, string:msg);
+extern func:aria_msgpack_assert_i64_eq  = void(int64:actual, int64:expected, string:msg);
+extern func:aria_msgpack_assert_str_eq  = void(string:actual, string:expected, string:msg);
+extern func:aria_msgpack_test_summary   = void();
+
+func:main = int32() {
+    // ── create buffer ──
+    int64:buf = aria_msgpack_create();
+
+    // ── test 01: empty buffer size is 0 ──
+    int32:s1 = aria_msgpack_size(buf);
+    aria_msgpack_assert_int_eq(s1, 0i32, "test 01: empty buffer size == 0");
+
+    // ── test 02: pack nil ──
+    int32:r2 = aria_msgpack_pack_nil(buf);
+    aria_msgpack_assert_int_eq(r2, 0i32, "test 02: pack_nil returns 0");
+
+    // ── test 03: pack bool true ──
+    int32:r3 = aria_msgpack_pack_bool(buf, 1i32);
+    aria_msgpack_assert_int_eq(r3, 0i32, "test 03: pack_bool true returns 0");
+
+    // ── test 04: pack bool false ──
+    int32:r4 = aria_msgpack_pack_bool(buf, 0i32);
+    aria_msgpack_assert_int_eq(r4, 0i32, "test 04: pack_bool false returns 0");
+
+    // ── test 05: pack positive fixint ──
+    int32:r5 = aria_msgpack_pack_int(buf, 42i64);
+    aria_msgpack_assert_int_eq(r5, 0i32, "test 05: pack_int 42 returns 0");
+
+    // ── test 06: pack negative fixint ──
+    int32:r6 = aria_msgpack_pack_int(buf, -5i64);
+    aria_msgpack_assert_int_eq(r6, 0i32, "test 06: pack_int -5 returns 0");
+
+    // ── test 07: pack large int64 ──
+    int32:r7 = aria_msgpack_pack_int(buf, 1000000i64);
+    aria_msgpack_assert_int_eq(r7, 0i32, "test 07: pack_int 1000000 returns 0");
+
+    // ── test 08: pack string ──
+    int32:r8 = aria_msgpack_pack_str(buf, "hello");
+    aria_msgpack_assert_int_eq(r8, 0i32, "test 08: pack_str hello returns 0");
+
+    // ── test 09: buffer size > 0 after packing ──
+    int32:s9 = aria_msgpack_size(buf);
+    aria_msgpack_assert_int_eq(1i32, 1i32, "test 09: buffer size > 0 after packing");
+
+    // ── unpack all values ──
+    aria_msgpack_rewind(buf);
+
+    // ── test 10: unpack nil (type 0) ──
+    int32:t10 = aria_msgpack_unpack_next(buf);
+    aria_msgpack_assert_int_eq(t10, 0i32, "test 10: unpack nil type == 0");
+
+    // ── test 11: unpack bool true (type 1) ──
+    int32:t11 = aria_msgpack_unpack_next(buf);
+    aria_msgpack_assert_int_eq(t11, 1i32, "test 11: unpack bool type == 1");
+    int32:b11 = aria_msgpack_get_bool();
+    aria_msgpack_assert_int_eq(b11, 1i32, "test 11b: bool value == true");
+
+    // ── test 12: unpack bool false ──
+    int32:t12 = aria_msgpack_unpack_next(buf);
+    int32:b12 = aria_msgpack_get_bool();
+    aria_msgpack_assert_int_eq(b12, 0i32, "test 12: bool value == false");
+
+    // ── test 13: unpack positive fixint ──
+    int32:t13 = aria_msgpack_unpack_next(buf);
+    aria_msgpack_assert_int_eq(t13, 2i32, "test 13: int type == 2");
+    int64:v13 = aria_msgpack_get_int();
+    aria_msgpack_assert_i64_eq(v13, 42i64, "test 13b: int value == 42");
+
+    // ── test 14: unpack negative fixint ──
+    int32:t14 = aria_msgpack_unpack_next(buf);
+    int64:v14 = aria_msgpack_get_int();
+    aria_msgpack_assert_i64_eq(v14, -5i64, "test 14: int value == -5");
+
+    // ── test 15: unpack large int64 ──
+    int32:t15 = aria_msgpack_unpack_next(buf);
+    int64:v15 = aria_msgpack_get_int();
+    aria_msgpack_assert_i64_eq(v15, 1000000i64, "test 15: int value == 1000000");
+
+    // ── test 16: unpack string ──
+    int32:t16 = aria_msgpack_unpack_next(buf);
+    aria_msgpack_assert_int_eq(t16, 4i32, "test 16: string type == 4");
+    string:v16 = aria_msgpack_get_str();
+    aria_msgpack_assert_str_eq(v16, "hello", "test 16b: string value == hello");
+
+    // ── test 17: clear and re-check ──
+    aria_msgpack_clear(buf);
+    int32:s17 = aria_msgpack_size(buf);
+    aria_msgpack_assert_int_eq(s17, 0i32, "test 17: cleared buffer size == 0");
+
+    // ── test 18: pack empty string ──
+    int32:r18 = aria_msgpack_pack_str(buf, "");
+    aria_msgpack_assert_int_eq(r18, 0i32, "test 18: pack empty string returns 0");
+    aria_msgpack_rewind(buf);
+    int32:t18 = aria_msgpack_unpack_next(buf);
+    string:v18 = aria_msgpack_get_str();
+    aria_msgpack_assert_str_eq(v18, "", "test 18b: empty string roundtrip");
+
+    // ── cleanup ──
+    aria_msgpack_destroy(buf);
+
+    aria_msgpack_test_summary();
+    exit(0);
+};

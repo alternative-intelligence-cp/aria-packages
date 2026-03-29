@@ -1,0 +1,89 @@
+// test_aria_dns.aria — Tests for aria-dns (C-side assertions)
+//
+// NOTE: DNS tests require network access. We test with "localhost" (always
+// available) and known-bad hostnames. Live internet tests use well-known
+// hosts but may fail in air-gapped environments.
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_dns_resolve       = int32(string:hostname);
+extern func:aria_dns_resolve4      = int32(string:hostname);
+extern func:aria_dns_resolve6      = int32(string:hostname);
+extern func:aria_dns_get_addr      = string(int32:index);
+extern func:aria_dns_get_family    = int32(int32:index);
+extern func:aria_dns_result_count  = int32();
+extern func:aria_dns_reverse       = string(string:ip_addr);
+
+extern func:aria_dns_assert_int_eq       = void(int32:actual, int32:expected, string:msg);
+extern func:aria_dns_assert_int_gt       = void(int32:actual, int32:threshold, string:msg);
+extern func:aria_dns_assert_int_ge       = void(int32:actual, int32:threshold, string:msg);
+extern func:aria_dns_assert_str_not_empty = void(string:s, string:msg);
+extern func:aria_dns_assert_str_empty    = void(string:s, string:msg);
+extern func:aria_dns_assert_family_valid = void(int32:family, string:msg);
+extern func:aria_dns_test_summary        = void();
+
+func:main = int32() {
+    // ── test 01: resolve localhost (always available) ──
+    int32:n1 = aria_dns_resolve("localhost");
+    aria_dns_assert_int_ge(n1, 1i32, "test 01: resolve localhost >= 1 result");
+
+    // ── test 02: first addr is not empty ──
+    string:a2 = aria_dns_get_addr(0i32);
+    aria_dns_assert_str_not_empty(a2, "test 02: localhost addr[0] not empty");
+
+    // ── test 03: family is valid (4 or 6) ──
+    int32:f3 = aria_dns_get_family(0i32);
+    aria_dns_assert_family_valid(f3, "test 03: localhost family valid");
+
+    // ── test 04: result_count matches ──
+    int32:c4 = aria_dns_result_count();
+    aria_dns_assert_int_eq(c4, n1, "test 04: result_count matches resolve return");
+
+    // ── test 05: resolve4 localhost ──
+    int32:n5 = aria_dns_resolve4("localhost");
+    aria_dns_assert_int_ge(n5, 1i32, "test 05: resolve4 localhost >= 1");
+
+    // ── test 06: resolve4 returns family=4 ──
+    int32:f6 = aria_dns_get_family(0i32);
+    aria_dns_assert_int_eq(f6, 4i32, "test 06: resolve4 family == 4");
+
+    // ── test 07: out-of-range index returns empty addr ──
+    string:a7 = aria_dns_get_addr(999i32);
+    aria_dns_assert_str_empty(a7, "test 07: out-of-range addr is empty");
+
+    // ── test 08: out-of-range family returns 0 ──
+    int32:f8 = aria_dns_get_family(999i32);
+    aria_dns_assert_int_eq(f8, 0i32, "test 08: out-of-range family == 0");
+
+    // ── test 09: resolve bad hostname returns -1 ──
+    int32:n9 = aria_dns_resolve("this.host.definitely.does.not.exist.invalid");
+    aria_dns_assert_int_eq(n9, -1i32, "test 09: bad hostname returns -1");
+
+    // ── test 10: resolve empty string returns -1 ──
+    int32:n10 = aria_dns_resolve("");
+    aria_dns_assert_int_eq(n10, -1i32, "test 10: empty hostname returns -1");
+
+    // ── test 11: reverse lookup 127.0.0.1 ──
+    string:h11 = aria_dns_reverse("127.0.0.1");
+    aria_dns_assert_str_not_empty(h11, "test 11: reverse 127.0.0.1 not empty");
+
+    // ── test 12: reverse bad IP returns empty ──
+    string:h12 = aria_dns_reverse("999.999.999.999");
+    aria_dns_assert_str_empty(h12, "test 12: reverse bad IP is empty");
+
+    // ── test 13: resolve4 addr not empty ──
+    int32:n13 = aria_dns_resolve4("localhost");
+    string:a13 = aria_dns_get_addr(0i32);
+    aria_dns_assert_str_not_empty(a13, "test 13: resolve4 localhost addr not empty");
+
+    // ── test 14: negative index returns empty ──
+    string:a14 = aria_dns_get_addr(-1i32);
+    aria_dns_assert_str_empty(a14, "test 14: negative index addr empty");
+
+    // ── test 15: reverse empty string returns empty ──
+    string:h15 = aria_dns_reverse("");
+    aria_dns_assert_str_empty(h15, "test 15: reverse empty string is empty");
+
+    aria_dns_test_summary();
+    exit(0);
+};

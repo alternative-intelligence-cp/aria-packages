@@ -1,0 +1,103 @@
+// test_aria_diff.aria — Tests for aria-diff (C-side assertions)
+//
+// Tests LCS diffing with various text pairs.
+
+func:failsafe = int32(tbb32:err) { exit(1); };
+
+extern func:aria_diff_compute    = int32(string:text_a, string:text_b);
+extern func:aria_diff_count      = int32();
+extern func:aria_diff_get_tag    = int32(int32:idx);
+extern func:aria_diff_get_line   = string(int32:idx);
+extern func:aria_diff_additions  = int32();
+extern func:aria_diff_deletions  = int32();
+extern func:aria_diff_unchanged  = int32();
+extern func:aria_diff_unified    = string();
+
+extern func:aria_diff_assert_int_eq      = void(int32:actual, int32:expected, string:msg);
+extern func:aria_diff_assert_str_eq      = void(string:actual, string:expected, string:msg);
+extern func:aria_diff_assert_str_contains = void(string:haystack, string:needle, string:msg);
+extern func:aria_diff_assert_int_gt      = void(int32:actual, int32:threshold, string:msg);
+extern func:aria_diff_test_summary       = void();
+
+func:main = int32() {
+    // ── test 01: identical texts ──
+    int32:n1 = aria_diff_compute("hello\nworld", "hello\nworld");
+    aria_diff_assert_int_eq(n1, 2i32, "test 01: identical texts = 2 entries");
+
+    // ── test 02: all context for identical ──
+    int32:u2 = aria_diff_unchanged();
+    aria_diff_assert_int_eq(u2, 2i32, "test 02: unchanged == 2");
+
+    // ── test 03: no additions for identical ──
+    int32:a3 = aria_diff_additions();
+    aria_diff_assert_int_eq(a3, 0i32, "test 03: additions == 0");
+
+    // ── test 04: no deletions for identical ──
+    int32:d4 = aria_diff_deletions();
+    aria_diff_assert_int_eq(d4, 0i32, "test 04: deletions == 0");
+
+    // ── test 05: added line ──
+    int32:n5 = aria_diff_compute("aaa\nccc", "aaa\nbbb\nccc");
+    int32:a5 = aria_diff_additions();
+    aria_diff_assert_int_eq(a5, 1i32, "test 05: one line added");
+
+    // ── test 06: unchanged count with addition ──
+    int32:u6 = aria_diff_unchanged();
+    aria_diff_assert_int_eq(u6, 2i32, "test 06: unchanged == 2");
+
+    // ── test 07: removed line ──
+    int32:n7 = aria_diff_compute("aaa\nbbb\nccc", "aaa\nccc");
+    int32:d7 = aria_diff_deletions();
+    aria_diff_assert_int_eq(d7, 1i32, "test 07: one line removed");
+
+    // ── test 08: get_tag context (0) ──
+    int32:t8 = aria_diff_get_tag(0i32);
+    aria_diff_assert_int_eq(t8, 0i32, "test 08: first tag is context (0)");
+
+    // ── test 09: get_tag removed (2) ──
+    int32:t9 = aria_diff_get_tag(1i32);
+    aria_diff_assert_int_eq(t9, 2i32, "test 09: second tag is removed (2)");
+
+    // ── test 10: get_line for context ──
+    string:l10 = aria_diff_get_line(0i32);
+    aria_diff_assert_str_eq(l10, "aaa", "test 10: context line == aaa");
+
+    // ── test 11: get_line for removed ──
+    string:l11 = aria_diff_get_line(1i32);
+    aria_diff_assert_str_eq(l11, "bbb", "test 11: removed line == bbb");
+
+    // ── test 12: unified output contains - prefix ──
+    string:uni = aria_diff_unified();
+    aria_diff_assert_str_contains(uni, "-bbb", "test 12: unified has -bbb");
+
+    // ── test 13: empty vs non-empty ──
+    int32:n13 = aria_diff_compute("", "hello");
+    int32:a13 = aria_diff_additions();
+    aria_diff_assert_int_eq(a13, 1i32, "test 13: empty->hello = 1 addition");
+
+    // ── test 14: non-empty vs empty ──
+    int32:n14 = aria_diff_compute("hello", "");
+    int32:d14 = aria_diff_deletions();
+    aria_diff_assert_int_eq(d14, 1i32, "test 14: hello->empty = 1 deletion");
+
+    // ── test 15: completely different ──
+    int32:n15 = aria_diff_compute("aaa\nbbb", "ccc\nddd");
+    int32:a15 = aria_diff_additions();
+    int32:d15 = aria_diff_deletions();
+    aria_diff_assert_int_eq(a15, 2i32, "test 15: completely different = 2 additions");
+    aria_diff_assert_int_eq(d15, 2i32, "test 15b: completely different = 2 deletions");
+
+    // ── test 16: out-of-range tag returns -1 ──
+    int32:t16 = aria_diff_get_tag(9999i32);
+    aria_diff_assert_int_eq(t16, -1i32, "test 16: out-of-range tag == -1");
+
+    // ── test 17: modification (change line) ──
+    int32:n17 = aria_diff_compute("foo\nbar\nbaz", "foo\nqux\nbaz");
+    int32:a17 = aria_diff_additions();
+    int32:d17 = aria_diff_deletions();
+    aria_diff_assert_int_eq(a17, 1i32, "test 17: modified = 1 addition (qux)");
+    aria_diff_assert_int_eq(d17, 1i32, "test 17b: modified = 1 deletion (bar)");
+
+    aria_diff_test_summary();
+    exit(0);
+};

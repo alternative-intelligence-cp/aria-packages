@@ -1,0 +1,61 @@
+// aria_diff.aria — Text diffing for Aria
+//
+// Line-by-line diff using LCS algorithm.
+// Produces diff entries (context/added/removed) and unified format output.
+// Requires: libaria_diff_shim.so
+
+extern "aria_diff_shim" {
+    func:aria_diff_compute    = int32(string:text_a, string:text_b);
+    func:aria_diff_count      = int32();
+    func:aria_diff_get_tag    = int32(int32:idx);
+    func:aria_diff_get_line   = string(int32:idx);
+    func:aria_diff_additions  = int32();
+    func:aria_diff_deletions  = int32();
+    func:aria_diff_unchanged  = int32();
+}
+
+extern "aria_diff_shim" {
+    func:aria_diff_unified    = string();
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:diff_compute = int32(string:text_a, string:text_b) {
+    int32:n = aria_diff_compute(text_a, text_b);
+    pass(n);
+};
+
+pub func:diff_count = int32() {
+    int32:n = aria_diff_count();
+    pass(n);
+};
+
+pub func:diff_get_tag = int32(int32:idx) {
+    int32:t = aria_diff_get_tag(idx);
+    pass(t);
+};
+
+pub func:diff_get_line = string(int32:idx) {
+    string:l = aria_diff_get_line(idx);
+    pass(l);
+};
+
+pub func:diff_additions = int32() {
+    int32:n = aria_diff_additions();
+    pass(n);
+};
+
+pub func:diff_deletions = int32() {
+    int32:n = aria_diff_deletions();
+    pass(n);
+};
+
+pub func:diff_unchanged = int32() {
+    int32:n = aria_diff_unchanged();
+    pass(n);
+};
+
+pub func:diff_unified = string() {
+    string:u = aria_diff_unified();
+    pass(u);
+};

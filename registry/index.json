@@ -930,6 +930,57 @@
           "depends": [],
           "aria_version": ">=0.2.0"
         }
-      }    }
+      }
+    },
+    "aria-dns": {
+      "latest": "0.3.1",
+      "description": "DNS resolution for Aria — A/AAAA hostname lookups via system resolver",
+      "versions": {
+        "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-smtp": {
+      "latest": "0.3.1",
+      "description": "SMTP email client for Aria — compose and send emails via SMTP servers",
+      "versions": {
+        "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-ftp": {
+      "latest": "0.3.1",
+      "description": "FTP client for Aria — connect, list, upload, download via FTP protocol",
+      "versions": {
+        "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-msgpack": {
+      "latest": "0.3.1",
+      "description": "MessagePack binary serialization for Aria — compact alternative to JSON",
+      "versions": {
+        "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-diff": {
+      "latest": "0.3.1",
+      "description": "Text diffing for Aria — line-by-line diff with unified output format",
+      "versions": {
+        "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    }
   }
 }

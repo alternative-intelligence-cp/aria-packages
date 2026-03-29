@@ -1,0 +1,97 @@
+// aria_msgpack.aria — MessagePack binary serialization for Aria
+//
+// Pack and unpack integers, floats, booleans, nil, and strings
+// using the MessagePack binary format.
+// Requires: libaria_msgpack_shim.so
+
+extern "aria_msgpack_shim" {
+    func:aria_msgpack_create      = int64();
+    func:aria_msgpack_destroy     = void(int64:handle);
+    func:aria_msgpack_clear       = void(int64:handle);
+    func:aria_msgpack_size        = int32(int64:handle);
+    func:aria_msgpack_pack_nil    = int32(int64:handle);
+    func:aria_msgpack_pack_bool   = int32(int64:handle, int32:val);
+    func:aria_msgpack_pack_int    = int32(int64:handle, int64:val);
+}
+
+extern "aria_msgpack_shim" {
+    func:aria_msgpack_pack_str    = int32(int64:handle, string:val);
+    func:aria_msgpack_rewind      = void(int64:handle);
+    func:aria_msgpack_unpack_next = int32(int64:handle);
+    func:aria_msgpack_get_int     = int64();
+    func:aria_msgpack_get_bool    = int32();
+    func:aria_msgpack_get_str     = string();
+    func:aria_msgpack_get_type    = int32();
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:msgpack_create = int64() {
+    int64:h = aria_msgpack_create();
+    pass(h);
+};
+
+pub func:msgpack_destroy = NIL(int64:handle) {
+    aria_msgpack_destroy(handle);
+    pass(NIL);
+};
+
+pub func:msgpack_clear = NIL(int64:handle) {
+    aria_msgpack_clear(handle);
+    pass(NIL);
+};
+
+pub func:msgpack_size = int32(int64:handle) {
+    int32:s = aria_msgpack_size(handle);
+    pass(s);
+};
+
+pub func:msgpack_pack_nil = int32(int64:handle) {
+    int32:r = aria_msgpack_pack_nil(handle);
+    pass(r);
+};
+
+pub func:msgpack_pack_bool = int32(int64:handle, int32:val) {
+    int32:r = aria_msgpack_pack_bool(handle, val);
+    pass(r);
+};
+
+pub func:msgpack_pack_int = int32(int64:handle, int64:val) {
+    int32:r = aria_msgpack_pack_int(handle, val);
+    pass(r);
+};
+
+pub func:msgpack_pack_str = int32(int64:handle, string:val) {
+    int32:r = aria_msgpack_pack_str(handle, val);
+    pass(r);
+};
+
+pub func:msgpack_rewind = NIL(int64:handle) {
+    aria_msgpack_rewind(handle);
+    pass(NIL);
+};
+
+pub func:msgpack_unpack_next = int32(int64:handle) {
+    int32:t = aria_msgpack_unpack_next(handle);
+    pass(t);
+};
+
+pub func:msgpack_get_int = int64() {
+    int64:v = aria_msgpack_get_int();
+    pass(v);
+};
+
+pub func:msgpack_get_bool = int32() {
+    int32:v = aria_msgpack_get_bool();
+    pass(v);
+};
+
+pub func:msgpack_get_str = string() {
+    string:v = aria_msgpack_get_str();
+    pass(v);
+};
+
+pub func:msgpack_get_type = int32() {
+    int32:t = aria_msgpack_get_type();
+    pass(t);
+};
