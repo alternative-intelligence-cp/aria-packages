@@ -1,0 +1,117 @@
+// aria_mock.aria — Test mocking framework for Aria
+//
+// Handle-based mock functions: create, record calls, verify expectations.
+// Requires: libaria_mock_shim.so
+
+extern "aria_mock_shim" {
+    func:aria_mock_create       = int32(string:name);
+    func:aria_mock_destroy      = void(int32:handle);
+    func:aria_mock_reset        = void(int32:handle);
+    func:aria_mock_get_name     = string(int32:handle);
+    func:aria_mock_returns_int  = void(int32:handle, int64:val);
+    func:aria_mock_returns_str  = void(int32:handle, string:val);
+    func:aria_mock_call         = int64(int32:handle);
+}
+
+extern "aria_mock_shim" {
+    func:aria_mock_call_with_int  = int64(int32:handle, int64:arg);
+    func:aria_mock_call_with_str  = int64(int32:handle, string:arg);
+    func:aria_mock_call_count     = int32(int32:handle);
+    func:aria_mock_call_arg_int   = int64(int32:handle, int32:call_idx, int32:arg_idx);
+    func:aria_mock_call_arg_str   = string(int32:handle, int32:call_idx, int32:arg_idx);
+    func:aria_mock_was_called     = int32(int32:handle);
+}
+
+extern "aria_mock_shim" {
+    func:aria_mock_expect_calls = void(int32:handle, int32:n);
+    func:aria_mock_expect_min   = void(int32:handle, int32:n);
+    func:aria_mock_expect_max   = void(int32:handle, int32:n);
+    func:aria_mock_verify       = int32(int32:handle);
+}
+
+// ── public API ──────────────────────────────────────────────────────
+
+pub func:mock_create = int32(string:name) {
+    int32:h = aria_mock_create(name);
+    pass(h);
+};
+
+pub func:mock_destroy = NIL(int32:handle) {
+    aria_mock_destroy(handle);
+    pass(NIL);
+};
+
+pub func:mock_reset = NIL(int32:handle) {
+    aria_mock_reset(handle);
+    pass(NIL);
+};
+
+pub func:mock_get_name = string(int32:handle) {
+    string:n = aria_mock_get_name(handle);
+    pass(n);
+};
+
+pub func:mock_returns_int = NIL(int32:handle, int64:val) {
+    aria_mock_returns_int(handle, val);
+    pass(NIL);
+};
+
+pub func:mock_returns_str = NIL(int32:handle, string:val) {
+    aria_mock_returns_str(handle, val);
+    pass(NIL);
+};
+
+pub func:mock_call = int64(int32:handle) {
+    int64:r = aria_mock_call(handle);
+    pass(r);
+};
+
+pub func:mock_call_with_int = int64(int32:handle, int64:arg) {
+    int64:r = aria_mock_call_with_int(handle, arg);
+    pass(r);
+};
+
+pub func:mock_call_with_str = int64(int32:handle, string:arg) {
+    int64:r = aria_mock_call_with_str(handle, arg);
+    pass(r);
+};
+
+pub func:mock_call_count = int32(int32:handle) {
+    int32:n = aria_mock_call_count(handle);
+    pass(n);
+};
+
+pub func:mock_call_arg_int = int64(int32:handle, int32:call_idx, int32:arg_idx) {
+    int64:v = aria_mock_call_arg_int(handle, call_idx, arg_idx);
+    pass(v);
+};
+
+pub func:mock_call_arg_str = string(int32:handle, int32:call_idx, int32:arg_idx) {
+    string:s = aria_mock_call_arg_str(handle, call_idx, arg_idx);
+    pass(s);
+};
+
+pub func:mock_was_called = int32(int32:handle) {
+    int32:r = aria_mock_was_called(handle);
+    pass(r);
+};
+
+pub func:mock_expect_calls = NIL(int32:handle, int32:n) {
+    aria_mock_expect_calls(handle, n);
+    pass(NIL);
+};
+
+pub func:mock_expect_min = NIL(int32:handle, int32:n) {
+    aria_mock_expect_min(handle, n);
+    pass(NIL);
+};
+
+pub func:mock_expect_max = NIL(int32:handle, int32:n) {
+    aria_mock_expect_max(handle, n);
+    pass(NIL);
+};
+
+pub func:mock_verify = int32(int32:handle) {
+    int32:r = aria_mock_verify(handle);
+    pass(r);
+};

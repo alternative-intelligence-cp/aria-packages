@@ -1,0 +1,128 @@
+// aria_webkit_gtk.aria - WebKitGTK bindings for Aria
+// Web view creation, page loading, navigation, and settings.
+// Requires: libaria_webkit_gtk_shim.so (linked against WebKitGTK 6.0)
+
+extern "aria_webkit_gtk_shim" {
+    func:aria_wk_init           = int32();
+    func:aria_wk_quit           = void();
+    func:aria_wk_is_init        = int32();
+    func:aria_wk_get_version    = str();
+    func:aria_wk_create_view    = int32();
+    func:aria_wk_destroy_view   = void(int32:handle);
+    func:aria_wk_load_uri       = int32(int32:handle, str:uri);
+}
+
+extern "aria_webkit_gtk_shim" {
+    func:aria_wk_load_html     = int32(int32:handle, str:html);
+    func:aria_wk_go_back       = int32(int32:handle);
+    func:aria_wk_go_forward    = int32(int32:handle);
+    func:aria_wk_reload        = int32(int32:handle);
+    func:aria_wk_stop_loading  = int32(int32:handle);
+    func:aria_wk_get_title     = str(int32:handle);
+    func:aria_wk_get_uri       = str(int32:handle);
+}
+
+extern "aria_webkit_gtk_shim" {
+    func:aria_wk_is_loading            = int32(int32:handle);
+    func:aria_wk_can_go_back           = int32(int32:handle);
+    func:aria_wk_can_go_forward        = int32(int32:handle);
+    func:aria_wk_enable_javascript     = int32(int32:handle, int32:enabled);
+    func:aria_wk_enable_developer_extras = int32(int32:handle, int32:enabled);
+}
+
+// -- public API --
+
+pub func:wk_init = int32() {
+    int32:r = aria_wk_init();
+    pass(r);
+};
+
+pub func:wk_quit = NIL() {
+    aria_wk_quit();
+    pass(NIL);
+};
+
+pub func:wk_is_init = int32() {
+    int32:r = aria_wk_is_init();
+    pass(r);
+};
+
+pub func:wk_get_version = str() {
+    str:v = aria_wk_get_version();
+    pass(v);
+};
+
+pub func:wk_create_view = int32() {
+    int32:r = aria_wk_create_view();
+    pass(r);
+};
+
+pub func:wk_destroy_view = NIL(int32:handle) {
+    aria_wk_destroy_view(handle);
+    pass(NIL);
+};
+
+pub func:wk_load_uri = int32(int32:handle, str:uri) {
+    int32:r = aria_wk_load_uri(handle, uri);
+    pass(r);
+};
+
+pub func:wk_load_html = int32(int32:handle, str:html) {
+    int32:r = aria_wk_load_html(handle, html);
+    pass(r);
+};
+
+pub func:wk_go_back = int32(int32:handle) {
+    int32:r = aria_wk_go_back(handle);
+    pass(r);
+};
+
+pub func:wk_go_forward = int32(int32:handle) {
+    int32:r = aria_wk_go_forward(handle);
+    pass(r);
+};
+
+pub func:wk_reload = int32(int32:handle) {
+    int32:r = aria_wk_reload(handle);
+    pass(r);
+};
+
+pub func:wk_stop_loading = int32(int32:handle) {
+    int32:r = aria_wk_stop_loading(handle);
+    pass(r);
+};
+
+pub func:wk_get_title = str(int32:handle) {
+    str:t = aria_wk_get_title(handle);
+    pass(t);
+};
+
+pub func:wk_get_uri = str(int32:handle) {
+    str:u = aria_wk_get_uri(handle);
+    pass(u);
+};
+
+pub func:wk_is_loading = int32(int32:handle) {
+    int32:r = aria_wk_is_loading(handle);
+    pass(r);
+};
+
+pub func:wk_can_go_back = int32(int32:handle) {
+    int32:r = aria_wk_can_go_back(handle);
+    pass(r);
+};
+
+pub func:wk_can_go_forward = int32(int32:handle) {
+    int32:r = aria_wk_can_go_forward(handle);
+    pass(r);
+};
+
+pub func:wk_enable_javascript = int32(int32:handle, int32:enabled) {
+    int32:r = aria_wk_enable_javascript(handle, enabled);
+    pass(r);
+};
+
+pub func:wk_enable_dev_extras = int32(int32:handle, int32:enabled) {
+    int32:r = aria_wk_enable_developer_extras(handle, enabled);
+    pass(r);
+};

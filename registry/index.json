@@ -631,12 +631,16 @@
       }
     },
     "aria-sdl3": {
-      "latest": "0.0.1",
+      "latest": "0.3.2",
       "description": "Aria bindings for SDL3 \u2014 windowing, 2D rendering, events, and input",
       "versions": {
         "0.0.1": {
           "depends": [],
           "aria_version": ">=0.2.0"
+        },
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
         }
       }
     },
@@ -913,22 +917,30 @@
       }
     },
     "aria-wxwidgets": {
-      "latest": "0.0.1",
+      "latest": "0.3.2",
       "description": "Aria bindings for wxWidgets — cross-platform native GUI toolkit",
       "versions": {
         "0.0.1": {
           "depends": [],
           "aria_version": ">=0.2.0"
+        },
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
         }
       }
     },
-    "aria-webkit-wpe": {
-      "latest": "0.0.1",
-      "description": "Aria bindings for WPE WebKit — lightweight headless web engine",
+    "aria-webkit-gtk": {
+      "latest": "0.3.2",
+      "description": "Aria bindings for WebKitGTK — web engine for embedding browsers",
       "versions": {
         "0.0.1": {
           "depends": [],
           "aria_version": ">=0.2.0"
+        },
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
         }
       }
     },
@@ -977,6 +989,46 @@
       "description": "Text diffing for Aria — line-by-line diff with unified output format",
       "versions": {
         "0.3.1": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-stats": {
+      "latest": "0.3.2",
+      "description": "Statistics for Aria — mean, median, mode, variance, stddev, correlation",
+      "versions": {
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-matrix": {
+      "latest": "0.3.2",
+      "description": "Matrix operations for Aria — create, arithmetic, transpose, determinant",
+      "versions": {
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-mock": {
+      "latest": "0.3.2",
+      "description": "Mock/stub testing for Aria — record calls, stub returns, verify expectations",
+      "versions": {
+        "0.3.2": {
+          "depends": [],
+          "aria_version": ">=0.3.0"
+        }
+      }
+    },
+    "aria-bigdecimal": {
+      "latest": "0.3.2",
+      "description": "Arbitrary-precision decimal arithmetic for Aria — add, subtract, multiply, compare",
+      "versions": {
+        "0.3.2": {
           "depends": [],
           "aria_version": ">=0.3.0"
         }

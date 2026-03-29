@@ -1,0 +1,11 @@
+[package]
+name            = "aria-webkit-gtk"
+version         = "0.0.1"
+description     = "Aria bindings for WebKitGTK — web engine for embedding browsers"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_webkit_gtk_shim", "webkitgtk-6.0", "gtk-4", "javascriptcoregtk-6.0", "glib-2.0", "gobject-2.0", "gio-2.0", "soup-3.0"]

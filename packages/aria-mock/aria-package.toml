@@ -1,0 +1,12 @@
+[package]
+name            = "aria-mock"
+version         = "0.3.2"
+description     = "Test mocking framework for Aria — mock functions, call recording, expectations"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+aria_version    = ">=0.3.0"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_mock_shim"]

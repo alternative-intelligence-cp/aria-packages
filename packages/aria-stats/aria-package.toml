@@ -1,0 +1,12 @@
+[package]
+name            = "aria-stats"
+version         = "0.3.2"
+description     = "Statistics functions for Aria — mean, median, mode, std dev, variance, percentiles"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+aria_version    = ">=0.3.0"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_stats_shim"]

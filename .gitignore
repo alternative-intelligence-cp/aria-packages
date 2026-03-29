@@ -17,6 +17,14 @@ packages/*/tests/demo_*
 !packages/*/tests/test_*.aria
 !packages/*/tests/demo_*.aria
 
+# Vendored source/build trees (large)
+packages/aria-sdl3/SDL-release-*/
+packages/aria-wxwidgets/_build/
+packages/aria-wxwidgets/wxWidgets-*/
+
+# Test binaries in shim dirs
+packages/*/shim/test_*
+
 # Editor
 .vscode/
 *.swp

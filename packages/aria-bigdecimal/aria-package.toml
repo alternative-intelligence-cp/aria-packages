@@ -1,0 +1,12 @@
+[package]
+name            = "aria-bigdecimal"
+version         = "0.3.2"
+description     = "Arbitrary precision decimal arithmetic for Aria — add, subtract, multiply, divide, compare"
+license         = "MIT"
+repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+aria_version    = ">=0.3.0"
+
+[dependencies]
+
+[build]
+link_libraries = ["aria_bigdecimal_shim"]
