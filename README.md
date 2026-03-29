@@ -1,8 +1,11 @@
 # aria-packages
 
+[![CI](https://github.com/alternative-intelligence-cp/aria-packages/actions/workflows/ci.yml/badge.svg)](https://github.com/alternative-intelligence-cp/aria-packages/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+
 Ecosystem package libraries for the [Aria programming language](https://github.com/alternative-intelligence-cp/aria).
 
-**80 packages** organized into utility, graphics/game, server/middleware, database, and AI/ML tiers.
+**102 packages** organized into utility, graphics/game, server/middleware, database, and AI/ML tiers.
 
 ## Packages
 
