@@ -1,5 +1,25 @@
 {
   "packages": {
+    "aria-actor": {
+      "latest": "0.1.0",
+      "description": "Actor system for Aria \u2014 actor groups, request-reply, and supervision patterns",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-aifs": {
+      "latest": "0.1.0",
+      "description": "High-level AI filesystem utilities: model catalog, batch annotation, integrity verification",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-args": {
       "latest": "0.2.0",
       "description": "CLI argument parsing for Aria \u2014 reads /proc/self/cmdline and provides flag/value query functions",
@@ -40,6 +60,16 @@
         }
       }
     },
+    "aria-bench": {
+      "latest": "0.2.0",
+      "description": "High-resolution benchmarking framework \u2014 monotonic nanosecond timing, elapsed measurement, and statistical helpers",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-bits": {
       "latest": "0.2.0",
       "description": "Bit manipulation utilities for uint64: test/set/clear/flip, nibble extraction, byte popcount",
@@ -65,6 +95,16 @@
       "description": "Byte and word packing/unpacking operations for uint64 buffers (little-endian)",
       "versions": {
         "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-channel": {
+      "latest": "0.1.0",
+      "description": "Enhanced channel patterns for Aria concurrency \u2014 fan-out, fan-in, pipeline, tee",
+      "versions": {
+        "0.1.0": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -350,9 +390,30 @@
         }
       }
     },
+    "aria-jit": {
+      "latest": "0.2.0",
+      "description": "High-level JIT code generation \u2014 SysV ABI constants, builder patterns, and convenience wrappers for runtime assembler",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-json": {
       "latest": "0.2.0",
       "description": "JSON tokeniser for Aria \u2014 byte-level scanning with malloc/free for zero-copy token-type arrays",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-libc": {
+      "latest": "0.2.0",
+      "description": "Standard C library wrappers for Aria \u2014 libc without the boilerplate. 10 modules: io, mem, string, math, time, process, net, posix, fs, regex. Supports static builds via musl.",
+      "repository": "https://github.com/alternative-intelligence-cp/aria-libc",
       "versions": {
         "0.2.0": {
           "depends": [],
@@ -385,6 +446,16 @@
       "description": "Mamba selective state space model for Aria",
       "versions": {
         "0.2.10": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-map": {
+      "latest": "0.1.0",
+      "description": "String-keyed int64 hashmap for Aria",
+      "versions": {
+        "0.1.0": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -443,6 +514,16 @@
         }
       }
     },
+    "aria-path": {
+      "latest": "0.2.0",
+      "description": "Path string manipulation \u2014 join, basename, dirname, extension, normalize",
+      "versions": {
+        "0.2.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-postgres": {
       "latest": "0.1.0",
       "description": "PostgreSQL client library for Aria \u2014 SQL database via C shim wrapping libpq",
@@ -453,6 +534,16 @@
           "system_libs": [
             "pq"
           ]
+        }
+      }
+    },
+    "aria-queue": {
+      "latest": "0.1.0",
+      "description": "FIFO queue data structure for Aria",
+      "versions": {
+        "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
         }
       }
     },
@@ -539,6 +630,16 @@
         }
       }
     },
+    "aria-sdl3": {
+      "latest": "0.0.1",
+      "description": "Aria bindings for SDL3 \u2014 windowing, 2D rendering, events, and input",
+      "versions": {
+        "0.0.1": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
     "aria-semver": {
       "latest": "0.2.6",
       "description": "Semantic versioning \u2014 parse, compare, satisfy constraints, and bump versions",
@@ -574,6 +675,16 @@
       "description": "TCP and UDP socket abstractions for Aria",
       "versions": {
         "0.1.0": {
+          "depends": [],
+          "aria_version": ">=0.2.0"
+        }
+      }
+    },
+    "aria-sort": {
+      "latest": "0.2.0",
+      "description": "Sorting algorithms for int64 arrays \u2014 quicksort, insertion sort, is_sorted check",
+      "versions": {
+        "0.2.0": {
           "depends": [],
           "aria_version": ">=0.2.0"
         }
@@ -745,17 +856,6 @@
     "aria-zigzag": {
       "latest": "0.2.0",
       "description": "Zigzag encoding/decoding \u2014 maps signed integers to unsigned for efficient varint serialization",
-      "versions": {
-        "0.2.0": {
-          "depends": [],
-          "aria_version": ">=0.2.0"
-        }
-      }
-    },
-    "aria-libc": {
-      "latest": "0.2.0",
-      "description": "Standard C library wrappers for Aria \u2014 libc without the boilerplate. 10 modules: io, mem, string, math, time, process, net, posix, fs, regex. Supports static builds via musl.",
-      "repository": "https://github.com/alternative-intelligence-cp/aria-libc",
       "versions": {
         "0.2.0": {
           "depends": [],
