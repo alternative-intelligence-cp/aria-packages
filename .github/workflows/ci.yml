@@ -1,0 +1,84 @@
+name: Aria Packages CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify package structure
+        run: |
+          errors=0
+          for pkg_dir in packages/aria-*/; do
+            pkg_name=$(basename "$pkg_dir")
+
+            # Every package must have aria-package.toml
+            if [ ! -f "$pkg_dir/aria-package.toml" ]; then
+              echo "ERROR: $pkg_name missing aria-package.toml"
+              errors=$((errors + 1))
+              continue
+            fi
+
+            # Every package must have src/ with at least one .aria file
+            if [ ! -d "$pkg_dir/src" ]; then
+              echo "ERROR: $pkg_name missing src/"
+              errors=$((errors + 1))
+            elif ! ls "$pkg_dir"/src/*.aria >/dev/null 2>&1; then
+              echo "ERROR: $pkg_name has src/ but no .aria files"
+              errors=$((errors + 1))
+            fi
+
+            echo "OK: $pkg_name"
+          done
+
+          echo ""
+          echo "=== Summary ==="
+          total=$(ls -d packages/aria-*/ | wc -l)
+          echo "Packages checked: $total"
+          echo "Errors: $errors"
+
+          if [ "$errors" -gt 0 ]; then
+            exit 1
+          fi
+
+      - name: Validate TOML syntax
+        run: |
+          # Check that all aria-package.toml files have required fields
+          errors=0
+          for toml in packages/aria-*/aria-package.toml; do
+            pkg=$(basename "$(dirname "$toml")")
+
+            # Check for [package] section and name field
+            if ! grep -q '^\[package\]' "$toml"; then
+              echo "ERROR: $pkg — missing [package] section"
+              errors=$((errors + 1))
+            fi
+            if ! grep -q '^name' "$toml"; then
+              echo "ERROR: $pkg — missing name field"
+              errors=$((errors + 1))
+            fi
+            if ! grep -q '^version' "$toml"; then
+              echo "ERROR: $pkg — missing version field"
+              errors=$((errors + 1))
+            fi
+          done
+
+          if [ "$errors" -gt 0 ]; then
+            echo "$errors TOML validation errors"
+            exit 1
+          fi
+          echo "All TOML files valid"
+
+      - name: Count packages
+        run: |
+          total=$(ls -d packages/aria-*/ | wc -l)
+          echo "Total packages: $total"
