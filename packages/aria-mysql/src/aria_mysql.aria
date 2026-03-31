@@ -67,19 +67,19 @@ extern "aria_mysql_shim" {
 pub func:mysql_db_connect = int32(string:host, string:user, string:passwd, string:db, int32:port) {
     int32:conn = aria_mysql_connect(host, user, passwd, db, port);
     if (conn < 0i32) {
-        fail(1i32);
+        fail 1i32;
     }
-    pass(conn);
+    pass conn;
 };
 
 pub func:mysql_db_disconnect = int32(int32:conn_id) {
     aria_mysql_disconnect(conn_id);
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_conn = int32() {
     int32:c = aria_mysql_last_conn();
-    pass(c);
+    pass c;
 };
 
 // ── public API: execute ─────────────────────────────────────────────
@@ -87,36 +87,36 @@ pub func:mysql_db_conn = int32() {
 pub func:mysql_db_exec = int32(int32:conn_id, string:sql) {
     int32:r = aria_mysql_exec(conn_id, sql);
     if (r == 0i32) {
-        fail(2i32);
+        fail 2i32;
     }
-    pass(r);
+    pass r;
 };
 
 // ── public API: parameter staging ───────────────────────────────────
 
 pub func:mysql_db_param_clear = int32() {
     aria_mysql_param_clear();
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_param_add_text = int32(string:val) {
     aria_mysql_param_add_text(val);
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_param_add_int = int32(int64:val) {
     aria_mysql_param_add_int(val);
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_param_add_double = int32(float64:val) {
     aria_mysql_param_add_double(val);
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_param_add_null = int32() {
     aria_mysql_param_add_null();
-    pass(1i32);
+    pass 1i32;
 };
 
 // ── public API: parameterized queries ───────────────────────────────
@@ -124,76 +124,76 @@ pub func:mysql_db_param_add_null = int32() {
 pub func:mysql_db_execute = int32(int32:conn_id, string:sql) {
     int32:r = aria_mysql_execute(conn_id, sql);
     if (r == 0i32) {
-        fail(3i32);
+        fail 3i32;
     }
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_select = int32(int32:conn_id, string:sql) {
     int32:r = aria_mysql_select(conn_id, sql);
     if (r == 0i32) {
-        fail(3i32);
+        fail 3i32;
     }
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_simple_query = int32(int32:conn_id, string:sql) {
     int32:r = aria_mysql_simple_query(conn_id, sql);
     if (r == 0i32) {
-        fail(3i32);
+        fail 3i32;
     }
-    pass(r);
+    pass r;
 };
 
 // ── public API: result navigation ───────────────────────────────────
 
 pub func:mysql_db_next_row = int32(int32:conn_id) {
     int32:r = aria_mysql_next_row(conn_id);
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_row_count = int32(int32:conn_id) {
     int32:r = aria_mysql_row_count(conn_id);
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_column_count = int32(int32:conn_id) {
     int32:r = aria_mysql_column_count(conn_id);
-    pass(r);
+    pass r;
 };
 
 // ── public API: column accessors ────────────────────────────────────
 
 pub func:mysql_db_column_int = int64(int32:conn_id, int32:col) {
     int64:r = aria_mysql_column_int(conn_id, col);
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_column_double = float64(int32:conn_id, int32:col) {
     float64:r = aria_mysql_column_double(conn_id, col);
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_column_is_null = int32(int32:conn_id, int32:col) {
     int32:r = aria_mysql_column_is_null(conn_id, col);
-    pass(r);
+    pass r;
 };
 
 // ── public API: result management ───────────────────────────────────
 
 pub func:mysql_db_clear_result = int32(int32:conn_id) {
     aria_mysql_clear_result(conn_id);
-    pass(1i32);
+    pass 1i32;
 };
 
 pub func:mysql_db_affected_rows = int64(int32:conn_id) {
     int64:r = aria_mysql_affected_rows(conn_id);
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_last_insert_id = int64(int32:conn_id) {
     int64:r = aria_mysql_last_insert_id(conn_id);
-    pass(r);
+    pass r;
 };
 
 // ── public API: transactions ────────────────────────────────────────
@@ -201,27 +201,27 @@ pub func:mysql_db_last_insert_id = int64(int32:conn_id) {
 pub func:mysql_db_begin = int32(int32:conn_id) {
     int32:r = aria_mysql_begin(conn_id);
     if (r == 0i32) {
-        fail(4i32);
+        fail 4i32;
     }
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_commit = int32(int32:conn_id) {
     int32:r = aria_mysql_commit(conn_id);
     if (r == 0i32) {
-        fail(5i32);
+        fail 5i32;
     }
-    pass(r);
+    pass r;
 };
 
 pub func:mysql_db_rollback = int32(int32:conn_id) {
     int32:r = aria_mysql_rollback(conn_id);
-    pass(r);
+    pass r;
 };
 
 // ── public API: utility ─────────────────────────────────────────────
 
 pub func:mysql_db_status = int32(int32:conn_id) {
     int32:r = aria_mysql_status(conn_id);
-    pass(r);
+    pass r;
 };

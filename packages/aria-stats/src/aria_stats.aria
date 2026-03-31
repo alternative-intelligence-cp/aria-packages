@@ -34,90 +34,90 @@ extern "aria_stats_shim" {
 
 pub func:stats_create = int32() {
     int32:h = aria_stats_create();
-    pass(h);
+    pass h;
 };
 
 pub func:stats_destroy = NIL(int32:handle) {
     aria_stats_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:stats_clear = int32(int32:handle) {
     int32:r = aria_stats_clear(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:stats_push = int32(int32:handle, flt64:value) {
     int32:r = aria_stats_push(handle, value);
-    pass(r);
+    pass r;
 };
 
 pub func:stats_count = int32(int32:handle) {
     int32:n = aria_stats_count(handle);
-    pass(n);
+    pass n;
 };
 
 pub func:stats_get = flt64(int32:handle, int32:idx) {
     flt64:v = aria_stats_get(handle, idx);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_mean = flt64(int32:handle) {
     flt64:v = aria_stats_mean(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_median = flt64(int32:handle) {
     flt64:v = aria_stats_median(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_mode = flt64(int32:handle) {
     flt64:v = aria_stats_mode(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_variance = flt64(int32:handle) {
     flt64:v = aria_stats_variance(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_stddev = flt64(int32:handle) {
     flt64:v = aria_stats_stddev(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_min = flt64(int32:handle) {
     flt64:v = aria_stats_min(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_max = flt64(int32:handle) {
     flt64:v = aria_stats_max(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_range = flt64(int32:handle) {
     flt64:v = aria_stats_range(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_percentile = flt64(int32:handle, flt64:p) {
     flt64:v = aria_stats_percentile(handle, p);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_sum = flt64(int32:handle) {
     flt64:v = aria_stats_sum(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_correlation = flt64(int32:h1, int32:h2) {
     flt64:v = aria_stats_correlation(h1, h2);
-    pass(v);
+    pass v;
 };
 
 pub func:stats_covariance = flt64(int32:h1, int32:h2) {
     flt64:v = aria_stats_covariance(h1, h2);
-    pass(v);
+    pass v;
 };

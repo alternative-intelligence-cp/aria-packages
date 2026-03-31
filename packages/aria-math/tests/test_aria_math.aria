@@ -12,7 +12,7 @@
 //
 // Bugs #16-#19: ALL RESOLVED. Full float64 param/return and extern coverage enabled.
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // Extern declarations (also declared in aria_math.aria; duplicates are fine).
 // Note: fabs, acos, fmod now covered — Bugs #18/#19 resolved.
@@ -42,8 +42,8 @@ func:main = int32() {
     int64:passed = 0i64;
     int64:failed = 0i64;
 
-    drop(println("aria-math -- LIB-1"));
-    drop(println("==================="));
+    drop println("aria-math -- LIB-1");
+    drop println("===================");
 
     // ── trig ─────────────────────────────────────────────────────────────────
 
@@ -53,8 +53,8 @@ func:main = int32() {
     int64:c01 = 1i64;
     if (eps < d01a) { c01 = 0i64; }
     if (eps < d01b) { c01 = 0i64; }
-    if (c01 == 1i64) { passed = passed + 1i64; drop(println("[PASS] sin(0) = 0")); }
-    if (c01 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] sin(0) = 0")); }
+    if (c01 == 1i64) { passed = passed + 1i64; drop println("[PASS] sin(0) = 0"); }
+    if (c01 == 0i64) { failed = failed + 1i64; drop println("[FAIL] sin(0) = 0"); }
 
     // test 02: cos(0) = 1
     float64:r02 = cos(0.0);
@@ -62,8 +62,8 @@ func:main = int32() {
     int64:c02 = 1i64;
     if (eps < d02a) { c02 = 0i64; }
     if (eps < d02b) { c02 = 0i64; }
-    if (c02 == 1i64) { passed = passed + 1i64; drop(println("[PASS] cos(0) = 1")); }
-    if (c02 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] cos(0) = 1")); }
+    if (c02 == 1i64) { passed = passed + 1i64; drop println("[PASS] cos(0) = 1"); }
+    if (c02 == 0i64) { failed = failed + 1i64; drop println("[FAIL] cos(0) = 1"); }
 
     // test 03: tan(0) = 0
     float64:r03 = tan(0.0);
@@ -71,8 +71,8 @@ func:main = int32() {
     int64:c03 = 1i64;
     if (eps < d03a) { c03 = 0i64; }
     if (eps < d03b) { c03 = 0i64; }
-    if (c03 == 1i64) { passed = passed + 1i64; drop(println("[PASS] tan(0) = 0")); }
-    if (c03 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] tan(0) = 0")); }
+    if (c03 == 1i64) { passed = passed + 1i64; drop println("[PASS] tan(0) = 0"); }
+    if (c03 == 0i64) { failed = failed + 1i64; drop println("[FAIL] tan(0) = 0"); }
 
     // test 04: asin(0) = 0
     float64:r04 = asin(0.0);
@@ -80,8 +80,8 @@ func:main = int32() {
     int64:c04 = 1i64;
     if (eps < d04a) { c04 = 0i64; }
     if (eps < d04b) { c04 = 0i64; }
-    if (c04 == 1i64) { passed = passed + 1i64; drop(println("[PASS] asin(0) = 0")); }
-    if (c04 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] asin(0) = 0")); }
+    if (c04 == 1i64) { passed = passed + 1i64; drop println("[PASS] asin(0) = 0"); }
+    if (c04 == 0i64) { failed = failed + 1i64; drop println("[FAIL] asin(0) = 0"); }
 
     // test 05: cos(PI) = -1  (note: acos/fabs/fmod skipped — Bug #19)
     float64:neg1 = 0.0 - 1.0;
@@ -90,8 +90,8 @@ func:main = int32() {
     int64:c05 = 1i64;
     if (eps < d05a) { c05 = 0i64; }
     if (eps < d05b) { c05 = 0i64; }
-    if (c05 == 1i64) { passed = passed + 1i64; drop(println("[PASS] cos(PI) = -1")); }
-    if (c05 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] cos(PI) = -1")); }
+    if (c05 == 1i64) { passed = passed + 1i64; drop println("[PASS] cos(PI) = -1"); }
+    if (c05 == 0i64) { failed = failed + 1i64; drop println("[FAIL] cos(PI) = -1"); }
 
     // test 06: atan(0) = 0
     float64:r06 = atan(0.0);
@@ -99,8 +99,8 @@ func:main = int32() {
     int64:c06 = 1i64;
     if (eps < d06a) { c06 = 0i64; }
     if (eps < d06b) { c06 = 0i64; }
-    if (c06 == 1i64) { passed = passed + 1i64; drop(println("[PASS] atan(0) = 0")); }
-    if (c06 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] atan(0) = 0")); }
+    if (c06 == 1i64) { passed = passed + 1i64; drop println("[PASS] atan(0) = 0"); }
+    if (c06 == 0i64) { failed = failed + 1i64; drop println("[FAIL] atan(0) = 0"); }
 
     // test 07: atan2(0, 1) = 0
     float64:r07 = atan2(0.0, 1.0);
@@ -108,8 +108,8 @@ func:main = int32() {
     int64:c07 = 1i64;
     if (eps < d07a) { c07 = 0i64; }
     if (eps < d07b) { c07 = 0i64; }
-    if (c07 == 1i64) { passed = passed + 1i64; drop(println("[PASS] atan2(0,1) = 0")); }
-    if (c07 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] atan2(0,1) = 0")); }
+    if (c07 == 1i64) { passed = passed + 1i64; drop println("[PASS] atan2(0,1) = 0"); }
+    if (c07 == 0i64) { failed = failed + 1i64; drop println("[FAIL] atan2(0,1) = 0"); }
 
     // ── sqrt / pow ───────────────────────────────────────────────────────────
 
@@ -119,8 +119,8 @@ func:main = int32() {
     int64:c08 = 1i64;
     if (eps < d08a) { c08 = 0i64; }
     if (eps < d08b) { c08 = 0i64; }
-    if (c08 == 1i64) { passed = passed + 1i64; drop(println("[PASS] sqrt(4) = 2")); }
-    if (c08 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] sqrt(4) = 2")); }
+    if (c08 == 1i64) { passed = passed + 1i64; drop println("[PASS] sqrt(4) = 2"); }
+    if (c08 == 0i64) { failed = failed + 1i64; drop println("[FAIL] sqrt(4) = 2"); }
 
     // test 09: sqrt(9) = 3
     float64:r09 = sqrt(9.0);
@@ -128,8 +128,8 @@ func:main = int32() {
     int64:c09 = 1i64;
     if (eps < d09a) { c09 = 0i64; }
     if (eps < d09b) { c09 = 0i64; }
-    if (c09 == 1i64) { passed = passed + 1i64; drop(println("[PASS] sqrt(9) = 3")); }
-    if (c09 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] sqrt(9) = 3")); }
+    if (c09 == 1i64) { passed = passed + 1i64; drop println("[PASS] sqrt(9) = 3"); }
+    if (c09 == 0i64) { failed = failed + 1i64; drop println("[FAIL] sqrt(9) = 3"); }
 
     // test 10: pow(2, 10) = 1024
     float64:r10 = pow(2.0, 10.0);
@@ -137,8 +137,8 @@ func:main = int32() {
     int64:c10 = 1i64;
     if (eps < d10a) { c10 = 0i64; }
     if (eps < d10b) { c10 = 0i64; }
-    if (c10 == 1i64) { passed = passed + 1i64; drop(println("[PASS] pow(2,10) = 1024")); }
-    if (c10 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] pow(2,10) = 1024")); }
+    if (c10 == 1i64) { passed = passed + 1i64; drop println("[PASS] pow(2,10) = 1024"); }
+    if (c10 == 0i64) { failed = failed + 1i64; drop println("[FAIL] pow(2,10) = 1024"); }
 
     // test 11: pow(3, 0) = 1
     float64:r11 = pow(3.0, 0.0);
@@ -146,8 +146,8 @@ func:main = int32() {
     int64:c11 = 1i64;
     if (eps < d11a) { c11 = 0i64; }
     if (eps < d11b) { c11 = 0i64; }
-    if (c11 == 1i64) { passed = passed + 1i64; drop(println("[PASS] pow(3,0) = 1")); }
-    if (c11 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] pow(3,0) = 1")); }
+    if (c11 == 1i64) { passed = passed + 1i64; drop println("[PASS] pow(3,0) = 1"); }
+    if (c11 == 0i64) { failed = failed + 1i64; drop println("[FAIL] pow(3,0) = 1"); }
 
     // ── exp / log ────────────────────────────────────────────────────────────
 
@@ -157,8 +157,8 @@ func:main = int32() {
     int64:c12 = 1i64;
     if (eps < d12a) { c12 = 0i64; }
     if (eps < d12b) { c12 = 0i64; }
-    if (c12 == 1i64) { passed = passed + 1i64; drop(println("[PASS] exp(0) = 1")); }
-    if (c12 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] exp(0) = 1")); }
+    if (c12 == 1i64) { passed = passed + 1i64; drop println("[PASS] exp(0) = 1"); }
+    if (c12 == 0i64) { failed = failed + 1i64; drop println("[FAIL] exp(0) = 1"); }
 
     // test 13: log(e) = 1
     float64:r13 = log(E);
@@ -166,8 +166,8 @@ func:main = int32() {
     int64:c13 = 1i64;
     if (eps < d13a) { c13 = 0i64; }
     if (eps < d13b) { c13 = 0i64; }
-    if (c13 == 1i64) { passed = passed + 1i64; drop(println("[PASS] log(e) = 1")); }
-    if (c13 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] log(e) = 1")); }
+    if (c13 == 1i64) { passed = passed + 1i64; drop println("[PASS] log(e) = 1"); }
+    if (c13 == 0i64) { failed = failed + 1i64; drop println("[FAIL] log(e) = 1"); }
 
     // test 14: log2(8) = 3
     float64:r14 = log2(8.0);
@@ -175,8 +175,8 @@ func:main = int32() {
     int64:c14 = 1i64;
     if (eps < d14a) { c14 = 0i64; }
     if (eps < d14b) { c14 = 0i64; }
-    if (c14 == 1i64) { passed = passed + 1i64; drop(println("[PASS] log2(8) = 3")); }
-    if (c14 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] log2(8) = 3")); }
+    if (c14 == 1i64) { passed = passed + 1i64; drop println("[PASS] log2(8) = 3"); }
+    if (c14 == 0i64) { failed = failed + 1i64; drop println("[FAIL] log2(8) = 3"); }
 
     // test 15: log10(100) = 2
     float64:r15 = log10(100.0);
@@ -184,8 +184,8 @@ func:main = int32() {
     int64:c15 = 1i64;
     if (eps < d15a) { c15 = 0i64; }
     if (eps < d15b) { c15 = 0i64; }
-    if (c15 == 1i64) { passed = passed + 1i64; drop(println("[PASS] log10(100) = 2")); }
-    if (c15 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] log10(100) = 2")); }
+    if (c15 == 1i64) { passed = passed + 1i64; drop println("[PASS] log10(100) = 2"); }
+    if (c15 == 0i64) { failed = failed + 1i64; drop println("[FAIL] log10(100) = 2"); }
 
     // ── abs / floor / ceil / round / fmod ────────────────────────────────────
 
@@ -195,8 +195,8 @@ func:main = int32() {
     int64:c16 = 1i64;
     if (eps < d16a) { c16 = 0i64; }
     if (eps < d16b) { c16 = 0i64; }
-    if (c16 == 1i64) { passed = passed + 1i64; drop(println("[PASS] sin(PI/2) = 1")); }
-    if (c16 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] sin(PI/2) = 1")); }
+    if (c16 == 1i64) { passed = passed + 1i64; drop println("[PASS] sin(PI/2) = 1"); }
+    if (c16 == 0i64) { failed = failed + 1i64; drop println("[FAIL] sin(PI/2) = 1"); }
 
     // test 17: floor(2.9) = 2
     float64:r17 = floor(2.9);
@@ -204,8 +204,8 @@ func:main = int32() {
     int64:c17 = 1i64;
     if (eps < d17a) { c17 = 0i64; }
     if (eps < d17b) { c17 = 0i64; }
-    if (c17 == 1i64) { passed = passed + 1i64; drop(println("[PASS] floor(2.9) = 2")); }
-    if (c17 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] floor(2.9) = 2")); }
+    if (c17 == 1i64) { passed = passed + 1i64; drop println("[PASS] floor(2.9) = 2"); }
+    if (c17 == 0i64) { failed = failed + 1i64; drop println("[FAIL] floor(2.9) = 2"); }
 
     // test 18: ceil(2.1) = 3
     float64:r18 = ceil(2.1);
@@ -213,8 +213,8 @@ func:main = int32() {
     int64:c18 = 1i64;
     if (eps < d18a) { c18 = 0i64; }
     if (eps < d18b) { c18 = 0i64; }
-    if (c18 == 1i64) { passed = passed + 1i64; drop(println("[PASS] ceil(2.1) = 3")); }
-    if (c18 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] ceil(2.1) = 3")); }
+    if (c18 == 1i64) { passed = passed + 1i64; drop println("[PASS] ceil(2.1) = 3"); }
+    if (c18 == 0i64) { failed = failed + 1i64; drop println("[FAIL] ceil(2.1) = 3"); }
 
     // test 19: round(2.5) = 3
     float64:r19 = round(2.5);
@@ -222,8 +222,8 @@ func:main = int32() {
     int64:c19 = 1i64;
     if (eps < d19a) { c19 = 0i64; }
     if (eps < d19b) { c19 = 0i64; }
-    if (c19 == 1i64) { passed = passed + 1i64; drop(println("[PASS] round(2.5) = 3")); }
-    if (c19 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] round(2.5) = 3")); }
+    if (c19 == 1i64) { passed = passed + 1i64; drop println("[PASS] round(2.5) = 3"); }
+    if (c19 == 0i64) { failed = failed + 1i64; drop println("[FAIL] round(2.5) = 3"); }
 
     // test 20: exp(1) = e
     float64:r20 = exp(1.0);
@@ -231,8 +231,8 @@ func:main = int32() {
     int64:c20 = 1i64;
     if (eps < d20a) { c20 = 0i64; }
     if (eps < d20b) { c20 = 0i64; }
-    if (c20 == 1i64) { passed = passed + 1i64; drop(println("[PASS] exp(1) = e")); }
-    if (c20 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] exp(1) = e")); }
+    if (c20 == 1i64) { passed = passed + 1i64; drop println("[PASS] exp(1) = e"); }
+    if (c20 == 0i64) { failed = failed + 1i64; drop println("[FAIL] exp(1) = e"); }
 
     // ── fabs / acos / fmod (previously skipped, now enabled) ─────────────────
 
@@ -242,8 +242,8 @@ func:main = int32() {
     int64:c21 = 1i64;
     if (eps < d21a) { c21 = 0i64; }
     if (eps < d21b) { c21 = 0i64; }
-    if (c21 == 1i64) { passed = passed + 1i64; drop(println("[PASS] fabs(-3.14) = 3.14")); }
-    if (c21 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] fabs(-3.14) = 3.14")); }
+    if (c21 == 1i64) { passed = passed + 1i64; drop println("[PASS] fabs(-3.14) = 3.14"); }
+    if (c21 == 0i64) { failed = failed + 1i64; drop println("[FAIL] fabs(-3.14) = 3.14"); }
 
     // test 22: acos(1.0) = 0
     float64:r22 = acos(1.0);
@@ -251,8 +251,8 @@ func:main = int32() {
     int64:c22 = 1i64;
     if (eps < d22a) { c22 = 0i64; }
     if (eps < d22b) { c22 = 0i64; }
-    if (c22 == 1i64) { passed = passed + 1i64; drop(println("[PASS] acos(1) = 0")); }
-    if (c22 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] acos(1) = 0")); }
+    if (c22 == 1i64) { passed = passed + 1i64; drop println("[PASS] acos(1) = 0"); }
+    if (c22 == 0i64) { failed = failed + 1i64; drop println("[FAIL] acos(1) = 0"); }
 
     // test 23: fmod(7.5, 2.5) = 0
     float64:r23 = fmod(7.5, 2.5);
@@ -260,16 +260,16 @@ func:main = int32() {
     int64:c23 = 1i64;
     if (eps < d23a) { c23 = 0i64; }
     if (eps < d23b) { c23 = 0i64; }
-    if (c23 == 1i64) { passed = passed + 1i64; drop(println("[PASS] fmod(7.5, 2.5) = 0")); }
-    if (c23 == 0i64) { failed = failed + 1i64; drop(println("[FAIL] fmod(7.5, 2.5) = 0")); }
+    if (c23 == 1i64) { passed = passed + 1i64; drop println("[PASS] fmod(7.5, 2.5) = 0"); }
+    if (c23 == 0i64) { failed = failed + 1i64; drop println("[FAIL] fmod(7.5, 2.5) = 0"); }
 
     // ── summary ──────────────────────────────────────────────────────────────
 
-    drop(println("---"));
+    drop println("---");
     if (failed == 0i64) {
-        drop(println("PASS: all 23 aria-math tests passed"));
-        exit(0);
+        drop println("PASS: all 23 aria-math tests passed");
+        exit 0;
     }
-    drop(println("FAIL: some aria-math tests failed"));
-    pass(1i32);
+    drop println("FAIL: some aria-math tests failed");
+    pass 1i32;
 };

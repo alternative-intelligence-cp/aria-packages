@@ -9,7 +9,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // ── shim externs ────────────────────────────────────────────────────
 
@@ -85,11 +85,11 @@ extern func:aria_gl_TRIANGLES        = int32();
 // ── shader sources ──────────────────────────────────────────────────
 
 func:get_vert_shader = string() {
-    pass("#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nuniform mat4 uMVP;\nout vec3 vColor;\nvoid main(){\n  gl_Position = uMVP * vec4(aPos, 1.0);\n  vColor = aColor;\n}");
+    pass "#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nuniform mat4 uMVP;\nout vec3 vColor;\nvoid main(){\n  gl_Position = uMVP * vec4(aPos, 1.0);\n  vColor = aColor;\n}";
 };
 
 func:get_frag_shader = string() {
-    pass("#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){\n  FragColor = vec4(vColor, 1.0);\n}");
+    pass "#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){\n  FragColor = vec4(vColor, 1.0);\n}";
 };
 
 // ── main ────────────────────────────────────────────────────────────
@@ -99,13 +99,13 @@ func:main = int32() {
     // create window + GL context
     int32:init_ok = aria_gl_init(800i32, 600i32, "Aria OpenGL - Rotating Cube");
     if (init_ok != 0i32) {
-        drop(println("ERROR: Failed to create OpenGL context"));
-        pass(1i32);
+        drop println("ERROR: Failed to create OpenGL context");
+        pass 1i32;
     }
-    drop(println("OpenGL context created (800x600)"));
+    drop println("OpenGL context created (800x600)");
 
     // enable vsync
-    drop(aria_gl_set_vsync(1i32));
+    drop aria_gl_set_vsync(1i32);
 
     // enable depth testing
     aria_gl_enable(aria_gl_DEPTH_TEST());
@@ -114,15 +114,15 @@ func:main = int32() {
     aria_gl_clear_color(0.1f32, 0.1f32, 0.15f32, 1.0f32);
 
     // compile shaders
-    string:vs = raw(get_vert_shader());
-    string:fs = raw(get_frag_shader());
+    string:vs = raw get_vert_shader();
+    string:fs = raw get_frag_shader();
     int32:prog = aria_gl_build_program(vs, fs);
     if (prog <= 0i32) {
-        drop(println("ERROR: Failed to compile/link shaders"));
+        drop println("ERROR: Failed to compile/link shaders");
         aria_gl_quit();
-        pass(1i32);
+        pass 1i32;
     }
-    drop(println("Shaders compiled and linked"));
+    drop println("Shaders compiled and linked");
 
     // get uniform locations
     int32:mvp_loc = aria_gl_get_uniform_location(prog, "uMVP");
@@ -138,7 +138,7 @@ func:main = int32() {
     aria_gl_load_cube_geometry();
     int32:vert_count = aria_gl_buf_count();
     aria_gl_buffer_data_f(aria_gl_ARRAY_BUFFER(), aria_gl_STATIC_DRAW());
-    drop(println("Cube geometry uploaded"));
+    drop println("Cube geometry uploaded");
 
     // vertex attributes: position (loc 0), color (loc 1)
     // stride = 6 floats (3 pos + 3 color)
@@ -169,8 +169,8 @@ func:main = int32() {
 
     int32:running = 1i32;
 
-    drop(println("Entering render loop..."));
-    drop(println("Press ESC or Q to exit, or close window."));
+    drop println("Entering render loop...");
+    drop println("Press ESC or Q to exit, or close window.");
 
     // ── render loop ─────────────────────────────────────────────────
 
@@ -237,12 +237,12 @@ func:main = int32() {
     }
 
     // ── cleanup ─────────────────────────────────────────────────────
-    drop(println("Cleaning up..."));
+    drop println("Cleaning up...");
     aria_gl_delete_buffer(vbo);
     aria_gl_delete_vao(vao);
     aria_gl_delete_program(prog);
     aria_gl_quit();
-    drop(println("Done. Cube rendered successfully."));
+    drop println("Done. Cube rendered successfully.");
 
-    exit(0);
+    exit 0;
 };

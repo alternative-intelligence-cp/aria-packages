@@ -14,40 +14,40 @@ extern func:aria_map_shim_clear = NIL(int64:handle);
 
 pub func:hmap_new = int64() {
     int64:h = aria_map_shim_create();
-    pass(h);
+    pass h;
 };
 
 pub func:hmap_free = NIL(int64:handle) {
     aria_map_shim_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:hmap_set = NIL(int64:handle, string:key, int64:value) {
     aria_map_shim_set(handle, key, value);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:hmap_get = int64(int64:handle, string:key, int64:default_val) {
     int64:val = aria_map_shim_get(handle, key, default_val);
-    pass(val);
+    pass val;
 };
 
 pub func:hmap_has = int64(int64:handle, string:key) {
     int64:found = aria_map_shim_has(handle, key);
-    pass(found);
+    pass found;
 };
 
 pub func:hmap_remove = int64(int64:handle, string:key) {
     int64:removed = aria_map_shim_remove(handle, key);
-    pass(removed);
+    pass removed;
 };
 
 pub func:hmap_length = int64(int64:handle) {
     int64:len = aria_map_shim_length(handle);
-    pass(len);
+    pass len;
 };
 
 pub func:hmap_clear = NIL(int64:handle) {
     aria_map_shim_clear(handle);
-    pass(NIL);
+    pass NIL;
 };

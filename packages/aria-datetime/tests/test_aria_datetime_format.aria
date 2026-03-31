@@ -1,6 +1,6 @@
 // test_aria_datetime_format.aria — Format, diff, sleep tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_datetime_assert_iso8601_eq     = void(int64:epoch, string:expected, string:msg);
 extern func:aria_datetime_assert_format_utc_eq  = void(int64:epoch, string:fmt, string:expected, string:msg);
@@ -25,5 +25,5 @@ func:main = int32() {
     aria_datetime_assert_true(1i32, "test 05: sleep no crash");
 
     aria_datetime_test_summary();
-    exit(0);
+    exit 0;
 };

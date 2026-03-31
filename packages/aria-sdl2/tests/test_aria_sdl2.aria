@@ -2,7 +2,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // ── shim externs (direct for test) ──────────────────────────────────
 
@@ -38,11 +38,11 @@ func:main = int32() {
     int32:init_result = aria_sdl2_init(32i32);
     if (init_result == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] SDL_Init(SDL_INIT_VIDEO) succeeded"));
+        drop println("[PASS] SDL_Init(SDL_INIT_VIDEO) succeeded");
     }
     if (init_result != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] SDL_Init(SDL_INIT_VIDEO) failed"));
+        drop println("[FAIL] SDL_Init(SDL_INIT_VIDEO) failed");
     }
 
     // ── test 02: create window ──────────────────────────────────────
@@ -52,33 +52,33 @@ func:main = int32() {
         800i32, 600i32, 4i32);
     if (win_ok == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] SDL_CreateWindow succeeded"));
+        drop println("[PASS] SDL_CreateWindow succeeded");
     }
     if (win_ok != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] SDL_CreateWindow failed"));
+        drop println("[FAIL] SDL_CreateWindow failed");
     }
 
     // ── test 03: window dimensions ──────────────────────────────────
     int32:ww = aria_sdl2_get_window_width();
     if (ww == 800i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] window width = 800"));
+        drop println("[PASS] window width = 800");
     }
     if (ww != 800i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] window width != 800"));
+        drop println("[FAIL] window width != 800");
     }
 
     // ── test 04: window height ──────────────────────────────────────
     int32:wh = aria_sdl2_get_window_height();
     if (wh == 600i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] window height = 600"));
+        drop println("[PASS] window height = 600");
     }
     if (wh != 600i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] window height != 600"));
+        drop println("[FAIL] window height != 600");
     }
 
     // ── test 05: create renderer ────────────────────────────────────
@@ -86,108 +86,108 @@ func:main = int32() {
     int32:ren_ok = aria_sdl2_create_renderer(1i32);
     if (ren_ok == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] SDL_CreateRenderer succeeded"));
+        drop println("[PASS] SDL_CreateRenderer succeeded");
     }
     if (ren_ok != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] SDL_CreateRenderer failed"));
+        drop println("[FAIL] SDL_CreateRenderer failed");
     }
 
     // ── test 06: set draw color ─────────────────────────────────────
     aria_sdl2_set_render_draw_color(40i32, 40i32, 40i32, 255i32);
     passed = passed + 1i64;
-    drop(println("[PASS] set draw color (no crash)"));
+    drop println("[PASS] set draw color (no crash)");
 
     // ── test 07: render clear ───────────────────────────────────────
     aria_sdl2_render_clear();
     passed = passed + 1i64;
-    drop(println("[PASS] render clear (no crash)"));
+    drop println("[PASS] render clear (no crash)");
 
     // ── test 08: draw point ─────────────────────────────────────────
     aria_sdl2_set_render_draw_color(255i32, 255i32, 255i32, 255i32);
     aria_sdl2_render_draw_point(100i32, 100i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw point (no crash)"));
+    drop println("[PASS] draw point (no crash)");
 
     // ── test 09: draw line ──────────────────────────────────────────
     aria_sdl2_render_draw_line(50i32, 50i32, 750i32, 550i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw line (no crash)"));
+    drop println("[PASS] draw line (no crash)");
 
     // ── test 10: draw rect ──────────────────────────────────────────
     aria_sdl2_set_render_draw_color(0i32, 255i32, 0i32, 255i32);
     aria_sdl2_render_draw_rect(100i32, 100i32, 200i32, 150i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw rect (no crash)"));
+    drop println("[PASS] draw rect (no crash)");
 
     // ── test 11: fill rect ──────────────────────────────────────────
     aria_sdl2_set_render_draw_color(255i32, 0i32, 0i32, 255i32);
     aria_sdl2_render_fill_rect(350i32, 100i32, 200i32, 150i32);
     passed = passed + 1i64;
-    drop(println("[PASS] fill rect (no crash)"));
+    drop println("[PASS] fill rect (no crash)");
 
     // ── test 12: render present ─────────────────────────────────────
     aria_sdl2_render_present();
     passed = passed + 1i64;
-    drop(println("[PASS] render present (no crash)"));
+    drop println("[PASS] render present (no crash)");
 
     // ── test 13: get ticks ──────────────────────────────────────────
     int32:ticks = aria_sdl2_get_ticks();
     if (ticks > 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] get_ticks > 0"));
+        drop println("[PASS] get_ticks > 0");
     }
     if (ticks < 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] get_ticks <= 0"));
+        drop println("[FAIL] get_ticks <= 0");
     }
 
     // ── test 14: poll event (returns 0 when no events) ──────────────
     // Drain any pending events first
     int32:has_ev = aria_sdl2_poll_event();
     passed = passed + 1i64;
-    drop(println("[PASS] poll_event (no crash)"));
+    drop println("[PASS] poll_event (no crash)");
 
     // ── test 15: event type accessible ──────────────────────────────
     int32:et = aria_sdl2_event_type();
     passed = passed + 1i64;
-    drop(println("[PASS] event_type accessible (no crash)"));
+    drop println("[PASS] event_type accessible (no crash)");
 
     // ── test 16: mouse state ────────────────────────────────────────
     int32:mx = aria_sdl2_get_mouse_state_x();
     int32:my = aria_sdl2_get_mouse_state_y();
     int32:mb = aria_sdl2_get_mouse_state_buttons();
     passed = passed + 1i64;
-    drop(println("[PASS] mouse state (no crash)"));
+    drop println("[PASS] mouse state (no crash)");
 
     // ── test 17: set window title ───────────────────────────────────
     aria_sdl2_set_window_title("Aria SDL2 - Updated Title");
     passed = passed + 1i64;
-    drop(println("[PASS] set window title (no crash)"));
+    drop println("[PASS] set window title (no crash)");
 
     // ── test 18: delay ──────────────────────────────────────────────
     aria_sdl2_delay(10i32);
     passed = passed + 1i64;
-    drop(println("[PASS] delay 10ms (no crash)"));
+    drop println("[PASS] delay 10ms (no crash)");
 
     // ── test 19: get error (should be empty string or null) ─────────
     string:err = aria_sdl2_get_error();
     passed = passed + 1i64;
-    drop(println("[PASS] get_error (no crash)"));
+    drop println("[PASS] get_error (no crash)");
 
     // ── cleanup ─────────────────────────────────────────────────────
     aria_sdl2_quit();
 
     // ── summary ─────────────────────────────────────────────────────
-    drop(println(""));
-    drop(println("=== aria-sdl2 test summary ==="));
+    drop println("");
+    drop println("=== aria-sdl2 test summary ===");
 
     if (failed == 0i64) {
-        drop(println("ALL TESTS PASSED"));
+        drop println("ALL TESTS PASSED");
     }
     if (failed > 0i64) {
-        drop(println("SOME TESTS FAILED"));
+        drop println("SOME TESTS FAILED");
     }
 
-    exit(0);
+    exit 0;
 };

@@ -1,6 +1,6 @@
 // test_aria_fs_ops.aria — Copy, rename, size tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_fs_write_file  = int32(string:path, string:data);
 extern func:aria_fs_copy        = int32(string:src, string:dst);
@@ -43,5 +43,5 @@ func:main = int32() {
     aria_fs_assert_int_eq(ne, 0i32, "test 09: removed file gone");
 
     aria_fs_test_summary();
-    exit(0);
+    exit 0;
 };

@@ -44,11 +44,11 @@ extern func:aria_string_byte_at = int64(string:s, int64:i);
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 pub func:json_is_ws = bool(int64:c) {
-    pass(c == 32i64 || c == 9i64 || c == 10i64 || c == 13i64);
+    pass c == 32i64 || c == 9i64 || c == 10i64 || c == 13i64;
 };
 
 pub func:json_is_digit = bool(int64:c) {
-    pass(c >= 48i64 && c <= 57i64);
+    pass c >= 48i64 && c <= 57i64;
 };
 
 // ── next_tok ─────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ pub func:next_tok = int64(int64->:state, string:input, int64->:ttypes) {
             ws_loop = false;
         } else {
             int64:wc = aria_string_byte_at(input, state[0i64]);
-            bool:is_space = raw(json_is_ws(wc));
+            bool:is_space = raw json_is_ws(wc);
             if (is_space) {
                 state[0i64] = state[0i64] + 1i64;
             } else {
@@ -80,7 +80,7 @@ pub func:next_tok = int64(int64->:state, string:input, int64->:ttypes) {
     if (pos >= len) {
         ttypes[tc] = 0i64;
         state[2i64] = tc + 1i64;
-        pass(0i64);
+        pass 0i64;
     }
 
     int64:ch = aria_string_byte_at(input, pos);
@@ -112,7 +112,7 @@ pub func:next_tok = int64(int64->:state, string:input, int64->:ttypes) {
     }
 
     // ── Number: '-' (45) or digit (48-57) ────────────────────────────────────
-    bool:is_num_start = raw(json_is_digit(ch));
+    bool:is_num_start = raw json_is_digit(ch);
     if (ch == 45i64) { is_num_start = true; }
     if (is_num_start) {
         tok = 8i64;
@@ -123,7 +123,7 @@ pub func:next_tok = int64(int64->:state, string:input, int64->:ttypes) {
                 num_loop = false;
             } else {
                 int64:nc = aria_string_byte_at(input, np);
-                bool:nc_digit = raw(json_is_digit(nc));
+                bool:nc_digit = raw json_is_digit(nc);
                 if (nc_digit) {
                     np = np + 1i64;
                 } else {
@@ -145,7 +145,7 @@ pub func:next_tok = int64(int64->:state, string:input, int64->:ttypes) {
 
     ttypes[tc] = tok;
     state[2i64] = tc + 1i64;
-    pass(tok);
+    pass tok;
 };
 
 // ── tokenize ─────────────────────────────────────────────────────────────────
@@ -160,10 +160,10 @@ pub func:tokenize = int64(string:input, int64->:state, int64->:ttypes) {
 
     bool:tok_loop = true;
     while (tok_loop) {
-        int64:t = raw(next_tok(state, input, ttypes));
+        int64:t = raw next_tok(state, input, ttypes);
         if (t == 0i64) { tok_loop = false; }
     }
-    pass(state[2i64]);
+    pass state[2i64];
 };
 
 // ── seq_matches ──────────────────────────────────────────────────────────────
@@ -176,5 +176,5 @@ pub func:seq_matches = bool(int64->:ttypes, int64:count, int64->:expected) {
         if (ttypes[i] != expected[i]) { all_match = false; }
         i = i + 1i64;
     }
-    pass(all_match);
+    pass all_match;
 };

@@ -16,24 +16,24 @@ extern "aria_semver_shim" {
 }
 
 pub func:parse = int32(string:version) {
-    pass(aria_semver_parse(version));
+    pass aria_semver_parse(version);
 };
 
-pub func:get_major = int32() { pass(aria_semver_get_major()); };
-pub func:get_minor = int32() { pass(aria_semver_get_minor()); };
-pub func:get_patch = int32() { pass(aria_semver_get_patch()); };
-pub func:get_prerelease = string() { pass(aria_semver_get_prerelease()); };
-pub func:get_build = string() { pass(aria_semver_get_build()); };
-pub func:to_string = string() { pass(aria_semver_to_string()); };
+pub func:get_major = int32() { pass aria_semver_get_major(); };
+pub func:get_minor = int32() { pass aria_semver_get_minor(); };
+pub func:get_patch = int32() { pass aria_semver_get_patch(); };
+pub func:get_prerelease = string() { pass aria_semver_get_prerelease(); };
+pub func:get_build = string() { pass aria_semver_get_build(); };
+pub func:to_string = string() { pass aria_semver_to_string(); };
 
 pub func:compare = int32(string:a, string:b) {
-    pass(aria_semver_compare(a, b));
+    pass aria_semver_compare(a, b);
 };
 
 pub func:satisfies = int32(string:version, string:constraint) {
-    pass(aria_semver_satisfies(version, constraint));
+    pass aria_semver_satisfies(version, constraint);
 };
 
-pub func:bump_major = string(string:version) { pass(aria_semver_bump_major(version)); };
-pub func:bump_minor = string(string:version) { pass(aria_semver_bump_minor(version)); };
-pub func:bump_patch = string(string:version) { pass(aria_semver_bump_patch(version)); };
+pub func:bump_major = string(string:version) { pass aria_semver_bump_major(version); };
+pub func:bump_minor = string(string:version) { pass aria_semver_bump_minor(version); };
+pub func:bump_patch = string(string:version) { pass aria_semver_bump_patch(version); };

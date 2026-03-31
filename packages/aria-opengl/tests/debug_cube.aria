@@ -5,7 +5,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_gl_init      = int32(int32:w, int32:h, string:title);
 extern func:aria_gl_quit      = void();
@@ -67,49 +67,49 @@ extern func:aria_gl_render_test_frame = int32(flt32:angle_y, flt32:angle_x);
 
 func:main = int32() {
 
-    drop(println("=== OpenGL Debug Test ==="));
+    drop println("=== OpenGL Debug Test ===");
 
     // Step 0: test float argument passing
-    drop(println("Step 0: Testing float argument passing..."));
+    drop println("Step 0: Testing float argument passing...");
     aria_gl_debug_float_arg(45.0f32);
     aria_gl_debug_float_arg(1.333f32);
     aria_gl_debug_float_arg(0.0f32 - 6.0f32);
 
     // Step 1: Init window
-    drop(println("Step 1: Creating GL context..."));
+    drop println("Step 1: Creating GL context...");
     int32:init_ok = aria_gl_init(800i32, 600i32, "Debug Cube");
     if (init_ok != 0i32) {
-        drop(println("FAILED to create GL context"));
-        pass(1i32);
+        drop println("FAILED to create GL context");
+        pass 1i32;
     }
-    drop(println("  GL context OK"));
+    drop println("  GL context OK");
 
     // Set viewport explicitly
     aria_gl_viewport(0i32, 0i32, 800i32, 600i32);
 
     // Step 2: render_test_frame (pure C rendering)
-    drop(println("Step 2: Running pure-C test frame (60 frames)..."));
+    drop println("Step 2: Running pure-C test frame (60 frames)...");
     int32:ctest = aria_gl_render_test_frame(0.0f32, 0.0f32);
     if (ctest == 0i32) {
-        drop(println("  C test frame: OK"));
+        drop println("  C test frame: OK");
     }
     if (ctest != 0i32) {
-        drop(println("  C test frame: FAILED"));
+        drop println("  C test frame: FAILED");
     }
 
     // Step 3: Now try Aria-driven rendering
-    drop(println("Step 3: Aria-driven rendering (60 frames)..."));
+    drop println("Step 3: Aria-driven rendering (60 frames)...");
 
     // build shader
     string:vs = "#version 330 core\nlayout(location=0)in vec3 aPos;\nlayout(location=1)in vec3 aColor;\nuniform mat4 uMVP;\nout vec3 vColor;\nvoid main(){gl_Position=uMVP*vec4(aPos,1.0);vColor=aColor;}";
     string:fs = "#version 330 core\nin vec3 vColor;\nout vec4 FragColor;\nvoid main(){FragColor=vec4(vColor,1.0);}";
     int32:prog = aria_gl_build_program(vs, fs);
     if (prog <= 0i32) {
-        drop(println("  Shader build FAILED"));
+        drop println("  Shader build FAILED");
         aria_gl_quit();
-        pass(1i32);
+        pass 1i32;
     }
-    drop(println("  Shader compiled OK"));
+    drop println("  Shader compiled OK");
 
     int32:mvp_loc = aria_gl_get_uniform_location(prog, "uMVP");
 
@@ -136,12 +136,12 @@ func:main = int32() {
     flt32:angle_x = 0.0f32;
 
     // debug: test perspective matrix
-    drop(println("  Testing perspective matrix:"));
+    drop println("  Testing perspective matrix:");
     aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
     aria_gl_debug_matrix();
 
     // debug: test translate matrix
-    drop(println("  Testing translate matrix:"));
+    drop println("  Testing translate matrix:");
     aria_gl_mat4_translate(0.0f32, 0.0f32, 0.0f32 - 6.0f32);
     aria_gl_debug_matrix();
 
@@ -173,7 +173,7 @@ func:main = int32() {
 
         // first frame: dump the MVP
         if ($ == 0i32) {
-            drop(println("  First frame MVP:"));
+            drop println("  First frame MVP:");
             aria_gl_debug_matrix();
         }
 
@@ -189,17 +189,17 @@ func:main = int32() {
         if ($ == 0i32) {
             int32:err = aria_gl_get_error();
             if (err != 0i32) {
-                drop(println("  GL ERROR on first frame!"));
+                drop println("  GL ERROR on first frame!");
             }
             if (err == 0i32) {
-                drop(println("  No GL errors on first frame"));
+                drop println("  No GL errors on first frame");
             }
         }
 
         aria_gl_delay(16i32);
     }
 
-    drop(println("  Aria rendering done"));
+    drop println("  Aria rendering done");
 
     // cleanup
     aria_gl_delete_buffer(vbo);
@@ -207,6 +207,6 @@ func:main = int32() {
     aria_gl_delete_program(prog);
     aria_gl_quit();
 
-    drop(println("=== Debug Test Complete ==="));
-    exit(0);
+    drop println("=== Debug Test Complete ===");
+    exit 0;
 };

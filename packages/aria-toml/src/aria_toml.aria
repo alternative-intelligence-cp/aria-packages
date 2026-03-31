@@ -36,19 +36,19 @@ extern "aria_toml_shim" {
 
 // ── public API ──────────────────────────────────────────────────────
 
-pub func:toml_error      = string()               { pass(aria_toml_error()); };
-pub func:toml_parse      = int32(string:text)      { pass(aria_toml_parse(text)); };
-pub func:toml_parse_file = int32(string:path)      { pass(aria_toml_parse_file(path)); };
-pub func:toml_get_type   = int32(string:key)       { pass(aria_toml_get_type(key)); };
-pub func:toml_get_string = string(string:key)      { pass(aria_toml_get_string(key)); };
-pub func:toml_get_int    = int64(string:key)       { pass(aria_toml_get_int(key)); };
-pub func:toml_get_float  = flt64(string:key)       { pass(aria_toml_get_float(key)); };
-pub func:toml_get_bool   = int32(string:key)       { pass(aria_toml_get_bool(key)); };
-pub func:toml_has_key    = int32(string:key)       { pass(aria_toml_has_key(key)); };
-pub func:toml_set_string = int32(string:key, string:val) { pass(aria_toml_set_string(key, val)); };
-pub func:toml_set_int    = int32(string:key, int64:val)  { pass(aria_toml_set_int(key, val)); };
-pub func:toml_set_bool   = int32(string:key, int32:val)  { pass(aria_toml_set_bool(key, val)); };
-pub func:toml_count      = int32()                 { pass(aria_toml_count()); };
-pub func:toml_key_at     = string(int32:idx)       { pass(aria_toml_key_at(idx)); };
-pub func:toml_clear      = NIL()                   { aria_toml_clear(); pass(NIL); };
-pub func:toml_serialize  = string()                { pass(aria_toml_serialize()); };
+pub func:toml_error      = string()               { pass aria_toml_error(); };
+pub func:toml_parse      = int32(string:text)      { pass aria_toml_parse(text); };
+pub func:toml_parse_file = int32(string:path)      { pass aria_toml_parse_file(path); };
+pub func:toml_get_type   = int32(string:key)       { pass aria_toml_get_type(key); };
+pub func:toml_get_string = string(string:key)      { pass aria_toml_get_string(key); };
+pub func:toml_get_int    = int64(string:key)       { pass aria_toml_get_int(key); };
+pub func:toml_get_float  = flt64(string:key)       { pass aria_toml_get_float(key); };
+pub func:toml_get_bool   = int32(string:key)       { pass aria_toml_get_bool(key); };
+pub func:toml_has_key    = int32(string:key)       { pass aria_toml_has_key(key); };
+pub func:toml_set_string = int32(string:key, string:val) { pass aria_toml_set_string(key, val); };
+pub func:toml_set_int    = int32(string:key, int64:val)  { pass aria_toml_set_int(key, val); };
+pub func:toml_set_bool   = int32(string:key, int32:val)  { pass aria_toml_set_bool(key, val); };
+pub func:toml_count      = int32()                 { pass aria_toml_count(); };
+pub func:toml_key_at     = string(int32:idx)       { pass aria_toml_key_at(idx); };
+pub func:toml_clear      = NIL()                   { aria_toml_clear(); pass NIL; };
+pub func:toml_serialize  = string()                { pass aria_toml_serialize(); };

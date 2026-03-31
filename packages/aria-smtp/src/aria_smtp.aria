@@ -34,85 +34,85 @@ extern "aria_smtp_shim" {
 
 pub func:smtp_msg_create = int64() {
     int64:h = aria_smtp_msg_create();
-    pass(h);
+    pass h;
 };
 
 pub func:smtp_msg_destroy = NIL(int64:handle) {
     aria_smtp_msg_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:smtp_msg_set_from = int32(int64:handle, string:from) {
     int32:r = aria_smtp_msg_set_from(handle, from);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_add_to = int32(int64:handle, string:to) {
     int32:r = aria_smtp_msg_add_to(handle, to);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_add_cc = int32(int64:handle, string:cc) {
     int32:r = aria_smtp_msg_add_cc(handle, cc);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_set_subject = int32(int64:handle, string:subject) {
     int32:r = aria_smtp_msg_set_subject(handle, subject);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_set_body = int32(int64:handle, string:body) {
     int32:r = aria_smtp_msg_set_body(handle, body);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_set_reply_to = int32(int64:handle, string:reply_to) {
     int32:r = aria_smtp_msg_set_reply_to(handle, reply_to);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_get_from = string(int64:handle) {
     string:r = aria_smtp_msg_get_from(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_get_to = string(int64:handle, int32:index) {
     string:r = aria_smtp_msg_get_to(handle, index);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_to_count = int32(int64:handle) {
     int32:n = aria_smtp_msg_to_count(handle);
-    pass(n);
+    pass n;
 };
 
 pub func:smtp_msg_get_subject = string(int64:handle) {
     string:r = aria_smtp_msg_get_subject(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_get_body = string(int64:handle) {
     string:r = aria_smtp_msg_get_body(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_cc_count = int32(int64:handle) {
     int32:n = aria_smtp_msg_cc_count(handle);
-    pass(n);
+    pass n;
 };
 
 pub func:smtp_msg_format = string(int64:handle) {
     string:r = aria_smtp_msg_format(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_validate_email = int32(string:email) {
     int32:r = aria_smtp_validate_email(email);
-    pass(r);
+    pass r;
 };
 
 pub func:smtp_msg_validate = int32(int64:handle) {
     int32:r = aria_smtp_msg_validate(handle);
-    pass(r);
+    pass r;
 };

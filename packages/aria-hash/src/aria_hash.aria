@@ -57,7 +57,7 @@ pub func:fnv1a32 = uint64(uint64:key) {
 
     // Return low 32 bits
     uint64:mask32 = 4294967295u64;
-    pass(h & mask32);
+    pass h & mask32;
 };
 
 // FNV-1a 64-bit of a uint64 word.
@@ -84,7 +84,7 @@ pub func:fnv1a64 = uint64(uint64:key) {
     uint64:c7 = (key >> 56u64) & mask8;
     h = (h ^ c7) * prime;
 
-    pass(h);
+    pass h;
 };
 
 // DJB2: classic Bernstein hash adapted for a uint64 word.
@@ -110,7 +110,7 @@ pub func:djb2 = uint64(uint64:key) {
     uint64:d7 = (key >> 56u64) & mask8;
     h = h * 33u64 ^ d7;
 
-    pass(h);
+    pass h;
 };
 
 // SDBM: hash = byte + (h << 6) + (h << 16) - h  (applied per byte)
@@ -135,7 +135,7 @@ pub func:sdbm = uint64(uint64:key) {
     uint64:s7 = (key >> 56u64) & mask8;
     h = s7 + (h << 6u64) + (h << 16u64) - h;
 
-    pass(h);
+    pass h;
 };
 
 // mix64: Murmur3-style 64-bit finalizer / avalanche mixer.
@@ -147,14 +147,14 @@ pub func:mix64 = uint64(uint64:key) {
     h = h ^ (h >> 33u64);
     h = h * 14181476777654086739u64;
     h = h ^ (h >> 33u64);
-    pass(h);
+    pass h;
 };
 
 // hash_combine: combine two hash values (Boost/absl style).
 // h2 is mixed with a golden-ratio constant and folded into h1.
 pub func:hash_combine = uint64(uint64:h1, uint64:h2) {
     uint64:mixed = h1 ^ (h2 + 11400714819323198485u64 + (h1 << 6u64) + (h1 >> 2u64));
-    pass(mixed);
+    pass mixed;
 };
 
 // splitmix: SplitMix64 hash — extremely fast, passes BigCrush.
@@ -163,7 +163,7 @@ pub func:splitmix = uint64(uint64:key) {
     uint64:h = key + 11400714819323198485u64;
     h = (h ^ (h >> 30u64)) * 13787848793156543929u64;
     h = (h ^ (h >> 27u64)) * 10723151780598845931u64;
-    pass(h ^ (h >> 31u64));
+    pass h ^ (h >> 31u64);
 };
 
 // wang64: Thomas Wang's 64-bit integer hash.
@@ -175,5 +175,5 @@ pub func:wang64 = uint64(uint64:key) {
     h = h ^ (h >> 4u64);
     h = h * 668265261u64;
     h = h ^ (h >> 15u64);
-    pass(h);
+    pass h;
 };

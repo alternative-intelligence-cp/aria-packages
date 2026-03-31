@@ -23,45 +23,45 @@ extern "aria_pqueue_shim" {
 
 pub func:pqueue_create = int64(int32:capacity) {
     int64:h = aria_pqueue_create(capacity);
-    pass(h);
+    pass h;
 };
 
 pub func:pqueue_destroy = NIL(int64:handle) {
     aria_pqueue_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:pqueue_insert = int32(int64:handle, int64:value, int32:priority) {
     int32:r = aria_pqueue_insert(handle, value, priority);
-    pass(r);
+    pass r;
 };
 
 pub func:pqueue_extract = int64(int64:handle) {
     int64:v = aria_pqueue_extract(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:pqueue_peek = int64(int64:handle) {
     int64:v = aria_pqueue_peek(handle);
-    pass(v);
+    pass v;
 };
 
 pub func:pqueue_peek_priority = int32(int64:handle) {
     int32:p = aria_pqueue_peek_priority(handle);
-    pass(p);
+    pass p;
 };
 
 pub func:pqueue_size = int32(int64:handle) {
     int32:r = aria_pqueue_size(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:pqueue_is_empty = int32(int64:handle) {
     int32:r = aria_pqueue_is_empty(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:pqueue_capacity = int32(int64:handle) {
     int32:r = aria_pqueue_capacity(handle);
-    pass(r);
+    pass r;
 };

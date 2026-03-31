@@ -20,17 +20,17 @@ extern "aria_yaml_shim" {
     func:aria_yaml_clear      = void();
 }
 
-pub func:yaml_error      = string()               { pass(aria_yaml_error()); };
-pub func:yaml_parse      = int32(string:text)      { pass(aria_yaml_parse(text)); };
-pub func:yaml_parse_file = int32(string:path)      { pass(aria_yaml_parse_file(path)); };
-pub func:yaml_get_type   = int32(string:key)       { pass(aria_yaml_get_type(key)); };
-pub func:yaml_get_string = string(string:key)      { pass(aria_yaml_get_string(key)); };
-pub func:yaml_get_int    = int64(string:key)       { pass(aria_yaml_get_int(key)); };
-pub func:yaml_get_float  = flt64(string:key)       { pass(aria_yaml_get_float(key)); };
-pub func:yaml_get_bool   = int32(string:key)       { pass(aria_yaml_get_bool(key)); };
-pub func:yaml_has_key    = int32(string:key)       { pass(aria_yaml_has_key(key)); };
-pub func:yaml_set_string = int32(string:key, string:val) { pass(aria_yaml_set_string(key, val)); };
-pub func:yaml_set_int    = int32(string:key, int64:val)  { pass(aria_yaml_set_int(key, val)); };
-pub func:yaml_set_bool   = int32(string:key, int32:val)  { pass(aria_yaml_set_bool(key, val)); };
-pub func:yaml_count      = int32()                 { pass(aria_yaml_count()); };
-pub func:yaml_clear      = NIL()                   { aria_yaml_clear(); pass(NIL); };
+pub func:yaml_error      = string()               { pass aria_yaml_error(); };
+pub func:yaml_parse      = int32(string:text)      { pass aria_yaml_parse(text); };
+pub func:yaml_parse_file = int32(string:path)      { pass aria_yaml_parse_file(path); };
+pub func:yaml_get_type   = int32(string:key)       { pass aria_yaml_get_type(key); };
+pub func:yaml_get_string = string(string:key)      { pass aria_yaml_get_string(key); };
+pub func:yaml_get_int    = int64(string:key)       { pass aria_yaml_get_int(key); };
+pub func:yaml_get_float  = flt64(string:key)       { pass aria_yaml_get_float(key); };
+pub func:yaml_get_bool   = int32(string:key)       { pass aria_yaml_get_bool(key); };
+pub func:yaml_has_key    = int32(string:key)       { pass aria_yaml_has_key(key); };
+pub func:yaml_set_string = int32(string:key, string:val) { pass aria_yaml_set_string(key, val); };
+pub func:yaml_set_int    = int32(string:key, int64:val)  { pass aria_yaml_set_int(key, val); };
+pub func:yaml_set_bool   = int32(string:key, int32:val)  { pass aria_yaml_set_bool(key, val); };
+pub func:yaml_count      = int32()                 { pass aria_yaml_count(); };
+pub func:yaml_clear      = NIL()                   { aria_yaml_clear(); pass NIL; };

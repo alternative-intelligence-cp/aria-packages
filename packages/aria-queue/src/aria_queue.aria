@@ -14,40 +14,40 @@ extern func:aria_queue_shim_clear = NIL(int64:handle);
 
 pub func:queue_new = int64() {
     int64:h = aria_queue_shim_create();
-    pass(h);
+    pass h;
 };
 
 pub func:queue_free = NIL(int64:handle) {
     aria_queue_shim_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:queue_enqueue = NIL(int64:handle, int64:value) {
     aria_queue_shim_enqueue(handle, value);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:queue_dequeue = int64(int64:handle) {
     int64:val = aria_queue_shim_dequeue(handle);
-    pass(val);
+    pass val;
 };
 
 pub func:queue_peek = int64(int64:handle) {
     int64:val = aria_queue_shim_peek(handle);
-    pass(val);
+    pass val;
 };
 
 pub func:queue_length = int64(int64:handle) {
     int64:len = aria_queue_shim_length(handle);
-    pass(len);
+    pass len;
 };
 
 pub func:queue_is_empty = int64(int64:handle) {
     int64:e = aria_queue_shim_is_empty(handle);
-    pass(e);
+    pass e;
 };
 
 pub func:queue_clear = NIL(int64:handle) {
     aria_queue_shim_clear(handle);
-    pass(NIL);
+    pass NIL;
 };

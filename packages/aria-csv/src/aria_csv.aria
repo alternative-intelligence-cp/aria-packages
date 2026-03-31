@@ -27,55 +27,55 @@ extern "aria_csv_shim" {
 
 pub func:csv_parse = int32(string:text) {
     int32:r = aria_csv_parse(text);
-    pass(r);
+    pass r;
 };
 
 pub func:csv_num_rows = int32() {
     int32:r = aria_csv_num_rows();
-    pass(r);
+    pass r;
 };
 
 pub func:csv_num_cols = int32() {
     int32:r = aria_csv_num_cols();
-    pass(r);
+    pass r;
 };
 
 pub func:csv_get = string(int32:row, int32:col) {
     int32:status = aria_csv_get_s(row, col);
     string:r = aria_csv_last_result();
-    pass(r);
+    pass r;
 };
 
 // ── public API: writing ─────────────────────────────────────────────
 
 pub func:csv_write_begin = NIL() {
     aria_csv_write_begin();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:csv_write_field = NIL(string:value) {
     aria_csv_write_field(value);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:csv_write_row_end = NIL() {
     aria_csv_write_row_end();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:csv_write_result = string() {
     string:r = aria_csv_write_result();
-    pass(r);
+    pass r;
 };
 
 pub func:csv_write_length = int32() {
     int32:r = aria_csv_write_length();
-    pass(r);
+    pass r;
 };
 
 // ── public API: cleanup ─────────────────────────────────────────────
 
 pub func:csv_cleanup = NIL() {
     aria_csv_cleanup();
-    pass(NIL);
+    pass NIL;
 };

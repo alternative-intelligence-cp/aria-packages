@@ -124,59 +124,59 @@ Rules<flt32,flt64>:float_normalized = {
 // ============================================================
 
 pub func:validate_positive_i32 = int32(int32:val) {
-    if (val > 0i32) { pass(1i32); }
-    pass(0i32);
+    if (val > 0i32) { pass 1i32; }
+    pass 0i32;
 };
 
 pub func:validate_non_negative_i32 = int32(int32:val) {
-    if (val >= 0i32) { pass(1i32); }
-    pass(0i32);
+    if (val >= 0i32) { pass 1i32; }
+    pass 0i32;
 };
 
 pub func:validate_percentage_i32 = int32(int32:val) {
     if (val >= 0i32) {
-        if (val <= 100i32) { pass(1i32); }
+        if (val <= 100i32) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 pub func:validate_port_i32 = int32(int32:val) {
     if (val >= 0i32) {
-        if (val <= 65535i32) { pass(1i32); }
+        if (val <= 65535i32) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 pub func:validate_http_status_i32 = int32(int32:val) {
     if (val >= 100i32) {
-        if (val <= 599i32) { pass(1i32); }
+        if (val <= 599i32) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 pub func:validate_exit_code_i32 = int32(int32:val) {
     if (val >= 0i32) {
-        if (val <= 255i32) { pass(1i32); }
+        if (val <= 255i32) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 pub func:validate_unit_flt64 = int32(flt64:val) {
     if (val >= 0.0) {
-        if (val <= 1.0) { pass(1i32); }
+        if (val <= 1.0) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 pub func:validate_positive_flt64 = int32(flt64:val) {
-    if (val > 0.0) { pass(1i32); }
-    pass(0i32);
+    if (val > 0.0) { pass 1i32; }
+    pass 0i32;
 };
 
 pub func:validate_normalized_flt64 = int32(flt64:val) {
     if (val >= -1.0) {
-        if (val <= 1.0) { pass(1i32); }
+        if (val <= 1.0) { pass 1i32; }
     }
-    pass(0i32);
+    pass 0i32;
 };
 

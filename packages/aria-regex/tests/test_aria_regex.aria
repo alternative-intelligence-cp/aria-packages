@@ -1,6 +1,6 @@
 // test_aria_regex.aria — Compile & match tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_regex_compile       = int32(string:pattern);
 extern func:aria_regex_match         = int32(string:text);
@@ -44,5 +44,5 @@ func:main = int32() {
 
     aria_regex_cleanup();
     aria_regex_test_summary();
-    exit(0);
+    exit 0;
 };

@@ -26,16 +26,16 @@ func:has_button = int32(int32:bitmask, int32:btn) {
     uint32:ubtn = @cast<uint32>(btn);
     uint32:r    = ubm & ubtn;
     if (r != 0u32) {
-        pass(1i32);
+        pass 1i32;
     }
-    pass(0i32);
+    pass 0i32;
 };
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
     // ── T01: BTN_RIGHT bit (1) present in bitmask 0b0001 ───────────────────
-    int32:t01 = raw(has_button(1i32, 1i32));
+    int32:t01 = raw has_button(1i32, 1i32);
     if (t01 == 1i32) {
         print("[PASS] T01 has_button(1,BTN_RIGHT)==1\n");
     } else {
@@ -43,7 +43,7 @@ func:main = int32() {
     }
 
     // ── T02: BTN_LEFT bit (2) NOT in bitmask 0b0001 ────────────────────────
-    int32:t02 = raw(has_button(1i32, 2i32));
+    int32:t02 = raw has_button(1i32, 2i32);
     if (t02 == 0i32) {
         print("[PASS] T02 has_button(1,BTN_LEFT)==0\n");
     } else {
@@ -52,8 +52,8 @@ func:main = int32() {
 
     // ── T03: Full 12-button mask has all bits set ───────────────────────────
     int32:allbtns = 4095i32; // 0xFFF
-    int32:t03_a = raw(has_button(allbtns, 1i32));    // RIGHT
-    int32:t03_b = raw(has_button(allbtns, 2048i32)); // SELECT
+    int32:t03_a = raw has_button(allbtns, 1i32);    // RIGHT
+    int32:t03_b = raw has_button(allbtns, 2048i32); // SELECT
     if (t03_a == 1i32 && t03_b == 1i32) {
         print("[PASS] T03 full mask has RIGHT and SELECT\n");
     } else {
@@ -61,7 +61,7 @@ func:main = int32() {
     }
 
     // ── T04: Zero mask has no buttons ──────────────────────────────────────
-    int32:t04 = raw(has_button(0i32, 1024i32)); // START
+    int32:t04 = raw has_button(0i32, 1024i32); // START
     if (t04 == 0i32) {
         print("[PASS] T04 has_button(0,BTN_START)==0\n");
     } else {
@@ -70,9 +70,9 @@ func:main = int32() {
 
     // ── T05: Combined d-pad: UP+DOWN == bits 8+4 == 12 ─────────────────────
     int32:ud = 8i32 + 4i32; // UP=8 DOWN=4
-    int32:t05_u = raw(has_button(ud, 8i32)); // has UP
-    int32:t05_d = raw(has_button(ud, 4i32)); // has DOWN
-    int32:t05_r = raw(has_button(ud, 1i32)); // does NOT have RIGHT
+    int32:t05_u = raw has_button(ud, 8i32); // has UP
+    int32:t05_d = raw has_button(ud, 4i32); // has DOWN
+    int32:t05_r = raw has_button(ud, 1i32); // does NOT have RIGHT
     if (t05_u == 1i32 && t05_d == 1i32 && t05_r == 0i32) {
         print("[PASS] T05 UP+DOWN mask correct\n");
     } else {
@@ -155,10 +155,10 @@ func:main = int32() {
 
     // ── T15: poll+flush smoke test ──────────────────────────────────────────
     // Re-enter raw briefly to test poll/flush paths
-    drop(aria_input_enter_raw());
+    drop aria_input_enter_raw();
     int32:poll_r = aria_input_poll();
-    drop(aria_input_flush_pending());
-    drop(aria_input_exit_raw());
+    drop aria_input_flush_pending();
+    drop aria_input_exit_raw();
     // poll_r is 0 or 1 depending on whether stdin has data; either is fine
     if (poll_r >= 0i32) {
         print("[PASS] T15 poll+flush smoke test (no crash)\n");
@@ -166,5 +166,5 @@ func:main = int32() {
         print("[FAIL] T15 poll returned error\n");
     }
 
-    exit(0);
+    exit 0;
 };

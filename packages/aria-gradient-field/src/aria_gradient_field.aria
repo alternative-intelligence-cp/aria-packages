@@ -52,16 +52,16 @@ use "../../aria-decision-t/src/aria_decision_t.aria".*;
 
 // Private clamp helper (mirrors _dg_clamp in aria_decision_t)
 func:_gf_clamp = float64(float64:v, float64:lo, float64:hi) {
-    if (v < lo) { pass(lo); }
-    if (v > hi) { pass(hi); }
-    pass(v);
+    if (v < lo) { pass lo; }
+    if (v > hi) { pass hi; }
+    pass v;
 };
 
 // ── Direction constants ───────────────────────────────────────────────────────
 
-pub func:gf_dir_a    = int64() { pass(0i64); };
-pub func:gf_dir_unkn = int64() { pass(1i64); };
-pub func:gf_dir_b    = int64() { pass(2i64); };
+pub func:gf_dir_a    = int64() { pass 0i64; };
+pub func:gf_dir_unkn = int64() { pass 1i64; };
+pub func:gf_dir_b    = int64() { pass 2i64; };
 
 // ── Initialisation ────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ pub func:gf_create = NIL(wild float64->:nodes, wild int64->:gf_meta,
         nodes[i * 5i64 + 4i64] = node_width;
         i = i + 1i64;
     }
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Node setup ────────────────────────────────────────────────────────────────
@@ -102,37 +102,37 @@ pub func:gf_set_node = NIL(wild float64->:nodes, int64:i,
     nodes[i * 5i64 + 2i64] = lean_w;
     nodes[i * 5i64 + 3i64] = tilt_w;
     nodes[i * 5i64 + 4i64] = width;
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Node accessors ────────────────────────────────────────────────────────────
 
-pub func:gf_node_pbc    = float64(wild float64->:nodes, int64:i) { pass(nodes[i * 5i64 + 0i64]); };
-pub func:gf_node_pbm    = float64(wild float64->:nodes, int64:i) { pass(nodes[i * 5i64 + 1i64]); };
-pub func:gf_node_lean_w = float64(wild float64->:nodes, int64:i) { pass(nodes[i * 5i64 + 2i64]); };
-pub func:gf_node_tilt_w = float64(wild float64->:nodes, int64:i) { pass(nodes[i * 5i64 + 3i64]); };
-pub func:gf_node_width  = float64(wild float64->:nodes, int64:i) { pass(nodes[i * 5i64 + 4i64]); };
+pub func:gf_node_pbc    = float64(wild float64->:nodes, int64:i) { pass nodes[i * 5i64 + 0i64]; };
+pub func:gf_node_pbm    = float64(wild float64->:nodes, int64:i) { pass nodes[i * 5i64 + 1i64]; };
+pub func:gf_node_lean_w = float64(wild float64->:nodes, int64:i) { pass nodes[i * 5i64 + 2i64]; };
+pub func:gf_node_tilt_w = float64(wild float64->:nodes, int64:i) { pass nodes[i * 5i64 + 3i64]; };
+pub func:gf_node_width  = float64(wild float64->:nodes, int64:i) { pass nodes[i * 5i64 + 4i64]; };
 
 pub func:gf_node_dec = int64(wild float64->:nodes, int64:i) {
     float64:pbc = nodes[i * 5i64 + 0i64];
     float64:pbm = nodes[i * 5i64 + 1i64];
     float64:w   = nodes[i * 5i64 + 4i64];
     int64:dc    = dg_decision_code(pbc, pbm, w);
-    pass(dc);
+    pass dc;
 };
 
 pub func:gf_node_opt_a = float64(wild float64->:nodes, int64:i) {
     float64:pbc = nodes[i * 5i64 + 0i64];
     float64:pbm = nodes[i * 5i64 + 1i64];
     float64:w   = nodes[i * 5i64 + 4i64];
-    pass(dg_opt_a(pbc, pbm, w));
+    pass dg_opt_a(pbc, pbm, w);
 };
 
 pub func:gf_node_opt_b = float64(wild float64->:nodes, int64:i) {
     float64:pbc = nodes[i * 5i64 + 0i64];
     float64:pbm = nodes[i * 5i64 + 1i64];
     float64:w   = nodes[i * 5i64 + 4i64];
-    pass(dg_opt_b(pbc, pbm, w));
+    pass dg_opt_b(pbc, pbm, w);
 };
 
 // Internal: write one node's decision + opt_a + opt_b into the patterns ring buffer.
@@ -146,7 +146,7 @@ func:_gf_write_node_to_slot = NIL(wild float64->:nodes, wild float64->:patterns,
     patterns[base + 4i64 + j * 3i64] = nd => flt64;
     patterns[base + 5i64 + j * 3i64] = dg_opt_a(npbc, npbm, nw);
     patterns[base + 6i64 + j * 3i64] = dg_opt_b(npbc, npbm, nw);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Projection ────────────────────────────────────────────────────────────────
@@ -197,10 +197,10 @@ pub func:gf_project = NIL(wild float64->:nodes, wild int64->:gf_meta,
         float64:lean_d = lw * lean_sig * base_lean;
         float64:tilt_d = tw * tilt_sig * base_tilt;
         // Reset pbc to center and apply lean delta
-        nodes[i * 5i64 + 0i64] = raw(_gf_clamp(nd_ctr + lean_d, lo, hi));
+        nodes[i * 5i64 + 0i64] = raw _gf_clamp(nd_ctr + lean_d, lo, hi);
         // Reset pbm to 0.5 and apply tilt delta
         if (pbw > 0.0001) {
-            nodes[i * 5i64 + 1i64] = raw(_gf_clamp(0.5 + tilt_d / pbw, 0.0, 1.0));
+            nodes[i * 5i64 + 1i64] = raw _gf_clamp(0.5 + tilt_d / pbw, 0.0, 1.0);
         }
         if (pbw <= 0.0001) {
             nodes[i * 5i64 + 1i64] = 0.5;
@@ -223,7 +223,7 @@ pub func:gf_project = NIL(wild float64->:nodes, wild int64->:gf_meta,
     // Per-node decision and confidence (use fresh variable j to avoid SSA reuse of i)
     int64:j = 0i64;
     while (j < n_nodes) {
-        drop(_gf_write_node_to_slot(nodes, patterns, base, j));
+        drop _gf_write_node_to_slot(nodes, patterns, base, j);
         j = j + 1i64;
     }
 
@@ -234,7 +234,7 @@ pub func:gf_project = NIL(wild float64->:nodes, wild int64->:gf_meta,
     gf_meta[2i64] = head;
     gf_meta[3i64] = count;
     gf_meta[4i64] = proj_count;
-    pass(NIL);
+    pass NIL;
 };
 
 // gf_drive: mutate emitter (via dgt_observe) then project onto all nodes.
@@ -244,18 +244,18 @@ pub func:gf_drive = NIL(wild float64->:nodes, wild int64->:gf_meta,
                          wild float64->:em_dg, wild int64->:em_meta,
                          wild float64->:em_snaps,
                          float64:lean, float64:tilt, int64:dir_code) {
-    drop(dgt_observe(em_dg, em_meta, em_snaps, lean, tilt, 8i64, dir_code));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    pass(NIL);
+    drop dgt_observe(em_dg, em_meta, em_snaps, lean, tilt, 8i64, dir_code);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    pass NIL;
 };
 
 // ── Meta accessors ────────────────────────────────────────────────────────────
 
-pub func:gf_n_nodes       = int64(wild int64->:gf_meta)   { pass(gf_meta[0i64]); };
-pub func:gf_pattern_count = int64(wild int64->:gf_meta)   { pass(gf_meta[3i64]); };
-pub func:gf_proj_count    = int64(wild int64->:gf_meta)   { pass(gf_meta[4i64]); };
-pub func:gf_base_lean     = float64(wild float64->:gf_conf) { pass(gf_conf[0i64]); };
-pub func:gf_base_tilt     = float64(wild float64->:gf_conf) { pass(gf_conf[1i64]); };
+pub func:gf_n_nodes       = int64(wild int64->:gf_meta)   { pass gf_meta[0i64]; };
+pub func:gf_pattern_count = int64(wild int64->:gf_meta)   { pass gf_meta[3i64]; };
+pub func:gf_proj_count    = int64(wild int64->:gf_meta)   { pass gf_meta[4i64]; };
+pub func:gf_base_lean     = float64(wild float64->:gf_conf) { pass gf_conf[0i64]; };
+pub func:gf_base_tilt     = float64(wild float64->:gf_conf) { pass gf_conf[1i64]; };
 
 // ── Pattern retrieval ─────────────────────────────────────────────────────────
 
@@ -269,8 +269,8 @@ pub func:gf_get_pattern = int64(wild float64->:patterns, wild int64->:gf_meta,
     int64:capacity = gf_meta[1i64];
     int64:head     = gf_meta[2i64];
     int64:slot_sz  = gf_meta[5i64];
-    if (idx < 0i64)     { pass(0i64); }
-    if (idx >= count)   { pass(0i64); }
+    if (idx < 0i64)     { pass 0i64; }
+    if (idx >= count)   { pass 0i64; }
     int64:phys = (head + idx) % capacity;
     int64:base = phys * slot_sz;
     int64:j = 0i64;
@@ -278,23 +278,23 @@ pub func:gf_get_pattern = int64(wild float64->:patterns, wild int64->:gf_meta,
         out_pattern[j] = patterns[base + j];
         j = j + 1i64;
     }
-    pass(1i64);
+    pass 1i64;
 };
 
 // Pattern slot accessors (operate on an out_pattern buffer from gf_get_pattern)
-pub func:gf_pat_emitter_step = float64(wild float64->:out) { pass(out[0i64]); };
-pub func:gf_pat_emitter_lean = float64(wild float64->:out) { pass(out[1i64]); };
-pub func:gf_pat_emitter_tilt = float64(wild float64->:out) { pass(out[2i64]); };
-pub func:gf_pat_emitter_dec  = float64(wild float64->:out) { pass(out[3i64]); };
+pub func:gf_pat_emitter_step = float64(wild float64->:out) { pass out[0i64]; };
+pub func:gf_pat_emitter_lean = float64(wild float64->:out) { pass out[1i64]; };
+pub func:gf_pat_emitter_tilt = float64(wild float64->:out) { pass out[2i64]; };
+pub func:gf_pat_emitter_dec  = float64(wild float64->:out) { pass out[3i64]; };
 
 pub func:gf_pat_node_dec = int64(wild float64->:out, int64:i) {
-    pass(out[4i64 + i * 3i64] => int64);
+    pass out[4i64 + i * 3i64] => int64;
 };
 pub func:gf_pat_node_a = float64(wild float64->:out, int64:i) {
-    pass(out[5i64 + i * 3i64]);
+    pass out[5i64 + i * 3i64];
 };
 pub func:gf_pat_node_b = float64(wild float64->:out, int64:i) {
-    pass(out[6i64 + i * 3i64]);
+    pass out[6i64 + i * 3i64];
 };
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ pub func:gf_consensus_count = int64(wild float64->:nodes, wild int64->:gf_meta, 
         if (dc == dec_code) { cnt = cnt + 1i64; }
         i = i + 1i64;
     }
-    pass(cnt);
+    pass cnt;
 };
 
 // gf_pattern_shifts: count consecutive pattern pairs in history that differ.
@@ -323,7 +323,7 @@ pub func:gf_pattern_shifts = int64(wild float64->:patterns, wild int64->:gf_meta
     int64:head     = gf_meta[2i64];
     int64:slot_sz  = gf_meta[5i64];
     int64:n_nodes  = gf_meta[0i64];
-    if (count < 2i64) { pass(0i64); }
+    if (count < 2i64) { pass 0i64; }
     int64:shifts = 0i64;
     int64:i = 1i64;
     while (i < count) {
@@ -342,7 +342,7 @@ pub func:gf_pattern_shifts = int64(wild float64->:patterns, wild int64->:gf_meta
         if (changed == 1i64) { shifts = shifts + 1i64; }
         i = i + 1i64;
     }
-    pass(shifts);
+    pass shifts;
 };
 
 // gf_is_nodal: return 1 if node i is nodal (both |lean_w| and |tilt_w| <= threshold).
@@ -351,6 +351,6 @@ pub func:gf_is_nodal = int64(wild float64->:nodes, int64:i, float64:threshold) {
     float64:tw = nodes[i * 5i64 + 3i64];
     if (lw < 0.0) { lw = 0.0 - lw; }
     if (tw < 0.0) { tw = 0.0 - tw; }
-    if (lw <= threshold && tw <= threshold) { pass(1i64); }
-    pass(0i64);
+    if (lw <= threshold && tw <= threshold) { pass 1i64; }
+    pass 0i64;
 };

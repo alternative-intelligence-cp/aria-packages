@@ -1,6 +1,6 @@
 // test_aria_fs.aria — File write/read/append tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_fs_write_file            = int32(string:path, string:data);
 extern func:aria_fs_append_file           = int32(string:path, string:data);
@@ -34,5 +34,5 @@ func:main = int32() {
     aria_fs_assert_int_eq(e2, 0i32, "test 07: gone after remove");
 
     aria_fs_test_summary();
-    exit(0);
+    exit 0;
 };

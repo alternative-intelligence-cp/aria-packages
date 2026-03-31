@@ -46,13 +46,13 @@
 pub func:str_char_at = string(string:s, int64:i) {
     int64:len = string_length(s);
     if (i < 0i64) {
-        pass("");
+        pass "";
     } else {
         if (i >= len) {
-            pass("");
+            pass "";
         } else {
             int64:end_pos = i + 1i64;
-            pass(string_substring(s, i, end_pos));
+            pass string_substring(s, i, end_pos);
         }
     }
 };
@@ -63,12 +63,12 @@ pub func:str_char_at = string(string:s, int64:i) {
 pub func:str_slice = string(string:s, int64:start) {
     int64:len = string_length(s);
     if (start >= len) {
-        pass("");
+        pass "";
     } else {
         if (start < 0i64) {
-            pass(s);
+            pass s;
         } else {
-            pass(string_substring(s, start, len));
+            pass string_substring(s, start, len);
         }
     }
 };
@@ -78,9 +78,9 @@ pub func:str_slice = string(string:s, int64:start) {
 pub func:str_before = string(string:s, string:delim) {
     int64:idx = string_index_of(s, delim);
     if (idx < 0i64) {
-        pass(s);
+        pass s;
     } else {
-        pass(string_substring(s, 0i64, idx));
+        pass string_substring(s, 0i64, idx);
     }
 };
 
@@ -89,12 +89,12 @@ pub func:str_before = string(string:s, string:delim) {
 pub func:str_after = string(string:s, string:delim) {
     int64:idx = string_index_of(s, delim);
     if (idx < 0i64) {
-        pass("");
+        pass "";
     } else {
         int64:dlen = string_length(delim);
         int64:slen = string_length(s);
         int64:start = idx + dlen;
-        pass(string_substring(s, start, slen));
+        pass string_substring(s, start, slen);
     }
 };
 
@@ -122,9 +122,9 @@ pub func:str_before_last = string(string:s, string:delim) {
         }
     }
     if (last < 0i64) {
-        pass(s);
+        pass s;
     } else {
-        pass(string_substring(s, 0i64, last));
+        pass string_substring(s, 0i64, last);
     }
 };
 
@@ -151,10 +151,10 @@ pub func:str_after_last = string(string:s, string:delim) {
         }
     }
     if (last < 0i64) {
-        pass("");
+        pass "";
     } else {
         int64:start = last + dlen;
-        pass(string_substring(s, start, slen));
+        pass string_substring(s, start, slen);
     }
 };
 
@@ -164,7 +164,7 @@ pub func:str_after_last = string(string:s, string:delim) {
 pub func:str_between = string(string:s, string:open_, string:close_) {
     int64:oi = string_index_of(s, open_);
     if (oi < 0i64) {
-        pass("");
+        pass "";
     } else {
         int64:olen = string_length(open_);
         int64:slen = string_length(s);
@@ -172,9 +172,9 @@ pub func:str_between = string(string:s, string:open_, string:close_) {
         string:rest = string_substring(s, inner_start, slen);
         int64:ci = string_index_of(rest, close_);
         if (ci < 0i64) {
-            pass("");
+            pass "";
         } else {
-            pass(string_substring(rest, 0i64, ci));
+            pass string_substring(rest, 0i64, ci);
         }
     }
 };
@@ -186,14 +186,14 @@ pub func:str_between = string(string:s, string:open_, string:close_) {
 pub func:str_replace = string(string:s, string:old_, string:new_) {
     int64:idx = string_index_of(s, old_);
     if (idx < 0i64) {
-        pass(s);
+        pass s;
     } else {
         int64:olen = string_length(old_);
         int64:slen = string_length(s);
         string:before = string_substring(s, 0i64, idx);
         int64:after_start = idx + olen;
         string:after = string_substring(s, after_start, slen);
-        pass(string_concat(string_concat(before, new_), after));
+        pass string_concat(string_concat(before, new_), after);
     }
 };
 
@@ -214,7 +214,7 @@ pub func:str_replace_all = string(string:s, string:old_, string:new_) {
             // no more occurrences — run loop to completion doing nothing
         }
     }
-    pass(result);
+    pass result;
 };
 
 /// Remove prefix from s if present; otherwise return s unchanged.
@@ -222,9 +222,9 @@ pub func:str_remove_prefix = string(string:s, string:prefix) {
     if (string_starts_with(s, prefix)) {
         int64:plen = string_length(prefix);
         int64:slen = string_length(s);
-        pass(string_substring(s, plen, slen));
+        pass string_substring(s, plen, slen);
     } else {
-        pass(s);
+        pass s;
     }
 };
 
@@ -234,9 +234,9 @@ pub func:str_remove_suffix = string(string:s, string:suffix) {
         int64:slen = string_length(s);
         int64:sufflen = string_length(suffix);
         int64:end_pos = slen - sufflen;
-        pass(string_substring(s, 0i64, end_pos));
+        pass string_substring(s, 0i64, end_pos);
     } else {
-        pass(s);
+        pass s;
     }
 };
 
@@ -248,7 +248,7 @@ pub func:str_count = int64(string:s, string:sub) {
     int64:count = 0i64;
     int64:sublen = string_length(sub);
     if (sublen <= 0i64) {
-        pass(0i64);
+        pass 0i64;
     } else {
         int64:slen = string_length(s);
         int64:pos = 0i64;
@@ -267,7 +267,7 @@ pub func:str_count = int64(string:s, string:sub) {
                 pos = slen + 1i64; // ensure rest_len < sublen next pass
             }
         }
-        pass(count);
+        pass count;
     }
 };
 
@@ -275,10 +275,10 @@ pub func:str_count = int64(string:s, string:sub) {
 /// An empty string is considered 1 line.
 pub func:str_line_count = int64(string:s) {
     if (string_is_empty(s)) {
-        pass(1i64);
+        pass 1i64;
     } else {
-        int64:n = raw(str_count(s, "\n"));
-        pass(n + 1i64);
+        int64:n = raw str_count(s, "\n");
+        pass n + 1i64;
     }
 };
 
@@ -286,7 +286,7 @@ pub func:str_line_count = int64(string:s) {
 /// \r, \n).  Uses: trim → empty check.
 pub func:str_is_blank = bool(string:s) {
     string:trimmed = string_trim(s);
-    pass(string_is_empty(trimmed));
+    pass string_is_empty(trimmed);
 };
 
 // ── Splitting helpers ─────────────────────────────────────────────────────────
@@ -300,10 +300,10 @@ pub func:str_is_blank = bool(string:s) {
 /// "hello" with delim ":" → 1
 pub func:str_token_count = int64(string:s, string:delim) {
     if (string_is_empty(s)) {
-        pass(0i64);
+        pass 0i64;
     } else {
-        int64:n = raw(str_count(s, delim));
-        pass(n + 1i64);
+        int64:n = raw str_count(s, delim);
+        pass n + 1i64;
     }
 };
 
@@ -318,7 +318,7 @@ pub func:str_token = string(string:s, string:delim, int64:n) {
         if (found == 0i64) {
             if (i == n) {
                 // this token IS what we want
-                result = raw(str_before(rest, delim));
+                result = raw str_before(rest, delim);
                 found = 1i64;
             } else {
                 // advance past next delimiter
@@ -339,8 +339,8 @@ pub func:str_token = string(string:s, string:delim, int64:n) {
         }
     }
     if (found == 2i64) {
-        pass("");
+        pass "";
     } else {
-        pass(result);
+        pass result;
     }
 };

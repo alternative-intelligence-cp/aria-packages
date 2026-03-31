@@ -28,70 +28,70 @@ extern "aria_ftp_shim" {
 
 pub func:ftp_session_create = int64(string:host, int32:port) {
     int64:h = aria_ftp_session_create(host, port);
-    pass(h);
+    pass h;
 };
 
 pub func:ftp_session_destroy = NIL(int64:handle) {
     aria_ftp_session_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:ftp_set_credentials = int32(int64:handle, string:user, string:pass_str) {
     int32:r = aria_ftp_set_credentials(handle, user, pass_str);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_set_passive = int32(int64:handle, int32:passive) {
     int32:r = aria_ftp_set_passive(handle, passive);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_set_binary = int32(int64:handle, int32:bin_mode) {
     int32:r = aria_ftp_set_binary(handle, bin_mode);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_is_passive = int32(int64:handle) {
     int32:r = aria_ftp_is_passive(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_is_binary = int32(int64:handle) {
     int32:r = aria_ftp_is_binary(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_cwd = int32(int64:handle, string:path) {
     int32:r = aria_ftp_cwd(handle, path);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_pwd = string(int64:handle) {
     string:r = aria_ftp_pwd(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_cdup = int32(int64:handle) {
     int32:r = aria_ftp_cdup(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_build_url = string(int64:handle, string:filepath) {
     string:r = aria_ftp_build_url(handle, filepath);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_get_host = string(int64:handle) {
     string:r = aria_ftp_get_host(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_get_port = int32(int64:handle) {
     int32:r = aria_ftp_get_port(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:ftp_get_username = string(int64:handle) {
     string:r = aria_ftp_get_username(handle);
-    pass(r);
+    pass r;
 };

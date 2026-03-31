@@ -40,110 +40,110 @@ extern "aria_sdl3_shim" {
 
 pub func:sdl3_init = int32() {
     int32:r = aria_sdl3_init();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_quit = NIL() {
     aria_sdl3_quit();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:sdl3_is_init = int32() {
     int32:r = aria_sdl3_is_init();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_get_error = str() {
     str:s = aria_sdl3_get_error();
-    pass(s);
+    pass s;
 };
 
 pub func:sdl3_create_window = int32(str:title, int32:w, int32:h) {
     int32:r = aria_sdl3_create_window(title, w, h);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_destroy_window = NIL(int32:handle) {
     aria_sdl3_destroy_window(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:sdl3_get_window_width = int32(int32:handle) {
     int32:r = aria_sdl3_get_window_width(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_get_window_height = int32(int32:handle) {
     int32:r = aria_sdl3_get_window_height(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_create_renderer = int32(int32:win_handle) {
     int32:r = aria_sdl3_create_renderer(win_handle);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_destroy_renderer = NIL(int32:handle) {
     aria_sdl3_destroy_renderer(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:sdl3_set_draw_color = int32(int32:rend, int32:r, int32:g, int32:b, int32:a) {
     int32:res = aria_sdl3_set_draw_color(rend, r, g, b, a);
-    pass(res);
+    pass res;
 };
 
 pub func:sdl3_clear = int32(int32:rend) {
     int32:r = aria_sdl3_clear(rend);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_present = int32(int32:rend) {
     int32:r = aria_sdl3_present(rend);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_draw_rect = int32(int32:rend, int32:x, int32:y, int32:w, int32:h) {
     int32:r = aria_sdl3_draw_rect(rend, x, y, w, h);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_draw_line = int32(int32:rend, int32:x1, int32:y1, int32:x2, int32:y2) {
     int32:r = aria_sdl3_draw_line(rend, x1, y1, x2, y2);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_draw_point = int32(int32:rend, int32:x, int32:y) {
     int32:r = aria_sdl3_draw_point(rend, x, y);
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_poll_event = int32() {
     int32:r = aria_sdl3_poll_event();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_event_type = int32() {
     int32:r = aria_sdl3_event_type();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_event_key_code = int32() {
     int32:r = aria_sdl3_event_key_code();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_get_ticks = int32() {
     int32:r = aria_sdl3_get_ticks();
-    pass(r);
+    pass r;
 };
 
 pub func:sdl3_delay = NIL(int32:ms) {
     aria_sdl3_delay(ms);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:sdl3_get_version = int32() {
     int32:r = aria_sdl3_get_version();
-    pass(r);
+    pass r;
 };

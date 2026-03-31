@@ -9,7 +9,7 @@
 //   - "close" in function names: renamed to "disconnect"
 //   - String returns corrupt: column assertions done in C helpers
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_mysql_shim" {
     func:aria_mysql_connect    = int32(string:host, string:user, string:passwd, string:db, int32:port);
@@ -86,7 +86,7 @@ func:test_phase1 = NIL() {
     int32:ins = aria_mysql_exec(c6, "INSERT INTO users(name, age, email) VALUES('Alice', 30, 'alice@example.com')");
     aria_mysql_assert_true(ins == 1i32, "T06 INSERT Alice via exec");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 2: parameterized insert, affected rows, last_insert_id ────
@@ -117,7 +117,7 @@ func:test_phase2 = NIL() {
     int32:r2 = aria_mysql_execute(c4, "INSERT INTO users(name, age, email) VALUES(?, ?, ?)");
     aria_mysql_assert_true(r2 == 1i32, "T10 parameterized INSERT Charlie");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 3a: SELECT with simple_query (no params) ──────────────────
@@ -146,7 +146,7 @@ func:test_phase3a = NIL() {
     int32:c5 = aria_mysql_last_conn();
     aria_mysql_assert_col_int_eq(c5, 2i32, 30i64, "T15 row 1 age == 30");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 3b: more rows ─────────────────────────────────────────────
@@ -180,7 +180,7 @@ func:test_phase3b = NIL() {
     int32:c7 = aria_mysql_last_conn();
     aria_mysql_clear_result(c7);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 4: parameterized SELECT ───────────────────────────────────
@@ -211,7 +211,7 @@ func:test_phase4 = NIL() {
     int32:c6 = aria_mysql_last_conn();
     aria_mysql_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5a: transaction rollback ──────────────────────────────────
@@ -243,7 +243,7 @@ func:test_phase5a = NIL() {
     int32:c6 = aria_mysql_last_conn();
     aria_mysql_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5b: transaction commit ────────────────────────────────────
@@ -275,7 +275,7 @@ func:test_phase5b = NIL() {
     int32:c6 = aria_mysql_last_conn();
     aria_mysql_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 6a: SQL injection safety ──────────────────────────────────
@@ -302,7 +302,7 @@ func:test_phase6a = NIL() {
     int32:c5 = aria_mysql_last_conn();
     aria_mysql_clear_result(c5);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 6b: NULL handling ─────────────────────────────────────────
@@ -329,7 +329,7 @@ func:test_phase6b = NIL() {
     int32:c5 = aria_mysql_last_conn();
     aria_mysql_clear_result(c5);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 6c: UPDATE + DELETE ───────────────────────────────────────
@@ -357,7 +357,7 @@ func:test_phase6c = NIL() {
     int32:c6 = aria_mysql_last_conn();
     aria_mysql_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 func:test_phase6d = NIL() {
@@ -370,7 +370,7 @@ func:test_phase6d = NIL() {
     int32:c2 = aria_mysql_last_conn();
     aria_mysql_assert_affected_eq(c2, 1i64, "T30b affected_rows == 1 after DELETE");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 7: error handling + cleanup ───────────────────────────────
@@ -391,25 +391,25 @@ func:test_phase7 = NIL() {
     int32:dc = aria_mysql_disconnect(c3);
     aria_mysql_assert_true(dc == 1i32, "T33 disconnect");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── main ────────────────────────────────────────────────────────────
 
 func:main = int32() {
-    drop(test_phase1());
-    drop(test_phase2());
-    drop(test_phase3a());
-    drop(test_phase3b());
-    drop(test_phase4());
-    drop(test_phase5a());
-    drop(test_phase5b());
-    drop(test_phase6a());
-    drop(test_phase6b());
-    drop(test_phase6c());
-    drop(test_phase6d());
-    drop(test_phase7());
+    drop test_phase1();
+    drop test_phase2();
+    drop test_phase3a();
+    drop test_phase3b();
+    drop test_phase4();
+    drop test_phase5a();
+    drop test_phase5b();
+    drop test_phase6a();
+    drop test_phase6b();
+    drop test_phase6c();
+    drop test_phase6d();
+    drop test_phase7();
 
     aria_mysql_test_summary();
-    exit(0);
+    exit 0;
 };

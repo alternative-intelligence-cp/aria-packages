@@ -41,79 +41,79 @@ extern "aria_server_shim" {
 // -- Public API --
 
 pub func:server_error = string() {
-    pass(aria_server_error());
+    pass aria_server_error();
 };
 
 pub func:server_listen = int32(string:addr, int32:port, int32:backlog) {
-    pass(aria_server_listen(addr, port, backlog));
+    pass aria_server_listen(addr, port, backlog);
 };
 
 pub func:server_accept = int32(int32:listen_fd, int32:timeout_ms) {
-    pass(aria_server_accept(listen_fd, timeout_ms));
+    pass aria_server_accept(listen_fd, timeout_ms);
 };
 
 pub func:server_req_method = string() {
-    pass(aria_server_req_method());
+    pass aria_server_req_method();
 };
 
 pub func:server_req_path = string() {
-    pass(aria_server_req_path());
+    pass aria_server_req_path();
 };
 
 pub func:server_req_query = string() {
-    pass(aria_server_req_query());
+    pass aria_server_req_query();
 };
 
 pub func:server_req_version = string() {
-    pass(aria_server_req_version());
+    pass aria_server_req_version();
 };
 
 pub func:server_req_body = string() {
-    pass(aria_server_req_body());
+    pass aria_server_req_body();
 };
 
 pub func:server_req_body_length = int32() {
-    pass(aria_server_req_body_length());
+    pass aria_server_req_body_length();
 };
 
 pub func:server_req_header = string(string:name) {
-    pass(aria_server_req_header(name));
+    pass aria_server_req_header(name);
 };
 
 pub func:server_req_header_count = int32() {
-    pass(aria_server_req_header_count());
+    pass aria_server_req_header_count();
 };
 
 pub func:server_req_header_name = string(int32:index) {
-    pass(aria_server_req_header_name(index));
+    pass aria_server_req_header_name(index);
 };
 
 pub func:server_req_header_value = string(int32:index) {
-    pass(aria_server_req_header_value(index));
+    pass aria_server_req_header_value(index);
 };
 
 pub func:server_peer_addr = string() {
-    pass(aria_server_peer_addr());
+    pass aria_server_peer_addr();
 };
 
 pub func:server_peer_port = int32() {
-    pass(aria_server_peer_port());
+    pass aria_server_peer_port();
 };
 
 pub func:server_respond = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:body) {
-    pass(aria_server_respond(client_fd, status, status_text, content_type, body));
+    pass aria_server_respond(client_fd, status, status_text, content_type, body);
 };
 
 pub func:server_respond_headers = int64(int32:client_fd, int32:status, string:status_text, string:content_type, string:extra_headers, string:body) {
-    pass(aria_server_respond_headers(client_fd, status, status_text, content_type, extra_headers, body));
+    pass aria_server_respond_headers(client_fd, status, status_text, content_type, extra_headers, body);
 };
 
 pub func:server_close_client = NIL(int32:client_fd) {
     aria_server_close_client(client_fd);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:server_close = NIL(int32:listen_fd) {
     aria_server_close(listen_fd);
-    pass(NIL);
+    pass NIL;
 };

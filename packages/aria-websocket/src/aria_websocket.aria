@@ -49,70 +49,70 @@ extern "aria_websocket_shim" {
 // ── public API: error / message access ──────────────────────────────
 
 pub func:ws_error = string() {
-    pass(aria_ws_error());
+    pass aria_ws_error();
 };
 
 pub func:ws_message = string() {
-    pass(aria_ws_last_message());
+    pass aria_ws_last_message();
 };
 
 pub func:ws_message_len = int32() {
-    pass(aria_ws_last_message_len());
+    pass aria_ws_last_message_len();
 };
 
 // ── public API: client ──────────────────────────────────────────────
 
 pub func:ws_connect = int32(string:host, int32:port, string:path) {
     int32:r = aria_ws_connect(host, port, path);
-    pass(r);
+    pass r;
 };
 
 // ── public API: server ──────────────────────────────────────────────
 
 pub func:ws_listen = int32(string:bind_addr, int32:port, int32:backlog) {
     int32:r = aria_ws_listen(bind_addr, port, backlog);
-    pass(r);
+    pass r;
 };
 
 pub func:ws_accept = int32(int32:listen_fd, int32:timeout_ms) {
     int32:r = aria_ws_accept(listen_fd, timeout_ms);
-    pass(r);
+    pass r;
 };
 
 // ── public API: messaging ───────────────────────────────────────────
 
 pub func:ws_send = int32(int32:conn_id, string:msg) {
     int32:r = aria_ws_send(conn_id, msg);
-    pass(r);
+    pass r;
 };
 
 pub func:ws_recv = int32(int32:conn_id, int32:timeout_ms) {
     int32:r = aria_ws_recv(conn_id, timeout_ms);
-    pass(r);
+    pass r;
 };
 
 pub func:ws_broadcast = int32(string:msg) {
     int32:r = aria_ws_broadcast(msg);
-    pass(r);
+    pass r;
 };
 
 pub func:ws_ping = int32(int32:conn_id) {
     int32:r = aria_ws_ping(conn_id);
-    pass(r);
+    pass r;
 };
 
 // ── public API: lifecycle ───────────────────────────────────────────
 
 pub func:ws_close = NIL(int32:conn_id) {
     aria_ws_close(conn_id);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:ws_close_listener = NIL(int32:listen_fd) {
     aria_ws_close_listener(listen_fd);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:ws_connection_count = int32() {
-    pass(aria_ws_connection_count());
+    pass aria_ws_connection_count();
 };

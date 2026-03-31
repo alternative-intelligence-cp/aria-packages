@@ -34,8 +34,8 @@ Rules<int32[]>:arr_i32_non_empty = {
 };
 
 func:failsafe = int32(tbb32:err) {
-    drop(puts("FAILSAFE: rule violation in rules-common test!"));
-    exit(1);
+    drop puts("FAILSAFE: rule violation in rules-common test!");
+    exit 1;
 };
 
 func:main = int32() {
@@ -47,186 +47,186 @@ func:main = int32() {
     // Test 01: signed_positive
     limit<signed_positive> int32:t01 = 42;
     if (t01 > 0i32) {
-        drop(puts("[PASS] test 01: limit<signed_positive> int32"));
+        drop puts("[PASS] test 01: limit<signed_positive> int32");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 01"));
+        drop puts("[FAIL] test 01");
         failed += 1i32;
     }
 
     // Test 02: i32_percentage
     limit<i32_percentage> int32:t02 = 50;
     if (t02 >= 0i32) {
-        drop(puts("[PASS] test 02: limit<i32_percentage> 50"));
+        drop puts("[PASS] test 02: limit<i32_percentage> 50");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 02"));
+        drop puts("[FAIL] test 02");
         failed += 1i32;
     }
 
     // Test 03: i32_port
     limit<i32_port> int32:t03 = 8080;
     if (t03 <= 65535i32) {
-        drop(puts("[PASS] test 03: limit<i32_port> 8080"));
+        drop puts("[PASS] test 03: limit<i32_port> 8080");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 03"));
+        drop puts("[FAIL] test 03");
         failed += 1i32;
     }
 
     // Test 04: float_unit
     limit<float_unit> flt64:t04 = 0.5;
     if (t04 >= 0.0) {
-        drop(puts("[PASS] test 04: limit<float_unit> 0.5"));
+        drop puts("[PASS] test 04: limit<float_unit> 0.5");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 04"));
+        drop puts("[FAIL] test 04");
         failed += 1i32;
     }
 
     // Test 05: str_non_empty
     limit<str_non_empty> string:t05 = "hello";
-    drop(puts("[PASS] test 05: limit<str_non_empty>"));
+    drop puts("[PASS] test 05: limit<str_non_empty>");
     passed += 1i32;
 
     // Test 06: arr_i32_non_empty
     limit<arr_i32_non_empty> int32[3]:t06 = [1, 2, 3];
     if (t06[0] == 1) {
-        drop(puts("[PASS] test 06: limit<arr_i32_non_empty>"));
+        drop puts("[PASS] test 06: limit<arr_i32_non_empty>");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 06"));
+        drop puts("[FAIL] test 06");
         failed += 1i32;
     }
 
     // ── Part 2: Validator function tests (imported via use) ──
 
     // Test 07: validate_positive_i32 — valid
-    int32:v07 = raw(validate_positive_i32(42i32));
+    int32:v07 = raw validate_positive_i32(42i32);
     if (v07 == 1i32) {
-        drop(puts("[PASS] test 07: validate_positive_i32(42) == 1"));
+        drop puts("[PASS] test 07: validate_positive_i32(42) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 07"));
+        drop puts("[FAIL] test 07");
         failed += 1i32;
     }
 
     // Test 08: validate_positive_i32 — invalid
-    int32:v08 = raw(validate_positive_i32(-5i32));
+    int32:v08 = raw validate_positive_i32(-5i32);
     if (v08 == 0i32) {
-        drop(puts("[PASS] test 08: validate_positive_i32(-5) == 0"));
+        drop puts("[PASS] test 08: validate_positive_i32(-5) == 0");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 08"));
+        drop puts("[FAIL] test 08");
         failed += 1i32;
     }
 
     // Test 09: validate_percentage_i32 — valid
-    int32:v09 = raw(validate_percentage_i32(75i32));
+    int32:v09 = raw validate_percentage_i32(75i32);
     if (v09 == 1i32) {
-        drop(puts("[PASS] test 09: validate_percentage_i32(75) == 1"));
+        drop puts("[PASS] test 09: validate_percentage_i32(75) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 09"));
+        drop puts("[FAIL] test 09");
         failed += 1i32;
     }
 
     // Test 10: validate_percentage_i32 — invalid
-    int32:v10 = raw(validate_percentage_i32(150i32));
+    int32:v10 = raw validate_percentage_i32(150i32);
     if (v10 == 0i32) {
-        drop(puts("[PASS] test 10: validate_percentage_i32(150) == 0"));
+        drop puts("[PASS] test 10: validate_percentage_i32(150) == 0");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 10"));
+        drop puts("[FAIL] test 10");
         failed += 1i32;
     }
 
     // Test 11: validate_port_i32 — valid
-    int32:v11 = raw(validate_port_i32(443i32));
+    int32:v11 = raw validate_port_i32(443i32);
     if (v11 == 1i32) {
-        drop(puts("[PASS] test 11: validate_port_i32(443) == 1"));
+        drop puts("[PASS] test 11: validate_port_i32(443) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 11"));
+        drop puts("[FAIL] test 11");
         failed += 1i32;
     }
 
     // Test 12: validate_port_i32 — invalid
-    int32:v12 = raw(validate_port_i32(70000i32));
+    int32:v12 = raw validate_port_i32(70000i32);
     if (v12 == 0i32) {
-        drop(puts("[PASS] test 12: validate_port_i32(70000) == 0"));
+        drop puts("[PASS] test 12: validate_port_i32(70000) == 0");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 12"));
+        drop puts("[FAIL] test 12");
         failed += 1i32;
     }
 
     // Test 13: validate_http_status_i32 — valid
-    int32:v13 = raw(validate_http_status_i32(200i32));
+    int32:v13 = raw validate_http_status_i32(200i32);
     if (v13 == 1i32) {
-        drop(puts("[PASS] test 13: validate_http_status_i32(200) == 1"));
+        drop puts("[PASS] test 13: validate_http_status_i32(200) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 13"));
+        drop puts("[FAIL] test 13");
         failed += 1i32;
     }
 
     // Test 14: validate_exit_code_i32 — valid
-    int32:v14 = raw(validate_exit_code_i32(0i32));
+    int32:v14 = raw validate_exit_code_i32(0i32);
     if (v14 == 1i32) {
-        drop(puts("[PASS] test 14: validate_exit_code_i32(0) == 1"));
+        drop puts("[PASS] test 14: validate_exit_code_i32(0) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 14"));
+        drop puts("[FAIL] test 14");
         failed += 1i32;
     }
 
     // Test 15: validate_unit_flt64 — valid
-    int32:v15 = raw(validate_unit_flt64(0.75));
+    int32:v15 = raw validate_unit_flt64(0.75);
     if (v15 == 1i32) {
-        drop(puts("[PASS] test 15: validate_unit_flt64(0.75) == 1"));
+        drop puts("[PASS] test 15: validate_unit_flt64(0.75) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 15"));
+        drop puts("[FAIL] test 15");
         failed += 1i32;
     }
 
     // Test 16: validate_unit_flt64 — invalid
-    int32:v16 = raw(validate_unit_flt64(1.5));
+    int32:v16 = raw validate_unit_flt64(1.5);
     if (v16 == 0i32) {
-        drop(puts("[PASS] test 16: validate_unit_flt64(1.5) == 0"));
+        drop puts("[PASS] test 16: validate_unit_flt64(1.5) == 0");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 16"));
+        drop puts("[FAIL] test 16");
         failed += 1i32;
     }
 
     // Test 17: validate_normalized_flt64 — valid
-    int32:v17 = raw(validate_normalized_flt64(-0.5));
+    int32:v17 = raw validate_normalized_flt64(-0.5);
     if (v17 == 1i32) {
-        drop(puts("[PASS] test 17: validate_normalized_flt64(-0.5) == 1"));
+        drop puts("[PASS] test 17: validate_normalized_flt64(-0.5) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 17"));
+        drop puts("[FAIL] test 17");
         failed += 1i32;
     }
 
     // Test 18: validate_non_negative_i32 — edge case zero
-    int32:v18 = raw(validate_non_negative_i32(0i32));
+    int32:v18 = raw validate_non_negative_i32(0i32);
     if (v18 == 1i32) {
-        drop(puts("[PASS] test 18: validate_non_negative_i32(0) == 1"));
+        drop puts("[PASS] test 18: validate_non_negative_i32(0) == 1");
         passed += 1i32;
     } else {
-        drop(puts("[FAIL] test 18"));
+        drop puts("[FAIL] test 18");
         failed += 1i32;
     }
 
     // ── Results ──
-    drop(puts(""));
+    drop puts("");
     if (failed > 0i32) {
-        drop(puts("SOME TESTS FAILED"));
-        exit(1);
+        drop puts("SOME TESTS FAILED");
+        exit 1;
     }
-    drop(puts("All aria-rules-common tests passed! (18/18)"));
-    exit(0);
+    drop puts("All aria-rules-common tests passed! (18/18)");
+    exit 0;
 };

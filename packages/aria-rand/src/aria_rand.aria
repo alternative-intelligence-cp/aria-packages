@@ -15,19 +15,19 @@ pub func:rand_next = uint64(uint64:s) {
     uint64:a = s ^ (s << 13u64);
     uint64:b = a ^ (a >> 7u64);
     uint64:c = b ^ (b << 17u64);
-    pass(c);
+    pass c;
 };
 
 // ── Derived: bounded in [0, n) ───────────────────────────────────────────────
 
 pub func:rand_bounded = uint64(uint64:s, uint64:n) {
-    uint64:next = raw(rand_next(s));
-    pass(next % n);
+    uint64:next = raw rand_next(s);
+    pass next % n;
 };
 
 // ── Derived: bool (0 or 1) ───────────────────────────────────────────────────
 
 pub func:rand_bool = uint64(uint64:s) {
-    uint64:next = raw(rand_next(s));
-    pass(next & 1u64);
+    uint64:next = raw rand_next(s);
+    pass next & 1u64;
 };

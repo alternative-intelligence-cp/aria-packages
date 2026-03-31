@@ -49,7 +49,7 @@
 // n=0 → first token (program name).  Returns "" if n is out of range.
 func:_args_token = string(string:args, int32:n) {
     int64:len = string_length(args);
-    if (len < 2i64) { pass(""); }      // degenerate: no content between pipes
+    if (len < 2i64) { pass ""; }      // degenerate: no content between pipes
 
     int64:start = 1i64;                // skip the leading "|"
     int32:remaining = n;
@@ -57,14 +57,14 @@ func:_args_token = string(string:args, int32:n) {
     while (remaining >= 0i32) {
         string:rest = string_substring(args, start, len);
         int64:sep = string_index_of(rest, "|");
-        if (sep < 0i64) { pass(""); } // no more tokens
+        if (sep < 0i64) { pass ""; } // no more tokens
         if (remaining == 0i32) {
-            pass(string_substring(rest, 0i64, sep));
+            pass string_substring(rest, 0i64, sep);
         }
         remaining = remaining - 1i32;
         start = start + sep + 1i64;
     }
-    pass("");
+    pass "";
 };
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ func:_args_token = string(string:args, int32:n) {
 // args_has("|prog|--verbose|", "--v")       → false
 pub func:args_has = bool(string:args, string:flag) {
     string:needle = string_concat("|", string_concat(flag, "|"));
-    pass(string_contains(args, needle));
+    pass string_contains(args, needle);
 };
 
 // Return the value of an option that takes a following argument.
@@ -84,36 +84,36 @@ pub func:args_has = bool(string:args, string:flag) {
 pub func:args_get = string(string:args, string:key) {
     string:needle = string_concat("|", string_concat(key, "|"));
     int64:pos = string_index_of(args, needle);
-    if (pos < 0i64) { pass(""); }
+    if (pos < 0i64) { pass ""; }
 
     int64:value_start = pos + string_length(needle);
     int64:len = string_length(args);
-    if (value_start >= len) { pass(""); }  // key was last token; no value
+    if (value_start >= len) { pass ""; }  // key was last token; no value
 
     string:rest = string_substring(args, value_start, len);
     int64:sep = string_index_of(rest, "|");
-    if (sep <= 0i64) { pass(""); }        // empty or missing closing pipe
-    pass(string_substring(rest, 0i64, sep));
+    if (sep <= 0i64) { pass ""; }        // empty or missing closing pipe
+    pass string_substring(rest, 0i64, sep);
 };
 
 // Return the value of an option, or default_val when the option is absent.
 // args_get_or(args, "--jobs", "4") → "4" when --jobs is not provided
 pub func:args_get_or = string(string:args, string:key, string:default_val) {
-    string:result = raw(args_get(args, key));
-    if (string_length(result) == 0i64) { pass(default_val); }
-    pass(result);
+    string:result = raw args_get(args, key);
+    if (string_length(result) == 0i64) { pass default_val; }
+    pass result;
 };
 
 // Return the Nth argument (0-indexed; 0 = program name, 1 = first user arg).
 // Returns "" when n is out of range.
 // args_at("|prog|--flag|value|", 2) → "value"
 pub func:args_at = string(string:args, int32:n) {
-    pass(raw(_args_token(args, n)));
+    pass raw _args_token(args, n);
 };
 
 // Return argv[0] — the program name (or path) as invoked.
 pub func:args_program = string(string:args) {
-    pass(raw(_args_token(args, 0i32)));
+    pass raw _args_token(args, 0i32);
 };
 
 // Return the number of arguments EXCLUDING the program name.
@@ -133,44 +133,44 @@ pub func:args_count = int32(string:args) {
     // Format "|a0|a1|...|aN|" has (N+2) pipes total.
     // User args N = pipes - 2.  Guard against malformed strings.
     int64:count = pipes - 2i64;
-    if (count < 0i64) { pass(0i32); }
-    pass(@cast<int32>(count));
+    if (count < 0i64) { pass 0i32; }
+    pass @cast<int32>(count);
 };
 
 // ── Builder helpers (build a packed args string from literal values) ──────────
 // Primarily for unit tests, but also useful when hardcoding default arg sets.
 
 pub func:args_make1 = string(string:a0) {
-    pass(string_concat("|", string_concat(a0, "|")));
+    pass string_concat("|", string_concat(a0, "|"));
 };
 
 pub func:args_make2 = string(string:a0, string:a1) {
-    string:base = raw(args_make1(a0));
-    pass(string_concat(base, string_concat(a1, "|")));
+    string:base = raw args_make1(a0);
+    pass string_concat(base, string_concat(a1, "|"));
 };
 
 pub func:args_make3 = string(string:a0, string:a1, string:a2) {
-    string:base = raw(args_make2(a0, a1));
-    pass(string_concat(base, string_concat(a2, "|")));
+    string:base = raw args_make2(a0, a1);
+    pass string_concat(base, string_concat(a2, "|"));
 };
 
 pub func:args_make4 = string(string:a0, string:a1, string:a2, string:a3) {
-    string:base = raw(args_make3(a0, a1, a2));
-    pass(string_concat(base, string_concat(a3, "|")));
+    string:base = raw args_make3(a0, a1, a2);
+    pass string_concat(base, string_concat(a3, "|"));
 };
 
 pub func:args_make5 = string(string:a0, string:a1, string:a2, string:a3, string:a4) {
-    string:base = raw(args_make4(a0, a1, a2, a3));
-    pass(string_concat(base, string_concat(a4, "|")));
+    string:base = raw args_make4(a0, a1, a2, a3);
+    pass string_concat(base, string_concat(a4, "|"));
 };
 
 pub func:args_make6 = string(string:a0, string:a1, string:a2, string:a3, string:a4, string:a5) {
-    string:base = raw(args_make5(a0, a1, a2, a3, a4));
-    pass(string_concat(base, string_concat(a5, "|")));
+    string:base = raw args_make5(a0, a1, a2, a3, a4);
+    pass string_concat(base, string_concat(a5, "|"));
 };
 
 pub func:args_make8 = string(string:a0, string:a1, string:a2, string:a3, string:a4, string:a5, string:a6, string:a7) {
-    string:base = raw(args_make6(a0, a1, a2, a3, a4, a5));
+    string:base = raw args_make6(a0, a1, a2, a3, a4, a5);
     string:tail = string_concat(a6, string_concat("|", string_concat(a7, "|")));
-    pass(string_concat(base, tail));
+    pass string_concat(base, tail);
 };

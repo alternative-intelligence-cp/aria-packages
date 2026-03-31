@@ -56,7 +56,7 @@ extern "aria_raylib_shim" {
     func:aria_rl_play_sound           = void(int32:handle);
 }
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Piece colors: RGB for types 1-7 (0 = empty board cell)
@@ -65,44 +65,44 @@ func:failsafe = int32(tbb32:err) { exit(1); };
 
 func:color_r = int32(int32:t) {
     pick(t) {
-        (1i32) { pass(0i32); },
-        (2i32) { pass(240i32); },
-        (3i32) { pass(160i32); },
-        (4i32) { pass(0i32); },
-        (5i32) { pass(240i32); },
-        (6i32) { pass(50i32); },
-        (7i32) { pass(240i32); },
-        (*) { pass(80i32); }
+        (1i32) { pass 0i32; },
+        (2i32) { pass 240i32; },
+        (3i32) { pass 160i32; },
+        (4i32) { pass 0i32; },
+        (5i32) { pass 240i32; },
+        (6i32) { pass 50i32; },
+        (7i32) { pass 240i32; },
+        (*) { pass 80i32; }
     }
-    pass(80i32);
+    pass 80i32;
 };
 
 func:color_g = int32(int32:t) {
     pick(t) {
-        (1i32) { pass(240i32); },
-        (2i32) { pass(240i32); },
-        (3i32) { pass(0i32); },
-        (4i32) { pass(240i32); },
-        (5i32) { pass(0i32); },
-        (6i32) { pass(50i32); },
-        (7i32) { pass(160i32); },
-        (*) { pass(80i32); }
+        (1i32) { pass 240i32; },
+        (2i32) { pass 240i32; },
+        (3i32) { pass 0i32; },
+        (4i32) { pass 240i32; },
+        (5i32) { pass 0i32; },
+        (6i32) { pass 50i32; },
+        (7i32) { pass 160i32; },
+        (*) { pass 80i32; }
     }
-    pass(80i32);
+    pass 80i32;
 };
 
 func:color_b = int32(int32:t) {
     pick(t) {
-        (1i32) { pass(240i32); },
-        (2i32) { pass(0i32); },
-        (3i32) { pass(240i32); },
-        (4i32) { pass(0i32); },
-        (5i32) { pass(0i32); },
-        (6i32) { pass(220i32); },
-        (7i32) { pass(0i32); },
-        (*) { pass(80i32); }
+        (1i32) { pass 240i32; },
+        (2i32) { pass 0i32; },
+        (3i32) { pass 240i32; },
+        (4i32) { pass 0i32; },
+        (5i32) { pass 0i32; },
+        (6i32) { pass 220i32; },
+        (7i32) { pass 0i32; },
+        (*) { pass 80i32; }
     }
-    pass(80i32);
+    pass 80i32;
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -124,7 +124,7 @@ func:piece_fits = int32(int32[200]:brd, int32[112]:sr, int32[112]:sc,
             if (brd[cr * 10i32 + cc] != 0i32) { fits = 0i32; }
         }
     }
-    pass(fits);
+    pass fits;
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -278,7 +278,7 @@ func:main = int32() {
 
     // ── High score (persisted to aria_tetris_best.txt) ────────────────────────
     int32:high_score = 0i32;
-    string:hs_content = raw(readFile("aria_tetris_best.txt"));
+    string:hs_content = raw readFile("aria_tetris_best.txt");
     if (string_length(hs_content) > 0i64) {
         int64:hs_val = string_to_int(hs_content);
         if (hs_val > 0i64) {
@@ -458,8 +458,8 @@ func:main = int32() {
                     if (aria_rl_is_key_pressed(key_left) == 1i32) { do_left = 1i32; }
                     if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_left) == 1i32) { do_left = 1i32; }
                     if (do_left == 1i32) {
-                        int32:fl = raw(piece_fits(board, shape_r, shape_c,
-                                       cur_type, cur_rot, cur_row, cur_col - 1i32));
+                        int32:fl = raw piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row, cur_col - 1i32);
                         if (fl == 1i32) {
                             cur_col = cur_col - 1i32;
                             aria_rl_play_sound(snd_move);
@@ -471,8 +471,8 @@ func:main = int32() {
                     if (aria_rl_is_key_pressed(key_right) == 1i32) { do_right = 1i32; }
                     if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_right) == 1i32) { do_right = 1i32; }
                     if (do_right == 1i32) {
-                        int32:fr = raw(piece_fits(board, shape_r, shape_c,
-                                       cur_type, cur_rot, cur_row, cur_col + 1i32));
+                        int32:fr = raw piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row, cur_col + 1i32);
                         if (fr == 1i32) {
                             cur_col = cur_col + 1i32;
                             aria_rl_play_sound(snd_move);
@@ -487,8 +487,8 @@ func:main = int32() {
                     if (aria_rl_is_gamepad_button_pressed(0i32, gp_dpad_up) == 1i32) { rot_cw = 1i32; }
                     if (rot_cw == 1i32) {
                         int32:new_rot = (cur_rot + 1i32) % 4i32;
-                        int32:frc = raw(piece_fits(board, shape_r, shape_c,
-                                        cur_type, new_rot, cur_row, cur_col));
+                        int32:frc = raw piece_fits(board, shape_r, shape_c,
+                                        cur_type, new_rot, cur_row, cur_col);
                         if (frc == 1i32) {
                             cur_rot = new_rot;
                             aria_rl_play_sound(snd_rotate);
@@ -501,8 +501,8 @@ func:main = int32() {
                     if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_x) == 1i32) { rot_ccw = 1i32; }
                     if (rot_ccw == 1i32) {
                         int32:new_rot2 = (cur_rot + 3i32) % 4i32;
-                        int32:frc2 = raw(piece_fits(board, shape_r, shape_c,
-                                         cur_type, new_rot2, cur_row, cur_col));
+                        int32:frc2 = raw piece_fits(board, shape_r, shape_c,
+                                         cur_type, new_rot2, cur_row, cur_col);
                         if (frc2 == 1i32) {
                             cur_rot = new_rot2;
                             aria_rl_play_sound(snd_rotate);
@@ -516,13 +516,13 @@ func:main = int32() {
                     if (aria_rl_is_gamepad_button_pressed(0i32, gp_face_y) == 1i32) { do_hard = 1i32; }
                     if (do_hard == 1i32) {
                         int32:hr = cur_row;
-                        int32:hf = raw(piece_fits(board, shape_r, shape_c,
-                                       cur_type, cur_rot, hr + 1i32, cur_col));
+                        int32:hf = raw piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, hr + 1i32, cur_col);
                         while (hf == 1i32) {
                             hr = hr + 1i32;
                             score = score + 2i32;
-                            hf = raw(piece_fits(board, shape_r, shape_c,
-                                     cur_type, cur_rot, hr + 1i32, cur_col));
+                            hf = raw piece_fits(board, shape_r, shape_c,
+                                     cur_type, cur_rot, hr + 1i32, cur_col);
                         }
                         cur_row = hr;
                         did_hard_drop = 1i32;
@@ -563,15 +563,15 @@ func:main = int32() {
                             cur_rot = 0i32;
                             cur_row = 0i32;
                             cur_col = 3i32;
-                            int32:hfit = raw(piece_fits(board, shape_r, shape_c,
-                                             cur_type, cur_rot, cur_row, cur_col));
+                            int32:hfit = raw piece_fits(board, shape_r, shape_c,
+                                             cur_type, cur_rot, cur_row, cur_col);
                             if (hfit == 0i32) {
                                 state = 2i32;
                                 aria_rl_play_sound(snd_gameover);
                                 if (score > high_score) {
                                     high_score = score;
-                                    raw(writeFile("aria_tetris_best.txt",
-                                        string_from_int(@cast<int64>(high_score))));
+                                    raw writeFile("aria_tetris_best.txt",
+                                        string_from_int(@cast<int64>(high_score)));
                                 }
                             }
                         }
@@ -591,8 +591,8 @@ func:main = int32() {
                     if (did_hard_drop == 1i32) { should_lock = 1i32; }
                     if (drop_timer >= eff_interval) {
                         drop_timer = 0i32;
-                        int32:fd = raw(piece_fits(board, shape_r, shape_c,
-                                       cur_type, cur_rot, cur_row + 1i32, cur_col));
+                        int32:fd = raw piece_fits(board, shape_r, shape_c,
+                                       cur_type, cur_rot, cur_row + 1i32, cur_col);
                         if (fd == 1i32) {
                             cur_row = cur_row + 1i32;
                             if (soft_drop == 1i32) { score = score + 1i32; }
@@ -729,15 +729,15 @@ func:main = int32() {
                     next_type = bag[bag_idx];
                     bag_idx   = bag_idx + 1i32;
 
-                    int32:sf = raw(piece_fits(board, shape_r, shape_c,
-                                   cur_type, cur_rot, cur_row, cur_col));
+                    int32:sf = raw piece_fits(board, shape_r, shape_c,
+                                   cur_type, cur_rot, cur_row, cur_col);
                     if (sf == 0i32) {
                         state = 2i32;
                         aria_rl_play_sound(snd_gameover);
                         if (score > high_score) {
                             high_score = score;
-                            raw(writeFile("aria_tetris_best.txt",
-                                string_from_int(@cast<int64>(high_score))));
+                            raw writeFile("aria_tetris_best.txt",
+                                string_from_int(@cast<int64>(high_score)));
                         }
                     }
                 }
@@ -777,9 +777,9 @@ func:main = int32() {
                             int32:cx2 = board_x + dc * cell_sz + 1i32;
                             int32:cy2 = board_y + dr * cell_sz + 1i32;
                             int32:cs2 = cell_sz - 2i32;
-                            int32:draw_r = raw(color_r(cell_val));
-                            int32:draw_g = raw(color_g(cell_val));
-                            int32:draw_b = raw(color_b(cell_val));
+                            int32:draw_r = raw color_r(cell_val);
+                            int32:draw_g = raw color_g(cell_val);
+                            int32:draw_b = raw color_b(cell_val);
                             if (flash_timer > 0i32) {
                                 if (flash_mark[dr] == 1i32) {
                                     int32:blink = (flash_timer / 3i32) % 2i32;
@@ -800,17 +800,17 @@ func:main = int32() {
                 if (flash_timer == 0i32) {
                     // Ghost piece: drop to lowest valid position
                     int32:ghost_r = cur_row;
-                    int32:gfit = raw(piece_fits(board, shape_r, shape_c,
-                                     cur_type, cur_rot, ghost_r + 1i32, cur_col));
+                    int32:gfit = raw piece_fits(board, shape_r, shape_c,
+                                     cur_type, cur_rot, ghost_r + 1i32, cur_col);
                     while (gfit == 1i32) {
                         ghost_r = ghost_r + 1i32;
-                        gfit = raw(piece_fits(board, shape_r, shape_c,
-                                   cur_type, cur_rot, ghost_r + 1i32, cur_col));
+                        gfit = raw piece_fits(board, shape_r, shape_c,
+                                   cur_type, cur_rot, ghost_r + 1i32, cur_col);
                     }
                     int32:gcol = cur_type + 1i32;
-                    int32:gcr = raw(color_r(gcol));
-                    int32:gcg = raw(color_g(gcol));
-                    int32:gcb = raw(color_b(gcol));
+                    int32:gcr = raw color_r(gcol);
+                    int32:gcg = raw color_g(gcol);
+                    int32:gcb = raw color_b(gcol);
                     for(int32:gi = 0i32; gi < 4i32; gi += 1i32) {
                         int32:gsi = cur_type * 16i32 + cur_rot * 4i32 + gi;
                         int32:gpr = ghost_r + shape_r[gsi];
@@ -828,9 +828,9 @@ func:main = int32() {
 
                     // Active piece
                     int32:pc_col = cur_type + 1i32;
-                    int32:pc_r = raw(color_r(pc_col));
-                    int32:pc_g = raw(color_g(pc_col));
-                    int32:pc_b = raw(color_b(pc_col));
+                    int32:pc_r = raw color_r(pc_col);
+                    int32:pc_g = raw color_g(pc_col);
+                    int32:pc_b = raw color_b(pc_col);
                     for(int32:pi = 0i32; pi < 4i32; pi += 1i32) {
                         int32:psi = cur_type * 16i32 + cur_rot * 4i32 + pi;
                         int32:ppr = cur_row + shape_r[psi];
@@ -860,9 +860,9 @@ func:main = int32() {
                                        10i32, 10i32, 20i32, 255i32);
                 for(int32:ni = 0i32; ni < 4i32; ni += 1i32) {
                     int32:nsi = next_type * 16i32 + ni;
-                    int32:ncr = raw(color_r(next_type + 1i32));
-                    int32:ncg = raw(color_g(next_type + 1i32));
-                    int32:ncb = raw(color_b(next_type + 1i32));
+                    int32:ncr = raw color_r(next_type + 1i32);
+                    int32:ncg = raw color_g(next_type + 1i32);
+                    int32:ncb = raw color_b(next_type + 1i32);
                     int32:nx = panel_x + 10i32 + shape_c[nsi] * 24i32;
                     int32:ny = board_y + 40i32 + shape_r[nsi] * 24i32;
                     aria_rl_draw_rectangle(nx, ny, 22i32, 22i32, ncr, ncg, ncb, 255i32);
@@ -876,9 +876,9 @@ func:main = int32() {
                 if (hold_type >= 0i32) {
                     for(int32:hi = 0i32; hi < 4i32; hi += 1i32) {
                         int32:hsi = hold_type * 16i32 + hi;
-                        int32:hcr = raw(color_r(hold_type + 1i32));
-                        int32:hcg = raw(color_g(hold_type + 1i32));
-                        int32:hcb = raw(color_b(hold_type + 1i32));
+                        int32:hcr = raw color_r(hold_type + 1i32);
+                        int32:hcg = raw color_g(hold_type + 1i32);
+                        int32:hcb = raw color_b(hold_type + 1i32);
                         int32:hx = panel_x + 10i32 + shape_c[hsi] * 24i32;
                         int32:hy = board_y + 180i32 + shape_r[hsi] * 24i32;
                         aria_rl_draw_rectangle(hx, hy, 22i32, 22i32, hcr, hcg, hcb, 255i32);
@@ -924,5 +924,5 @@ func:main = int32() {
     // ── Cleanup ───────────────────────────────────────────────────────────────
     aria_rl_close_audio_device();
     aria_rl_close_window();
-    exit(0);
+    exit 0;
 };

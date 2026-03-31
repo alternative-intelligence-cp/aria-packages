@@ -13,37 +13,37 @@ extern "aria_compress_shim" {
 }
 
 pub func:deflate = int32(string:data, int32:len) {
-    pass(aria_compress_deflate(data, len));
+    pass aria_compress_deflate(data, len);
 };
 
 pub func:inflate = int32(string:data, int32:len) {
-    pass(aria_compress_inflate(data, len));
+    pass aria_compress_inflate(data, len);
 };
 
 pub func:gzip = int32(string:data, int32:len) {
-    pass(aria_compress_gzip(data, len));
+    pass aria_compress_gzip(data, len);
 };
 
 pub func:gunzip = int32(string:data, int32:len) {
-    pass(aria_compress_gunzip(data, len));
+    pass aria_compress_gunzip(data, len);
 };
 
 pub func:get_result = string() {
-    pass(aria_compress_get_result());
+    pass aria_compress_get_result();
 };
 
 pub func:get_length = int32() {
-    pass(aria_compress_get_length());
+    pass aria_compress_get_length();
 };
 
 pub func:get_error = int32() {
-    pass(aria_compress_get_error());
+    pass aria_compress_get_error();
 };
 
 pub func:roundtrip = int32(string:data, int32:len) {
-    pass(aria_compress_roundtrip(data, len));
+    pass aria_compress_roundtrip(data, len);
 };
 
 pub func:version = string() {
-    pass(aria_compress_version());
+    pass aria_compress_version();
 };

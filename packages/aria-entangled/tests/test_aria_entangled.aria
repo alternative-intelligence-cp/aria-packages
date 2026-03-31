@@ -18,7 +18,7 @@ extern func:aria_free  = void(wild float64*:ptr);
 extern func:malloc     = wild int64*(int64:size);
 extern func:free       = void(wild int64*:ptr);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
     int64:passed = 0i64;
@@ -35,7 +35,7 @@ func:main = int32() {
 
     // ── 01: ep_create initialises both DGs symmetrically ─────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     float64:a_pbc01 = ep[0i64];
     float64:b_pbc01 = ep[5i64];
     float64:d01a = a_pbc01 - 50.0;
@@ -61,8 +61,8 @@ func:main = int32() {
 
     // ── 03: ep_lean_alpha_a moves alpha pbc toward A, beta unchanged ──────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_lean_alpha_a(ep, meta, snaps, 10.0));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_lean_alpha_a(ep, meta, snaps, 10.0);
     float64:a_pbc03 = ep[0i64];
     float64:b_pbc03 = ep[5i64];
     float64:d03a = a_pbc03 - 40.0;
@@ -78,8 +78,8 @@ func:main = int32() {
 
     // ── 04: ep_lean_beta_b moves beta pbc toward B, alpha unchanged ───────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_lean_beta_b(ep, meta, snaps, 10.0));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_lean_beta_b(ep, meta, snaps, 10.0);
     float64:a_pbc04 = ep[0i64];
     float64:b_pbc04 = ep[5i64];
     float64:d04a = a_pbc04 - 50.0;
@@ -95,8 +95,8 @@ func:main = int32() {
 
     // ── 05: lean clamps at lo_lim=25 ──────────────────────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_lean_alpha_a(ep, meta, snaps, 100.0));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_lean_alpha_a(ep, meta, snaps, 100.0);
     float64:a_pbc05 = ep[0i64];
     float64:d05 = a_pbc05 - 25.0;
     if (d05 < 0.0) { d05 = 0.0 - d05; }
@@ -109,10 +109,10 @@ func:main = int32() {
 
     // ── 06: ep_tilt_alpha propagates to beta (coupling=1.0) ───────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     // tilt alpha toward_both (0): amount=25.0, pbw=50 → step=0.5
     // alpha pbm = 0.5, beta pbm = 0.5 (mirrored)
-    drop(ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64));
+    drop ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64);
     float64:a_pbm06 = ep[1i64];
     float64:b_pbm06 = ep[6i64];
     float64:d06a = a_pbm06 - 0.5;
@@ -128,8 +128,8 @@ func:main = int32() {
 
     // ── 07: tilt_beta propagates to alpha (coupling=1.0) ──────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_tilt_beta(ep, meta, snaps, 25.0, 0i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_tilt_beta(ep, meta, snaps, 25.0, 0i64);
     float64:a_pbm07 = ep[1i64];
     float64:b_pbm07 = ep[6i64];
     float64:d07a = a_pbm07 - 0.5;
@@ -145,8 +145,8 @@ func:main = int32() {
 
     // ── 08: coupling=0.0 → no propagation ────────────────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 0.0, 0.8, 64i64));
-    drop(ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64));
+    drop ep_create(ep, meta, snaps, 100.0, 0.0, 0.8, 64i64);
+    drop ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64);
     float64:a_pbm08 = ep[1i64];
     float64:b_pbm08 = ep[6i64];
     float64:d08a = a_pbm08 - 0.5;
@@ -162,10 +162,10 @@ func:main = int32() {
 
     // ── 09: coupling=-1.0 → anti-coupling (both→none) ────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 0.0 - 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 0.0 - 1.0, 0.8, 64i64);
     // tilt alpha toward_both (0) → beta gets toward_none (1)
     // alpha pbm → 0.5, beta pbm → -0.5 clamped to 0.0
-    drop(ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64));
+    drop ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64);
     float64:a_pbm09 = ep[1i64];
     float64:b_pbm09 = ep[6i64];
     float64:d09a = a_pbm09 - 0.5;
@@ -182,8 +182,8 @@ func:main = int32() {
 
     // ── 10: ep_tilt_pair tilts both equally, no propagation asymmetry ─────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_tilt_pair(ep, meta, snaps, 25.0, 0i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_tilt_pair(ep, meta, snaps, 25.0, 0i64);
     float64:a_pbm10 = ep[1i64];
     float64:b_pbm10 = ep[6i64];
     float64:d10a = a_pbm10 - 0.5;
@@ -199,11 +199,11 @@ func:main = int32() {
 
     // ── 11: is_crystallized fires when both pbm >= threshold ─────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     // Before crystal: both pbm=0
     int64:crys11_before = ep_is_crystallized(ep);
     // tilt_pair to raise both pbm → 0.8 threshold: step = 0.8/(pbw=50) * 50 = 40
-    drop(ep_tilt_pair(ep, meta, snaps, 40.0, 0i64));
+    drop ep_tilt_pair(ep, meta, snaps, 40.0, 0i64);
     int64:crys11_after  = ep_is_crystallized(ep);
     if (crys11_before == 0i64 && crys11_after == 1i64) {
         print("[PASS] 11: is_crystallized fires after threshold\n");
@@ -214,9 +214,9 @@ func:main = int32() {
 
     // ── 12: crystallization_count detects rising edge ─────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
-    drop(ep_tilt_pair(ep, meta, snaps, 40.0, 0i64));
-    drop(ep_snapshot_now(ep, meta, snaps));  // still crystallized, not a new edge
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
+    drop ep_tilt_pair(ep, meta, snaps, 40.0, 0i64);
+    drop ep_snapshot_now(ep, meta, snaps);  // still crystallized, not a new edge
     int64:crys12 = ep_crystallization_count(snaps, meta);
     if (crys12 == 1i64) {
         print("[PASS] 12: crystallization_count = 1 rising edge\n");
@@ -227,10 +227,10 @@ func:main = int32() {
 
     // ── 13: propagation_count counts tilt snapshots ───────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));  // 1 snap (manual, prop=0)
-    drop(ep_lean_alpha_a(ep, meta, snaps, 5.0));                 // lean, prop=0
-    drop(ep_tilt_alpha(ep, meta, snaps, 5.0, 0i64));             // tilt, prop=1
-    drop(ep_tilt_beta(ep, meta, snaps, 5.0, 0i64));              // tilt, prop=1
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);  // 1 snap (manual, prop=0)
+    drop ep_lean_alpha_a(ep, meta, snaps, 5.0);                 // lean, prop=0
+    drop ep_tilt_alpha(ep, meta, snaps, 5.0, 0i64);             // tilt, prop=1
+    drop ep_tilt_beta(ep, meta, snaps, 5.0, 0i64);              // tilt, prop=1
     int64:props13 = ep_propagation_count(snaps, meta);
     if (props13 == 2i64) {
         print("[PASS] 13: propagation_count = 2\n");
@@ -241,9 +241,9 @@ func:main = int32() {
 
     // ── 14: tilt_delta = |alpha_pbm - beta_pbm| ───────────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 0.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 0.0, 0.8, 64i64);
     // coupling=0: tilt_alpha 0.5 only moves alpha
-    drop(ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64));
+    drop ep_tilt_alpha(ep, meta, snaps, 25.0, 0i64);
     float64:delta14 = ep_tilt_delta(ep);
     float64:d14 = delta14 - 0.5;
     if (d14 < 0.0) { d14 = 0.0 - d14; }
@@ -268,7 +268,7 @@ func:main = int32() {
 
     // ── 16: ep_get_snap reads back init snapshot fields ───────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     int64:ok16 = ep_get_snap(snaps, meta, 0i64, snap);
     // snap[13] = propagated_f should be 0 (init is source=pair, propagated=0)
     int64:prop16 = snap[13i64] => int64;
@@ -291,9 +291,9 @@ func:main = int32() {
 
     // ── 18: ep_observe_alpha: lean + tilt in one step ─────────────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     // observe_alpha direction=0 (a): lean_a + tilt_none
-    drop(ep_observe_alpha(ep, meta, snaps, 10.0, 0.0, 0i64));
+    drop ep_observe_alpha(ep, meta, snaps, 10.0, 0.0, 0i64);
     float64:a_pbc18 = ep[0i64];
     float64:d18 = a_pbc18 - 40.0;
     if (d18 < 0.0) { d18 = 0.0 - d18; }
@@ -306,10 +306,10 @@ func:main = int32() {
 
     // ── 19: ep_sync_count counts matching alpha/beta decisions ────────────────
     total = total + 1i64;
-    drop(ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64));
+    drop ep_create(ep, meta, snaps, 100.0, 1.0, 0.8, 64i64);
     // init: both decision=UNKNOWN → synced
     // lean_alpha_a to pbc=26 → alpha decision=A, beta still UNKNOWN → not synced
-    drop(ep_lean_alpha_a(ep, meta, snaps, 24.0));
+    drop ep_lean_alpha_a(ep, meta, snaps, 24.0);
     int64:sync19 = ep_sync_count(snaps, meta);
     // snap 0 = init (both UNKNOWN, synced), snap 1 = after lean (A vs UNKNOWN, not)
     if (sync19 == 1i64) {
@@ -324,12 +324,12 @@ func:main = int32() {
     // Use capacity=4 to force wraps
     wild float64->:snaps_s = aria_alloc(4i64 * 16i64 * 8i64);
     wild int64->:meta_s    = malloc(5i64 * 8i64);
-    drop(ep_create(ep, meta_s, snaps_s, 100.0, 1.0, 0.8, 4i64));   // step 0
-    drop(ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0));                 // step 1
-    drop(ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0));                 // step 2
-    drop(ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0));                 // step 3 (ring full)
-    drop(ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0));                 // step 4 (overwrites)
-    drop(ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0));                 // step 5
+    drop ep_create(ep, meta_s, snaps_s, 100.0, 1.0, 0.8, 4i64);   // step 0
+    drop ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0);                 // step 1
+    drop ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0);                 // step 2
+    drop ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0);                 // step 3 (ring full)
+    drop ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0);                 // step 4 (overwrites)
+    drop ep_lean_alpha_a(ep, meta_s, snaps_s, 5.0);                 // step 5
     int64:cnt20   = ep_snap_count(meta_s);
     int64:step20  = ep_step_count(meta_s);
     // count should be capped at 4, step_count=6
@@ -354,5 +354,5 @@ func:main = int32() {
     aria_free(snaps);
     aria_free(ep);
     free(meta);
-    exit(0);
+    exit 0;
 };

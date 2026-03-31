@@ -13,7 +13,7 @@
 
 use "print_utils.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_cuda_shim" {
     func:aria_cuda_last_error       = string();
@@ -281,7 +281,7 @@ func:main = int32() {
 
     if (passed == total) {
         println("ALL TESTS PASSED");
-        exit(0);
+        exit 0;
     }
-    pass(1i32);
+    pass 1i32;
 };

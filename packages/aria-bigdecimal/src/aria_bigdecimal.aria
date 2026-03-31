@@ -24,55 +24,55 @@ extern "aria_bigdecimal_shim" {
 
 pub func:bigdec_create = int32(string:value) {
     int32:h = aria_bigdec_create(value);
-    pass(h);
+    pass h;
 };
 
 pub func:bigdec_destroy = NIL(int32:handle) {
     aria_bigdec_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:bigdec_to_string = string(int32:handle) {
     string:s = aria_bigdec_to_string(handle);
-    pass(s);
+    pass s;
 };
 
 pub func:bigdec_compare = int32(int32:a, int32:b) {
     int32:r = aria_bigdec_compare(a, b);
-    pass(r);
+    pass r;
 };
 
 pub func:bigdec_equals = int32(int32:a, int32:b) {
     int32:r = aria_bigdec_equals(a, b);
-    pass(r);
+    pass r;
 };
 
 pub func:bigdec_add = int32(int32:a, int32:b) {
     int32:h = aria_bigdec_add(a, b);
-    pass(h);
+    pass h;
 };
 
 pub func:bigdec_subtract = int32(int32:a, int32:b) {
     int32:h = aria_bigdec_subtract(a, b);
-    pass(h);
+    pass h;
 };
 
 pub func:bigdec_multiply = int32(int32:a, int32:b) {
     int32:h = aria_bigdec_multiply(a, b);
-    pass(h);
+    pass h;
 };
 
 pub func:bigdec_negate = int32(int32:a) {
     int32:h = aria_bigdec_negate(a);
-    pass(h);
+    pass h;
 };
 
 pub func:bigdec_is_zero = int32(int32:handle) {
     int32:r = aria_bigdec_is_zero(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:bigdec_is_negative = int32(int32:handle) {
     int32:r = aria_bigdec_is_negative(handle);
-    pass(r);
+    pass r;
 };

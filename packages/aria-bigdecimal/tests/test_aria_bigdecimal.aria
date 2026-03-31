@@ -4,10 +4,10 @@ extern func:aria_test_bigdec_run = int32();
 
 func:failsafe = int32(tbb32:err_code) {
     println("FAILSAFE triggered");
-    exit(1);
+    exit 1;
 };
 
 func:main = int32() {
     int32:fails = aria_test_bigdec_run();
-    exit(fails);
+    exit fails;
 };

@@ -28,7 +28,7 @@ pub func:rev16 = uint64(uint64:v) {
     uint64:b0 = v & mask8;
     uint64:b1 = (v >> 8u64) & mask8;
     uint64:r = b1 | (b0 << 8u64);
-    pass(r);
+    pass r;
 };
 
 // rev32: reverse the byte order of the low 32 bits.
@@ -40,7 +40,7 @@ pub func:rev32 = uint64(uint64:v) {
     uint64:b2 = (v >> 16u64) & mask8;
     uint64:b3 = (v >> 24u64) & mask8;
     uint64:r = b3 | (b2 << 8u64) | (b1 << 16u64) | (b0 << 24u64);
-    pass(r);
+    pass r;
 };
 
 // rev64: reverse the byte order of all 8 bytes.
@@ -57,7 +57,7 @@ pub func:rev64 = uint64(uint64:v) {
     uint64:b7 = (v >> 56u64) & mask8;
     uint64:lo = b7 | (b6 << 8u64) | (b5 << 16u64) | (b4 << 24u64);
     uint64:hi = (b3 << 32u64) | (b2 << 40u64) | (b1 << 48u64) | (b0 << 56u64);
-    pass(lo | hi);
+    pass lo | hi;
 };
 
 // rol32: rotate-left a 32-bit value (stored in low 32 bits) by n bits.
@@ -69,7 +69,7 @@ pub func:rol32 = uint64(uint64:v, uint64:n) {
     uint64:n31 = n & 31u64;
     uint64:m31 = (32u64 - n31) & 31u64;
     uint64:result = ((v32 << n31) | (v32 >> m31)) & mask32;
-    pass(result);
+    pass result;
 };
 
 // ror32: rotate-right a 32-bit value (stored in low 32 bits) by n bits.
@@ -80,7 +80,7 @@ pub func:ror32 = uint64(uint64:v, uint64:n) {
     uint64:n31 = n & 31u64;
     uint64:m31 = (32u64 - n31) & 31u64;
     uint64:result = ((v32 >> n31) | (v32 << m31)) & mask32;
-    pass(result);
+    pass result;
 };
 
 // rol64: rotate-left a 64-bit value by n bits.
@@ -89,7 +89,7 @@ pub func:rol64 = uint64(uint64:v, uint64:n) {
     uint64:n63 = n & 63u64;
     uint64:m63 = (64u64 - n63) & 63u64;
     uint64:result = (v << n63) | (v >> m63);
-    pass(result);
+    pass result;
 };
 
 // ror64: rotate-right a 64-bit value by n bits.
@@ -98,14 +98,14 @@ pub func:ror64 = uint64(uint64:v, uint64:n) {
     uint64:n63 = n & 63u64;
     uint64:m63 = (64u64 - n63) & 63u64;
     uint64:result = (v >> n63) | (v << m63);
-    pass(result);
+    pass result;
 };
 
 // le16: little-endian 16-bit conversion.
 // On a little-endian host (x86), this is an identity — just mask to 16 bits.
 pub func:le16 = uint64(uint64:v) {
     uint64:mask16 = 65535u64;
-    pass(v & mask16);
+    pass v & mask16;
 };
 
 // be16: big-endian 16-bit conversion.
@@ -115,14 +115,14 @@ pub func:be16 = uint64(uint64:v) {
     uint64:b0 = v & mask8;
     uint64:b1 = (v >> 8u64) & mask8;
     uint64:r = b1 | (b0 << 8u64);
-    pass(r);
+    pass r;
 };
 
 // le32: little-endian 32-bit conversion.
 // On a little-endian host, this is an identity — just mask to 32 bits.
 pub func:le32 = uint64(uint64:v) {
     uint64:mask32 = 4294967295u64;
-    pass(v & mask32);
+    pass v & mask32;
 };
 
 // be32: big-endian 32-bit conversion.
@@ -134,13 +134,13 @@ pub func:be32 = uint64(uint64:v) {
     uint64:b2 = (v >> 16u64) & mask8;
     uint64:b3 = (v >> 24u64) & mask8;
     uint64:r = b3 | (b2 << 8u64) | (b1 << 16u64) | (b0 << 24u64);
-    pass(r);
+    pass r;
 };
 
 // le64: little-endian 64-bit conversion.
 // On a little-endian host, this is an identity.
 pub func:le64 = uint64(uint64:v) {
-    pass(v);
+    pass v;
 };
 
 // be64: big-endian 64-bit conversion.
@@ -157,5 +157,5 @@ pub func:be64 = uint64(uint64:v) {
     uint64:b7 = (v >> 56u64) & mask8;
     uint64:lo = b7 | (b6 << 8u64) | (b5 << 16u64) | (b4 << 24u64);
     uint64:hi = (b3 << 32u64) | (b2 << 40u64) | (b1 << 48u64) | (b0 << 56u64);
-    pass(lo | hi);
+    pass lo | hi;
 };

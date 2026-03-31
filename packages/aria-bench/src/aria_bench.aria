@@ -12,12 +12,12 @@ extern "aria_bench_shim" {
 
 pub func:bench_now = int64() {
     int64:t = aria_bench_now_ns();
-    pass(t);
+    pass t;
 };
 
 pub func:bench_elapsed = int64(int64:start_ns) {
     int64:e = aria_bench_elapsed_ns(start_ns);
-    pass(e);
+    pass e;
 };
 
 // ── Unit Conversions (from nanoseconds) ─────────────────────────────
@@ -25,34 +25,34 @@ pub func:bench_elapsed = int64(int64:start_ns) {
 pub func:bench_elapsed_us = int64(int64:start_ns) {
     int64:e = aria_bench_elapsed_ns(start_ns);
     int64:us = e / 1000i64;
-    pass(us);
+    pass us;
 };
 
 pub func:bench_elapsed_ms = int64(int64:start_ns) {
     int64:e = aria_bench_elapsed_ns(start_ns);
     int64:ms = e / 1000000i64;
-    pass(ms);
+    pass ms;
 };
 
 pub func:bench_ns_to_us = int64(int64:ns) {
     int64:us = ns / 1000i64;
-    pass(us);
+    pass us;
 };
 
 pub func:bench_ns_to_ms = int64(int64:ns) {
     int64:ms = ns / 1000000i64;
-    pass(ms);
+    pass ms;
 };
 
 // ── Statistical Helpers ─────────────────────────────────────────────
 
 pub func:bench_avg_ns = int64(int64:total_ns, int64:iterations) {
     int64:avg = total_ns / iterations;
-    pass(avg);
+    pass avg;
 };
 
 pub func:bench_ops_per_sec = int64(int64:total_ns, int64:iterations) {
     int64:billion = 1000000000i64;
     int64:ops = (iterations * billion) / total_ns;
-    pass(ops);
+    pass ops;
 };

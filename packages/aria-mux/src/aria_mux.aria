@@ -18,7 +18,7 @@
 pub func:bit_mux = uint64(uint64:a, uint64:b, uint64:sel) {
     uint64:result = a;
     if (sel == 1u64) { result = b; }
-    pass(result);
+    pass result;
 };
 
 // Extract a field of `width` bits starting at bit position `pos`.
@@ -27,7 +27,7 @@ pub func:bit_mux = uint64(uint64:a, uint64:b, uint64:sel) {
 pub func:field_get = uint64(uint64:word, uint64:pos, uint64:width) {
     uint64:shifted = word >> pos;
     uint64:ones = (1u64 << width) - 1u64;
-    pass(shifted & ones);
+    pass shifted & ones;
 };
 
 // Insert `val` into `word` at bit position `pos` with field `width`.
@@ -38,7 +38,7 @@ pub func:field_set = uint64(uint64:word, uint64:val, uint64:pos, uint64:width) {
     uint64:mask = ones << pos;
     uint64:cleared = (word | mask) ^ mask;
     uint64:inserted = (val & ones) << pos;
-    pass(cleared | inserted);
+    pass cleared | inserted;
 };
 
 // Extract byte n (0=lowest) from a uint64 word.
@@ -46,12 +46,12 @@ pub func:field_set = uint64(uint64:word, uint64:val, uint64:pos, uint64:width) {
 // Safe for n in 0..6 (avoids bit 63 via >> 56 at most).
 pub func:byte_sel = uint64(uint64:word, uint64:n) {
     uint64:shift = n * 8u64;
-    pass((word >> shift) & 255u64);
+    pass (word >> shift) & 255u64;
 };
 
 // Keep only bits set in mask (AND).
 pub func:mask_keep = uint64(uint64:word, uint64:mask) {
-    pass(word & mask);
+    pass word & mask;
 };
 
 // Clear bits set in mask (AND NOT = AND XOR, then AND with complement NOT possible,
@@ -59,13 +59,13 @@ pub func:mask_keep = uint64(uint64:word, uint64:mask) {
 // Simple: word & ~mask, but aria has no ~ unary operator on uint64.
 // Trick: (word | mask) ^ mask  clears the masked bits.
 pub func:mask_clear = uint64(uint64:word, uint64:mask) {
-    pass((word | mask) ^ mask);
+    pass (word | mask) ^ mask;
 };
 
 // Generate a mask of n consecutive 1-bits at positions 0..n-1.
 // ones_mask(4) = 0b1111 = 15.  Safe for n in 1..62.
 pub func:ones_mask = uint64(uint64:n) {
-    pass((1u64 << n) - 1u64);
+    pass (1u64 << n) - 1u64;
 };
 
 // Merge two words under a mask: result = (a & ~mask) | (b & mask).
@@ -73,5 +73,5 @@ pub func:ones_mask = uint64(uint64:n) {
 pub func:blend = uint64(uint64:a, uint64:b, uint64:mask) {
     uint64:from_b = b & mask;
     uint64:from_a = (a | mask) ^ mask;
-    pass(from_a | from_b);
+    pass from_a | from_b;
 };

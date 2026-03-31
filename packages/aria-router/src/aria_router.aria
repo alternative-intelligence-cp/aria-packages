@@ -42,51 +42,51 @@ extern "aria_router_shim" {
 
 pub func:router_add = NIL(string:method, string:pattern, int32:handler_id) {
     aria_router_add(method, pattern, handler_id);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:router_use = NIL(string:path_prefix, int32:middleware_id) {
     aria_router_use(path_prefix, middleware_id);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:router_match = int32(string:method, string:path) {
-    pass(aria_router_match(method, path));
+    pass aria_router_match(method, path);
 };
 
 pub func:router_param = string(string:name) {
-    pass(aria_router_param(name));
+    pass aria_router_param(name);
 };
 
 pub func:router_param_count = int32() {
-    pass(aria_router_param_count());
+    pass aria_router_param_count();
 };
 
 pub func:router_param_name = string(int32:index) {
-    pass(aria_router_param_name(index));
+    pass aria_router_param_name(index);
 };
 
 pub func:router_param_value = string(int32:index) {
-    pass(aria_router_param_value(index));
+    pass aria_router_param_value(index);
 };
 
 pub func:router_middleware_count = int32() {
-    pass(aria_router_middleware_count());
+    pass aria_router_middleware_count();
 };
 
 pub func:router_middleware_id = int32(int32:index) {
-    pass(aria_router_middleware_id(index));
+    pass aria_router_middleware_id(index);
 };
 
 pub func:router_route_count = int32() {
-    pass(aria_router_route_count());
+    pass aria_router_route_count();
 };
 
 pub func:router_reset = NIL() {
     aria_router_reset();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:router_error = string() {
-    pass(aria_router_error());
+    pass aria_router_error();
 };

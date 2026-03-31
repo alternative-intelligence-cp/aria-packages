@@ -44,34 +44,34 @@ extern "aria_input" {
 
 // ── Button bit constants ──────────────────────────────────────────────────────
 
-pub func:BTN_RIGHT  = int32() { pass(1i32); };
-pub func:BTN_LEFT   = int32() { pass(2i32); };
-pub func:BTN_DOWN   = int32() { pass(4i32); };
-pub func:BTN_UP     = int32() { pass(8i32); };
-pub func:BTN_A      = int32() { pass(16i32); };
-pub func:BTN_B      = int32() { pass(32i32); };
-pub func:BTN_X      = int32() { pass(64i32); };
-pub func:BTN_Y      = int32() { pass(128i32); };
-pub func:BTN_L      = int32() { pass(256i32); };
-pub func:BTN_R      = int32() { pass(512i32); };
-pub func:BTN_START  = int32() { pass(1024i32); };
-pub func:BTN_SELECT = int32() { pass(2048i32); };
+pub func:BTN_RIGHT  = int32() { pass 1i32; };
+pub func:BTN_LEFT   = int32() { pass 2i32; };
+pub func:BTN_DOWN   = int32() { pass 4i32; };
+pub func:BTN_UP     = int32() { pass 8i32; };
+pub func:BTN_A      = int32() { pass 16i32; };
+pub func:BTN_B      = int32() { pass 32i32; };
+pub func:BTN_X      = int32() { pass 64i32; };
+pub func:BTN_Y      = int32() { pass 128i32; };
+pub func:BTN_L      = int32() { pass 256i32; };
+pub func:BTN_R      = int32() { pass 512i32; };
+pub func:BTN_START  = int32() { pass 1024i32; };
+pub func:BTN_SELECT = int32() { pass 2048i32; };
 
 // ── Raw mode control ─────────────────────────────────────────────────────────
 
 pub func:inp_enter_raw = int32() {
     int32:r = aria_input_enter_raw();
-    pass(r);
+    pass r;
 };
 
 pub func:inp_exit_raw = int32() {
     int32:r = aria_input_exit_raw();
-    pass(r);
+    pass r;
 };
 
 pub func:inp_is_raw = int32() {
     int32:r = aria_input_is_raw();
-    pass(r);
+    pass r;
 };
 
 // ── Key reading ───────────────────────────────────────────────────────────────
@@ -79,27 +79,27 @@ pub func:inp_is_raw = int32() {
 // Read a raw byte (0-255) or -1 if no data.
 pub func:inp_read_byte = int32() {
     int32:r = aria_input_read_raw_byte();
-    pass(r);
+    pass r;
 };
 
 // Read a virtual keycode (handles escape sequences for arrow keys).
 // Returns -1 if no key ready.
 pub func:inp_read_key = int32() {
     int32:r = aria_input_read_key();
-    pass(r);
+    pass r;
 };
 
 // Check if stdin has data without reading.
 // Returns 1 if data available, 0 if not, -1 on error.
 pub func:inp_poll = int32() {
     int32:r = aria_input_poll();
-    pass(r);
+    pass r;
 };
 
 // Discard any pending input bytes.
 pub func:inp_flush = int32() {
     int32:r = aria_input_flush_pending();
-    pass(r);
+    pass r;
 };
 
 // ── Button mapping ────────────────────────────────────────────────────────────
@@ -107,20 +107,20 @@ pub func:inp_flush = int32() {
 // Convert a virtual keycode to a button bitmask (0 if unmapped).
 pub func:inp_key_to_buttons = int32(int32:vk) {
     int32:r = aria_input_key_to_buttons(vk);
-    pass(r);
+    pass r;
 };
 
 // Convert a raw ASCII byte to a button bitmask (0 if unmapped).
 pub func:inp_byte_to_buttons = int32(int32:b) {
     int32:r = aria_input_map_byte(b);
-    pass(r);
+    pass r;
 };
 
 // Override key binding: map ascii_byte to button_mask (0 clears).
 // Returns 0 on success, -1 if ascii_byte out of range.
 pub func:inp_bind = int32(int32:ascii_byte, int32:button_mask) {
     int32:r = aria_input_map_key(ascii_byte, button_mask);
-    pass(r);
+    pass r;
 };
 
 // ── Convenience: read + map in one call ──────────────────────────────────────
@@ -129,10 +129,10 @@ pub func:inp_bind = int32(int32:ascii_byte, int32:button_mask) {
 pub func:inp_buttons = int32() {
     int32:k = aria_input_read_key();
     if (k < 0i32) {
-        pass(0i32);
+        pass 0i32;
     }
     int32:b = aria_input_key_to_buttons(k);
-    pass(b);
+    pass b;
 };
 
 // Check if a particular button is pressed in a bitmask.
@@ -142,9 +142,9 @@ pub func:inp_has_button = int32(int32:bitmask, int32:btn) {
     uint32:ubtn = @cast<uint32>(btn);
     uint32:r    = ubm & ubtn;
     if (r != 0u32) {
-        pass(1i32);
+        pass 1i32;
     }
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Frame-based button state (call inp_update once per frame) ────────────────
@@ -153,35 +153,35 @@ pub func:inp_has_button = int32(int32:bitmask, int32:btn) {
 // Returns the current frame's button bitmask.
 pub func:inp_update = int32() {
     int32:r = aria_input_update_frame();
-    pass(r);
+    pass r;
 };
 
 // Returns 1 if button is held this frame (after inp_update).
 pub func:inp_btn = int32(int32:button_mask) {
     int32:r = aria_input_btn(button_mask);
-    pass(r);
+    pass r;
 };
 
 // Returns 1 if button was just pressed this frame (edge: not prev, yes curr).
 pub func:inp_btnp = int32(int32:button_mask) {
     int32:r = aria_input_btnp(button_mask);
-    pass(r);
+    pass r;
 };
 
 // Returns 1 if button was just released this frame (edge: yes prev, not curr).
 pub func:inp_btnr = int32(int32:button_mask) {
     int32:r = aria_input_btnr(button_mask);
-    pass(r);
+    pass r;
 };
 
 // Get the current frame's full button bitmask.
 pub func:inp_get_buttons = int32() {
     int32:r = aria_input_get_buttons();
-    pass(r);
+    pass r;
 };
 
 // Get the previous frame's full button bitmask.
 pub func:inp_get_prev_buttons = int32() {
     int32:r = aria_input_get_prev_buttons();
-    pass(r);
+    pass r;
 };

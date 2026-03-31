@@ -27,70 +27,70 @@ extern "aria_matrix_shim" {
 
 pub func:matrix_create = int32(int32:rows, int32:cols) {
     int32:h = aria_matrix_create(rows, cols);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_destroy = NIL(int32:handle) {
     aria_matrix_destroy(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:matrix_rows = int32(int32:handle) {
     int32:r = aria_matrix_rows(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:matrix_cols = int32(int32:handle) {
     int32:c = aria_matrix_cols(handle);
-    pass(c);
+    pass c;
 };
 
 pub func:matrix_set = int32(int32:handle, int32:r, int32:c, flt64:val) {
     int32:res = aria_matrix_set(handle, r, c, val);
-    pass(res);
+    pass res;
 };
 
 pub func:matrix_get = flt64(int32:handle, int32:r, int32:c) {
     flt64:v = aria_matrix_get(handle, r, c);
-    pass(v);
+    pass v;
 };
 
 pub func:matrix_identity = int32(int32:n) {
     int32:h = aria_matrix_identity(n);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_add = int32(int32:a, int32:b) {
     int32:h = aria_matrix_add(a, b);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_multiply = int32(int32:a, int32:b) {
     int32:h = aria_matrix_multiply(a, b);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_scale = int32(int32:a, flt64:scalar) {
     int32:h = aria_matrix_scale(a, scalar);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_transpose = int32(int32:a) {
     int32:h = aria_matrix_transpose(a);
-    pass(h);
+    pass h;
 };
 
 pub func:matrix_determinant = flt64(int32:a) {
     flt64:d = aria_matrix_determinant(a);
-    pass(d);
+    pass d;
 };
 
 pub func:matrix_trace = flt64(int32:a) {
     flt64:t = aria_matrix_trace(a);
-    pass(t);
+    pass t;
 };
 
 pub func:matrix_equals = int32(int32:a, int32:b, flt64:eps) {
     int32:r = aria_matrix_equals(a, b, eps);
-    pass(r);
+    pass r;
 };

@@ -49,58 +49,58 @@ extern "aria_console" {
 
 // ── Zone id constants ─────────────────────────────────────────────────────────
 
-pub func:CON_ZONE_RAM  = int32() { pass(0i32); };
-pub func:CON_ZONE_DISP = int32() { pass(1i32); };
-pub func:CON_ZONE_INP  = int32() { pass(2i32); };
-pub func:CON_ZONE_SND  = int32() { pass(3i32); };
-pub func:CON_ZONE_SYS  = int32() { pass(4i32); };
-pub func:CON_ZONE_VRAM = int32() { pass(5i32); };
-pub func:CON_ZONE_ROM  = int32() { pass(6i32); };
-pub func:CON_ZONE_INVALID = int32() { pass(0i32 - 1i32); };
+pub func:CON_ZONE_RAM  = int32() { pass 0i32; };
+pub func:CON_ZONE_DISP = int32() { pass 1i32; };
+pub func:CON_ZONE_INP  = int32() { pass 2i32; };
+pub func:CON_ZONE_SND  = int32() { pass 3i32; };
+pub func:CON_ZONE_SYS  = int32() { pass 4i32; };
+pub func:CON_ZONE_VRAM = int32() { pass 5i32; };
+pub func:CON_ZONE_ROM  = int32() { pass 6i32; };
+pub func:CON_ZONE_INVALID = int32() { pass 0i32 - 1i32; };
 
 // ── Address space boundaries ──────────────────────────────────────────────────
 
-pub func:CON_RAM_BASE  = int32() { pass(0i32); };
-pub func:CON_RAM_END   = int32() { pass(8191i32); };
-pub func:CON_DISP_BASE = int32() { pass(8192i32); };
-pub func:CON_DISP_END  = int32() { pass(10239i32); };
-pub func:CON_INP_BASE  = int32() { pass(10240i32); };
-pub func:CON_INP_END   = int32() { pass(12287i32); };
-pub func:CON_SND_BASE  = int32() { pass(12288i32); };
-pub func:CON_SND_END   = int32() { pass(14335i32); };
-pub func:CON_SYS_BASE  = int32() { pass(14336i32); };
-pub func:CON_SYS_END   = int32() { pass(16383i32); };
-pub func:CON_VRAM_BASE = int32() { pass(16384i32); };
-pub func:CON_VRAM_END  = int32() { pass(32767i32); };
-pub func:CON_ROM_BASE  = int32() { pass(32768i32); };
-pub func:CON_ROM_END   = int32() { pass(65535i32); };
+pub func:CON_RAM_BASE  = int32() { pass 0i32; };
+pub func:CON_RAM_END   = int32() { pass 8191i32; };
+pub func:CON_DISP_BASE = int32() { pass 8192i32; };
+pub func:CON_DISP_END  = int32() { pass 10239i32; };
+pub func:CON_INP_BASE  = int32() { pass 10240i32; };
+pub func:CON_INP_END   = int32() { pass 12287i32; };
+pub func:CON_SND_BASE  = int32() { pass 12288i32; };
+pub func:CON_SND_END   = int32() { pass 14335i32; };
+pub func:CON_SYS_BASE  = int32() { pass 14336i32; };
+pub func:CON_SYS_END   = int32() { pass 16383i32; };
+pub func:CON_VRAM_BASE = int32() { pass 16384i32; };
+pub func:CON_VRAM_END  = int32() { pass 32767i32; };
+pub func:CON_ROM_BASE  = int32() { pass 32768i32; };
+pub func:CON_ROM_END   = int32() { pass 65535i32; };
 
 // ── Address decoder ───────────────────────────────────────────────────────────
 
 // Return zone id for a 16-bit address (0-65535), or CON_ZONE_INVALID if out of range.
 pub func:bus_zone = int32(int32:addr) {
-    if (addr < 0i32)     { pass(0i32 - 1i32); }
-    if (addr > 65535i32) { pass(0i32 - 1i32); }
-    if (addr <= 8191i32)  { pass(0i32); }   // RAM
-    if (addr <= 10239i32) { pass(1i32); }   // DISP
-    if (addr <= 12287i32) { pass(2i32); }   // INP
-    if (addr <= 14335i32) { pass(3i32); }   // SND
-    if (addr <= 16383i32) { pass(4i32); }   // SYS
-    if (addr <= 32767i32) { pass(5i32); }   // VRAM
-    pass(6i32);                              // ROM
+    if (addr < 0i32)     { pass 0i32 - 1i32; }
+    if (addr > 65535i32) { pass 0i32 - 1i32; }
+    if (addr <= 8191i32)  { pass 0i32; }   // RAM
+    if (addr <= 10239i32) { pass 1i32; }   // DISP
+    if (addr <= 12287i32) { pass 2i32; }   // INP
+    if (addr <= 14335i32) { pass 3i32; }   // SND
+    if (addr <= 16383i32) { pass 4i32; }   // SYS
+    if (addr <= 32767i32) { pass 5i32; }   // VRAM
+    pass 6i32;                              // ROM
 };
 
 // Returns 1 if address is in the given zone, 0 otherwise.
 pub func:bus_in_zone = int32(int32:addr, int32:zone_id) {
-    int32:z = raw(bus_zone(addr));
-    if (z == zone_id) { pass(1i32); }
-    pass(0i32);
+    int32:z = raw bus_zone(addr);
+    if (z == zone_id) { pass 1i32; }
+    pass 0i32;
 };
 
 // Returns 1 if address is valid (0-65535), 0 otherwise.
 pub func:bus_is_valid = int32(int32:addr) {
-    if (addr >= 0i32 && addr <= 65535i32) { pass(1i32); }
-    pass(0i32);
+    if (addr >= 0i32 && addr <= 65535i32) { pass 1i32; }
+    pass 0i32;
 };
 
 // ── Register address calculation ──────────────────────────────────────────────
@@ -108,50 +108,50 @@ pub func:bus_is_valid = int32(int32:addr) {
 // Return the absolute address of a display register (index 0-511).
 // Returns -1 if index out of range.
 pub func:disp_reg_addr = int32(int32:idx) {
-    if (idx < 0i32 || idx > 511i32) { pass(0i32 - 1i32); }
-    pass(8192i32 + idx);
+    if (idx < 0i32 || idx > 511i32) { pass 0i32 - 1i32; }
+    pass 8192i32 + idx;
 };
 
 // Return the absolute address of an input register (index 0-511).
 pub func:inp_reg_addr = int32(int32:idx) {
-    if (idx < 0i32 || idx > 511i32) { pass(0i32 - 1i32); }
-    pass(10240i32 + idx);
+    if (idx < 0i32 || idx > 511i32) { pass 0i32 - 1i32; }
+    pass 10240i32 + idx;
 };
 
 // Return the absolute address of an audio register (index 0-511).
 pub func:snd_reg_addr = int32(int32:idx) {
-    if (idx < 0i32 || idx > 511i32) { pass(0i32 - 1i32); }
-    pass(12288i32 + idx);
+    if (idx < 0i32 || idx > 511i32) { pass 0i32 - 1i32; }
+    pass 12288i32 + idx;
 };
 
 // Return the absolute address of a system register (index 0-511).
 pub func:sys_reg_addr = int32(int32:idx) {
-    if (idx < 0i32 || idx > 511i32) { pass(0i32 - 1i32); }
-    pass(14336i32 + idx);
+    if (idx < 0i32 || idx > 511i32) { pass 0i32 - 1i32; }
+    pass 14336i32 + idx;
 };
 
 // ── Frame timing math ─────────────────────────────────────────────────────────
 
 // Microseconds per frame at 60 fps (16666).
-pub func:CON_FRAME_US = int32() { pass(16666i32); };
+pub func:CON_FRAME_US = int32() { pass 16666i32; };
 
 // Milliseconds per frame at 60 fps (rounded down to 16).
-pub func:CON_FRAME_MS = int32() { pass(16i32); };
+pub func:CON_FRAME_MS = int32() { pass 16i32; };
 
 // Audio samples per frame at 44100 Hz, 60 fps: 44100/60 = 735.
-pub func:CON_SAMPLES_PER_FRAME = int32() { pass(735i32); };
+pub func:CON_SAMPLES_PER_FRAME = int32() { pass 735i32; };
 
 // Convert a millisecond tick to approximate frame number (tick / 16).
 pub func:con_ms_to_frame = int32(int32:ms) {
-    if (ms < 0i32) { pass(0i32); }
-    pass(ms / 16i32);
+    if (ms < 0i32) { pass 0i32; }
+    pass ms / 16i32;
 };
 
 // Return 1 if this tick is the start of a new frame (tick % 16 == 0).
 pub func:con_is_vblank = int32(int32:ms) {
     int32:rem = ms - ((ms / 16i32) * 16i32);
-    if (rem == 0i32) { pass(1i32); }
-    pass(0i32);
+    if (rem == 0i32) { pass 1i32; }
+    pass 0i32;
 };
 
 // ── Packed console state (uint64) ─────────────────────────────────────────────
@@ -169,31 +169,31 @@ pub func:con_state_pack = uint64(int32:frame, int32:joypad, int32:flags, int32:p
     uint64:fl = @cast<uint64>(flags)  & 65535u64;
     uint64:p  = @cast<uint64>(pc)     & 65535u64;
     uint64:packed = (f << 48u64) | (j << 32u64) | (fl << 16u64) | p;
-    pass(packed);
+    pass packed;
 };
 
 // Unpack frame counter from packed state.
 pub func:con_state_frame = int32(uint64:state) {
     uint64:f = (state >> 48u64) & 65535u64;
-    pass(@cast<int32>(f));
+    pass @cast<int32>(f);
 };
 
 // Unpack joypad bitmask from packed state.
 pub func:con_state_joypad = int32(uint64:state) {
     uint64:j = (state >> 32u64) & 65535u64;
-    pass(@cast<int32>(j));
+    pass @cast<int32>(j);
 };
 
 // Unpack system flags from packed state.
 pub func:con_state_flags = int32(uint64:state) {
     uint64:fl = (state >> 16u64) & 65535u64;
-    pass(@cast<int32>(fl));
+    pass @cast<int32>(fl);
 };
 
 // Unpack last_pc from packed state.
 pub func:con_state_pc = int32(uint64:state) {
     uint64:p = state & 65535u64;
-    pass(@cast<int32>(p));
+    pass @cast<int32>(p);
 };
 
 // ── Bus memory operations ─────────────────────────────────────────────────────
@@ -201,47 +201,47 @@ pub func:con_state_pc = int32(uint64:state) {
 // Initialize 64KB bus memory (zero-fill). Call once at startup.
 pub func:bus_init = int32() {
     int32:r = aria_console_bus_init();
-    pass(r);
+    pass r;
 };
 
 // Returns 1 if bus is initialized.
 pub func:bus_is_init = int32() {
     int32:r = aria_console_bus_is_init();
-    pass(r);
+    pass r;
 };
 
 // Read a byte (0-255) from a 16-bit bus address. Returns -1 if out of range.
 pub func:bus_read = int32(int32:addr) {
     int32:r = aria_console_bus_read(addr);
-    pass(r);
+    pass r;
 };
 
 // Write a byte to a 16-bit bus address. Returns 0 on success, -1 on error.
 pub func:bus_write = int32(int32:addr, int32:value) {
     int32:r = aria_console_bus_write(addr, value);
-    pass(r);
+    pass r;
 };
 
 // Read a 16-bit little-endian word from two consecutive addresses.
 pub func:bus_read16 = int32(int32:addr) {
     int32:r = aria_console_bus_read16(addr);
-    pass(r);
+    pass r;
 };
 
 // Write a 16-bit little-endian word to two consecutive addresses.
 pub func:bus_write16 = int32(int32:addr, int32:value) {
     int32:r = aria_console_bus_write16(addr, value);
-    pass(r);
+    pass r;
 };
 
 // Fill a range of addresses with a byte value.
 pub func:bus_fill = int32(int32:start, int32:length, int32:value) {
     int32:r = aria_console_bus_fill(start, length, value);
-    pass(r);
+    pass r;
 };
 
 // Reset entire bus memory to zero.
 pub func:bus_reset = int32() {
     int32:r = aria_console_bus_reset();
-    pass(r);
+    pass r;
 };

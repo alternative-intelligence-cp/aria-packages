@@ -12,46 +12,46 @@ extern func:aria_path_shim_has_extension = int64(string:p);
 
 pub func:path_join = string(string:a, string:b) {
     string:r = aria_path_shim_join(a, b);
-    pass(r);
+    pass r;
 };
 
 pub func:path_join3 = string(string:a, string:b, string:c) {
     string:ab = aria_path_shim_join(a, b);
     string:r = aria_path_shim_join(ab, c);
-    pass(r);
+    pass r;
 };
 
 pub func:path_basename = string(string:p) {
     string:r = aria_path_shim_basename(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_dirname = string(string:p) {
     string:r = aria_path_shim_dirname(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_extension = string(string:p) {
     string:r = aria_path_shim_extension(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_stem = string(string:p) {
     string:r = aria_path_shim_stem(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_is_absolute = int64(string:p) {
     int64:r = aria_path_shim_is_absolute(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_is_relative = int64(string:p) {
     int64:r = aria_path_shim_is_relative(p);
-    pass(r);
+    pass r;
 };
 
 pub func:path_has_extension = int64(string:p) {
     int64:r = aria_path_shim_has_extension(p);
-    pass(r);
+    pass r;
 };

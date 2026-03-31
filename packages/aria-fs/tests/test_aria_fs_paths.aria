@@ -1,6 +1,6 @@
 // test_aria_fs_paths.aria — Path helper & size tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_fs_assert_extension_eq  = void(string:path, string:expected, string:msg);
 extern func:aria_fs_assert_basename_eq   = void(string:path, string:expected, string:msg);
@@ -28,5 +28,5 @@ func:main = int32() {
     aria_fs_assert_int64_positive(mt, "test 09: modified_time > 0");
 
     aria_fs_test_summary();
-    exit(0);
+    exit 0;
 };

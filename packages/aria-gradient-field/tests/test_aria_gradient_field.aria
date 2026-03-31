@@ -40,7 +40,7 @@ extern func:aria_free  = void(wild float64*:ptr);
 extern func:malloc     = wild int64*(int64:size);
 extern func:free       = void(wild int64*:ptr);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
     int64:passed = 0i64;
@@ -64,7 +64,7 @@ func:main = int32() {
 
     // ── 01: gf_create sets meta correctly ─────────────────────────────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
     if (gf_meta[0i64] == 3i64 && gf_meta[1i64] == 4i64 &&
         gf_meta[3i64] == 0i64 && gf_meta[4i64] == 0i64 &&
         gf_meta[5i64] == 13i64) {
@@ -76,7 +76,7 @@ func:main = int32() {
 
     // ── 02: gf_create initialises all node defaults ────────────────────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
     float64:p02 = gf_node_pbc(nodes, 0i64);
     float64:b02 = gf_node_pbm(nodes, 0i64);
     float64:lw02 = gf_node_lean_w(nodes, 0i64);
@@ -95,9 +95,9 @@ func:main = int32() {
 
     // ── 03: gf_set_node updates weights ────────────────────────────────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
     float64:lw03 = gf_node_lean_w(nodes, 1i64);
     float64:tw03 = gf_node_tilt_w(nodes, 1i64);
     float64:lw03n = gf_node_lean_w(nodes, 2i64);
@@ -118,11 +118,11 @@ func:main = int32() {
     // Neutral emitter: pbc=50, pbm=0 → lean_sig=0, tilt_sig=-0.5
     // Node 0 (lean_w=1, tilt_w=1): lean_d=0, tilt_d=-0.5*20=-10 → pbc=50, pbm=clamp(0.3)=0.3
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     float64:p04 = gf_node_pbc(nodes, 0i64);
     float64:p04n = gf_node_pbc(nodes, 2i64);
     float64:d04 = p04 - 50.0;
@@ -141,13 +141,13 @@ func:main = int32() {
     // Node 1 lean_w=-1 → pbc=clamp(50-20)=30
     // Node 2 lean_w=0  → pbc=50
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     float64:p05_0 = gf_node_pbc(nodes, 0i64);
     float64:p05_1 = gf_node_pbc(nodes, 1i64);
     float64:p05_2 = gf_node_pbc(nodes, 2i64);
@@ -170,12 +170,12 @@ func:main = int32() {
     // Node 1 tilt_w=0.5: tilt_d=5,  step=0.1, pbm=0.6
     // Node 2 tilt_w=0.0: tilt_d=0,             pbm=0.5
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 50.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 50.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     float64:m06_0 = gf_node_pbm(nodes, 0i64);
     float64:m06_1 = gf_node_pbm(nodes, 1i64);
     float64:m06_2 = gf_node_pbm(nodes, 2i64);
@@ -196,13 +196,13 @@ func:main = int32() {
     // Lean-only: pbc=50, pbm=0 → tilt_sig=-0.5 still (tilt not neutralised here)
     // Using same lean-only setup as T05 (pbm=0.5, pbc=75) gives tilt_sig=0 cleanly
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:dc07_0 = gf_node_dec(nodes, 0i64);
     int64:dc07_1 = gf_node_dec(nodes, 1i64);
     if (dc07_0 == 3i64 && dc07_1 == 2i64) {
@@ -214,11 +214,11 @@ func:main = int32() {
 
     // ── 08: gf_project records pattern in ring buffer ──────────────────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:cnt08 = gf_pattern_count(gf_meta);
     int64:prj08 = gf_proj_count(gf_meta);
     if (cnt08 == 1i64 && prj08 == 1i64) {
@@ -231,13 +231,13 @@ func:main = int32() {
     // ── 09: gf_get_pattern returns correct emitter lean signal ─────────────
     // After lean-only drive (pbm=0.5, pbc=75): lean_signal = 1.0
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:ok09 = gf_get_pattern(patterns, gf_meta, 0i64, out_pattern);
     float64:lean09 = gf_pat_emitter_lean(out_pattern);
     float64:d09 = lean09 - 1.0;
@@ -252,14 +252,14 @@ func:main = int32() {
     // ── 10: gf_get_pattern returns correct node 0 decision ─────────────────
     // Same lean setup: node 0 → B(3)
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_get_pattern(patterns, gf_meta, 0i64, out_pattern));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_get_pattern(patterns, gf_meta, 0i64, out_pattern);
     int64:nd10 = gf_pat_node_dec(out_pattern, 0i64);
     if (nd10 == 3i64) {
         print("[PASS] 10: gf_get_pattern node0 decision = B(3)\n");
@@ -270,9 +270,9 @@ func:main = int32() {
 
     // ── 11: gf_get_pattern out-of-range returns 0 ─────────────────────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:r11a = gf_get_pattern(patterns, gf_meta, 5i64, out_pattern);
     int64:r11b = gf_get_pattern(patterns, gf_meta, -1i64, out_pattern);
     if (r11a == 0i64 && r11b == 0i64) {
@@ -285,12 +285,12 @@ func:main = int32() {
     // ── 12: gf_drive = emitter mutation + project in one call ─────────────
     // After 2 gf_drive calls: proj_count=2, pattern_count=2
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_drive(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta, em_snaps, 10.0, 0.0, 2i64));
-    drop(gf_drive(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta, em_snaps, 10.0, 0.0, 2i64));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_drive(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta, em_snaps, 10.0, 0.0, 2i64);
+    drop gf_drive(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta, em_snaps, 10.0, 0.0, 2i64);
     int64:pc12 = gf_proj_count(gf_meta);
     int64:cc12 = gf_pattern_count(gf_meta);
     if (pc12 == 2i64 && cc12 == 2i64) {
@@ -304,11 +304,11 @@ func:main = int32() {
     // Neutral emitter: pbc=50,pbm=0 → lean_sig=0,tilt_sig=-0.5
     // All nodes: pbc=50, pbm=0.3 → BOTH(4)  (even nodal node with tilt_w=0 stays 0.5→BOTH)
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:cs13 = gf_consensus_count(nodes, gf_meta, 4i64);
     if (cs13 == 3i64) {
         print("[PASS] 13: consensus BOTH(4) after neutral = 3\n");
@@ -320,13 +320,13 @@ func:main = int32() {
     // ── 14: gf_consensus_count B(3) after lean_b — 1 node ─────────────────
     // Lean setup (pbm=0.5, pbc=75): node0=B(3), node1=A(2), node2=BOTH(4)
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:cs14 = gf_consensus_count(nodes, gf_meta, 3i64);
     if (cs14 == 1i64) {
         print("[PASS] 14: consensus B(3) after lean_b = 1\n");
@@ -338,12 +338,12 @@ func:main = int32() {
     // ── 15: gf_pattern_shifts = 0 after two identical projections ─────────
     // Both neutral: same decisions → 0 shifts
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:sh15 = gf_pattern_shifts(patterns, gf_meta);
     if (sh15 == 0i64) {
         print("[PASS] 15: pattern_shifts = 0 for two identical projections\n");
@@ -355,14 +355,14 @@ func:main = int32() {
     // ── 16: gf_pattern_shifts = 1 after pattern changes ───────────────────
     // First project neutral → BOTH all; then drive lean_b → node0 changes to B
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:sh16 = gf_pattern_shifts(patterns, gf_meta);
     if (sh16 == 1i64) {
         print("[PASS] 16: pattern_shifts = 1 after emitter change\n");
@@ -373,14 +373,14 @@ func:main = int32() {
 
     // ── 17: ring buffer wraps — capacity=4, 6 projections → count=4 proj=6 ─
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
     int64:cnt17 = gf_pattern_count(gf_meta);
     int64:prj17 = gf_proj_count(gf_meta);
     if (cnt17 == 4i64 && prj17 == 6i64) {
@@ -392,9 +392,9 @@ func:main = int32() {
 
     // ── 18: gf_is_nodal — node2 (0/0 weights) is nodal; node0 is not ──────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64,  0.0, 0.0, 100.0);
     int64:nod18_0 = gf_is_nodal(nodes, 0i64, 0.1);
     int64:nod18_2 = gf_is_nodal(nodes, 2i64, 0.1);
     if (nod18_0 == 0i64 && nod18_2 == 1i64) {
@@ -407,14 +407,14 @@ func:main = int32() {
     // ── 19: gf_node_opt_a/opt_b after lean_b ──────────────────────────────
     // node0 after lean_b: pbc=70, pbm=0.5 → opt_a<0.15, opt_b>0.5
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
-    drop(gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0));
-    drop(gf_set_node(nodes, 2i64, 0.0, 0.0, 100.0));
-    drop(dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64));
-    drop(dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0));
-    drop(dgt_lean_b(em_dg, em_meta, em_snaps, 25.0));
-    drop(gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta));
-    drop(gf_get_pattern(patterns, gf_meta, 0i64, out_pattern));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
+    drop gf_set_node(nodes, 1i64, -1.0, 0.5, 100.0);
+    drop gf_set_node(nodes, 2i64, 0.0, 0.0, 100.0);
+    drop dgt_create(em_dg, em_meta, em_snaps, 100.0, 8i64);
+    drop dgt_tilt_both(em_dg, em_meta, em_snaps, 25.0);
+    drop dgt_lean_b(em_dg, em_meta, em_snaps, 25.0);
+    drop gf_project(nodes, gf_meta, gf_conf, patterns, em_dg, em_meta);
+    drop gf_get_pattern(patterns, gf_meta, 0i64, out_pattern);
     float64:oa19 = gf_pat_node_a(out_pattern, 0i64);
     float64:ob19 = gf_pat_node_b(out_pattern, 0i64);
     if (oa19 < 0.15 && ob19 > 0.5) {
@@ -426,7 +426,7 @@ func:main = int32() {
 
     // ── 20: meta accessors gf_n_nodes, gf_base_lean, gf_base_tilt ──────────
     total = total + 1i64;
-    drop(gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64));
+    drop gf_create(nodes, gf_meta, gf_conf, patterns, 3i64, 100.0, 20.0, 20.0, 4i64);
     int64:nn20 = gf_n_nodes(gf_meta);
     float64:bl20 = gf_base_lean(gf_conf);
     float64:bt20 = gf_base_tilt(gf_conf);
@@ -461,5 +461,5 @@ func:main = int32() {
     free(em_meta);
     aria_free(em_snaps);
 
-    exit(0);
+    exit 0;
 };

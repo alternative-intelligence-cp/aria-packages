@@ -18,34 +18,34 @@ extern "aria_ini_shim" {
 
 pub func:ini_parse = int32(string:text) {
     int32:r = aria_ini_parse(text);
-    pass(r);
+    pass r;
 };
 
 pub func:ini_num_sections = int32() {
     int32:r = aria_ini_num_sections();
-    pass(r);
+    pass r;
 };
 
 pub func:ini_section_name = string(int32:idx) {
     int32:s = aria_ini_section_name_s(idx);
     string:r = aria_ini_last_result();
-    pass(r);
+    pass r;
 };
 
 pub func:ini_num_keys = int32(string:section) {
     int32:r = aria_ini_num_keys(section);
-    pass(r);
+    pass r;
 };
 
 pub func:ini_get = string(string:section, string:key) {
     int32:s = aria_ini_get_s(section, key);
     string:r = aria_ini_last_result();
-    pass(r);
+    pass r;
 };
 
 pub func:ini_has_key = int32(string:section, string:key) {
     int32:r = aria_ini_has_key(section, key);
-    pass(r);
+    pass r;
 };
 
 extern "aria_ini_shim" {
@@ -54,5 +54,5 @@ extern "aria_ini_shim" {
 
 pub func:ini_cleanup = NIL() {
     aria_ini_cleanup();
-    pass(NIL);
+    pass NIL;
 };

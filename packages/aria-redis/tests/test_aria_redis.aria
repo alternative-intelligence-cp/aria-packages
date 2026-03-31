@@ -1,4 +1,4 @@
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 // test_aria_redis.aria — Comprehensive Redis tests
 //
 // 40+ tests: connect, GET/SET, DEL, EXISTS, EXPIRE/TTL,
@@ -84,7 +84,7 @@ func:test_phase1 = NIL() {
     int64:sz = aria_redis_dbsize(c5);
     aria_redis_assert_int_eq(sz, 0i64, "T05 DBSIZE == 0 after flush");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 2: SET, GET, DEL, EXISTS ──────────────────────────────
@@ -124,7 +124,7 @@ func:test_phase2 = NIL() {
     int32:e2 = aria_redis_exists(c7, "name");
     aria_redis_assert_true(e2 == 0i32, "T12 EXISTS name == 0 after DEL");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 3: INCR, INCRBY, SET_EX, EXPIRE, TTL ──────────────────
@@ -171,7 +171,7 @@ func:test_phase3 = NIL() {
     int64:ttl2 = aria_redis_ttl(c9, "counter");
     aria_redis_assert_true(ttl2 > 0i64, "T19 TTL counter > 0 after EXPIRE");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 4: Lists ──────────────────────────────────────────────
@@ -215,7 +215,7 @@ func:test_phase4 = NIL() {
     int32:c9 = aria_redis_last_conn();
     aria_redis_assert_list_element_eq(c9, 3i32, "c", "T28 list[3] == c");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5: LPOP, RPOP ─────────────────────────────────────────
@@ -242,7 +242,7 @@ func:test_phase5 = NIL() {
     int64:len = aria_redis_llen(c5, "mylist");
     aria_redis_assert_int_eq(len, 2i64, "T33 LLEN == 2 after LPOP+RPOP");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 6: Hashes ─────────────────────────────────────────────
@@ -285,7 +285,7 @@ func:test_phase6 = NIL() {
     int64:hl2 = aria_redis_hlen(c8, "user:1");
     aria_redis_assert_int_eq(hl2, 1i64, "T41 HLEN user:1 == 1 after HDEL");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 7: Sets ───────────────────────────────────────────────
@@ -327,7 +327,7 @@ func:test_phase7 = NIL() {
     int64:sc2 = aria_redis_scard(c8, "myset");
     aria_redis_assert_int_eq(sc2, 1i64, "T49 SCARD == 1 after SREM");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 8: generic command, cleanup, disconnect ────────────────
@@ -354,21 +354,21 @@ func:test_phase8 = NIL() {
     int32:dc = aria_redis_disconnect(c5);
     aria_redis_assert_true(dc == 1i32, "T53 disconnect");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── main ────────────────────────────────────────────────────────
 
 func:main = int32() {
-    drop(test_phase1());
-    drop(test_phase2());
-    drop(test_phase3());
-    drop(test_phase4());
-    drop(test_phase5());
-    drop(test_phase6());
-    drop(test_phase7());
-    drop(test_phase8());
+    drop test_phase1();
+    drop test_phase2();
+    drop test_phase3();
+    drop test_phase4();
+    drop test_phase5();
+    drop test_phase6();
+    drop test_phase7();
+    drop test_phase8();
 
     aria_redis_test_summary();
-    exit(0);
+    exit 0;
 };

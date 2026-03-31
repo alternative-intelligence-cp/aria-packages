@@ -8,7 +8,7 @@
 
 use "../src/aria_decision_t.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
     // Allocate shared buffers (reused across tests)
@@ -100,7 +100,7 @@ func:main = int32() {
 
     // ── 07: dg_create initialises cell correctly ──────────────────────────────
     total = total + 1i64;
-    drop(dg_create(dg, 100.0));
+    drop dg_create(dg, 100.0);
     float64:pbc07 = dg[0i64];
     float64:pbm07 = dg[1i64];
     float64:w07   = dg[2i64];
@@ -115,8 +115,8 @@ func:main = int32() {
 
     // ── 08: dg_lean_a moves pbc left ─────────────────────────────────────────
     total = total + 1i64;
-    drop(dg_create(dg, 100.0));
-    drop(dg_lean_a(dg, 10.0));
+    drop dg_create(dg, 100.0);
+    drop dg_lean_a(dg, 10.0);
     float64:pbc08 = dg[0i64];
     float64:diff08 = pbc08 - 40.0;
     if (diff08 < 0.0) { diff08 = 0.0 - diff08; }
@@ -129,8 +129,8 @@ func:main = int32() {
 
     // ── 09: dg_lean_b moves pbc right ────────────────────────────────────────
     total = total + 1i64;
-    drop(dg_create(dg, 100.0));
-    drop(dg_lean_b(dg, 10.0));
+    drop dg_create(dg, 100.0);
+    drop dg_lean_b(dg, 10.0);
     float64:pbc09 = dg[0i64];
     float64:diff09 = pbc09 - 60.0;
     if (diff09 < 0.0) { diff09 = 0.0 - diff09; }
@@ -143,8 +143,8 @@ func:main = int32() {
 
     // ── 10: lean clamping at lo_lim=25 ───────────────────────────────────────
     total = total + 1i64;
-    drop(dg_create(dg, 100.0));
-    drop(dg_lean_a(dg, 100.0));   // big lean — should clamp to 25.0
+    drop dg_create(dg, 100.0);
+    drop dg_lean_a(dg, 100.0);   // big lean — should clamp to 25.0
     float64:pbc10 = dg[0i64];
     float64:diff10 = pbc10 - 25.0;
     if (diff10 < 0.0) { diff10 = 0.0 - diff10; }
@@ -157,8 +157,8 @@ func:main = int32() {
 
     // ── 11: dg_tilt_both increases pbm ───────────────────────────────────────
     total = total + 1i64;
-    drop(dg_create(dg, 100.0));
-    drop(dg_tilt_both(dg, 25.0));   // step = 25/50 = 0.5 → pbm=0.5
+    drop dg_create(dg, 100.0);
+    drop dg_tilt_both(dg, 25.0);   // step = 25/50 = 0.5 → pbm=0.5
     float64:pbm11 = dg[1i64];
     float64:diff11 = pbm11 - 0.5;
     if (diff11 < 0.0) { diff11 = 0.0 - diff11; }
@@ -171,7 +171,7 @@ func:main = int32() {
 
     // ── 12: dgt_create stores init snapshot ──────────────────────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
     int64:snap_count12 = dgt_snap_count(meta);
     int64:step_count12 = dgt_step_count(meta);
     if (snap_count12 == 1i64 && step_count12 == 1i64) {
@@ -183,7 +183,7 @@ func:main = int32() {
 
     // ── 13: dgt_lean_a adds snapshot ─────────────────────────────────────────
     total = total + 1i64;
-    drop(dgt_lean_a(dg, meta, snaps, 10.0));
+    drop dgt_lean_a(dg, meta, snaps, 10.0);
     int64:snap_count13 = dgt_snap_count(meta);
     if (snap_count13 == 2i64) {
         print("[PASS] 13: dgt_lean_a adds snapshot -> count=2\n");
@@ -194,7 +194,7 @@ func:main = int32() {
 
     // ── 14: dgt_get_snap reads slot 0 (init snapshot) ────────────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
     int64:ok14 = dgt_get_snap(snaps, meta, 0i64, snap);
     float64:dec14 = snap[6i64];
     int64:dec14i = dec14 => int64;
@@ -208,9 +208,9 @@ func:main = int32() {
 
     // ── 15: dgt_lean_a two steps → decision change NONE→A ────────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
     // push lean: from pbc=50 to pbc=26 (under 25 threshold for decision A)
-    drop(dgt_lean_a(dg, meta, snaps, 24.0));   // pbc=26
+    drop dgt_lean_a(dg, meta, snaps, 24.0);   // pbc=26
     wild int64->:chg15 = malloc(8i64 * 8i64);
     int64:changes15 = dgt_find_decision_changes(snaps, meta, chg15, 8i64);
     free(chg15);
@@ -223,9 +223,9 @@ func:main = int32() {
 
     // ── 16: dgt_tilt_both followed by tilt_none → trigger detected ───────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
-    drop(dgt_tilt_both(dg, meta, snaps, 25.0));   // pbm goes to 0.5
-    drop(dgt_tilt_none(dg, meta, snaps, 25.0));   // pbm back to 0.0
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
+    drop dgt_tilt_both(dg, meta, snaps, 25.0);   // pbm goes to 0.5
+    drop dgt_tilt_none(dg, meta, snaps, 25.0);   // pbm back to 0.0
     // Axis A metric changes as pbm changes
     wild int64->:trig16 = malloc(8i64 * 8i64);
     int64:trigs16 = dgt_find_triggers(snaps, meta, 0i64, 0.05, trig16, 8i64);
@@ -239,10 +239,10 @@ func:main = int32() {
 
     // ── 17: dgt_peak_confidence on axis A ────────────────────────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
-    drop(dgt_lean_a(dg, meta, snaps, 24.0));    // pbc=26 → a grows
-    drop(dgt_lean_a(dg, meta, snaps, 1.0));     // pbc=25 → a at max for pbm=0
-    drop(dgt_peak_confidence(snaps, meta, 0i64, pr));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
+    drop dgt_lean_a(dg, meta, snaps, 24.0);    // pbc=26 → a grows
+    drop dgt_lean_a(dg, meta, snaps, 1.0);     // pbc=25 → a at max for pbm=0
+    drop dgt_peak_confidence(snaps, meta, 0i64, pr);
     float64:peak_val17 = pr[1i64];
     if (peak_val17 > 0.4) {
         print("[PASS] 17: peak confidence axis A > 0.4\n");
@@ -253,10 +253,10 @@ func:main = int32() {
 
     // ── 18: dgt_stability_report counts decision zones ───────────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
-    drop(dgt_lean_a(dg, meta, snaps, 24.0));   // -> A
-    drop(dgt_lean_b(dg, meta, snaps, 48.0));   // -> back to center and B side
-    drop(dgt_stability_report(snaps, meta, counts));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
+    drop dgt_lean_a(dg, meta, snaps, 24.0);   // -> A
+    drop dgt_lean_b(dg, meta, snaps, 48.0);   // -> back to center and B side
+    drop dgt_stability_report(snaps, meta, counts);
     int64:total18 = counts[0i64] + counts[1i64] + counts[2i64] + counts[3i64] + counts[4i64];
     int64:snap_count18 = dgt_snap_count(meta);
     if (total18 == snap_count18) {
@@ -268,9 +268,9 @@ func:main = int32() {
 
     // ── 19: dgt_observe compound lean+tilt adds one snapshot ─────────────────
     total = total + 1i64;
-    drop(dgt_create(dg, meta, snaps, 100.0, 64i64));
+    drop dgt_create(dg, meta, snaps, 100.0, 64i64);
     int64:before19 = dgt_snap_count(meta);
-    drop(dgt_observe(dg, meta, snaps, 10.0, 10.0, 8i64, 0i64));
+    drop dgt_observe(dg, meta, snaps, 10.0, 10.0, 8i64, 0i64);
     int64:after19 = dgt_snap_count(meta);
     if (after19 == before19 + 1i64) {
         print("[PASS] 19: dgt_observe adds exactly one snapshot\n");
@@ -283,14 +283,14 @@ func:main = int32() {
     total = total + 1i64;
     wild float64->:small_snaps = aria_alloc(4i64 * 8i64 * 8i64);  // capacity=4
     wild int64->:small_meta    = malloc(5i64 * 8i64);
-    drop(dgt_create(dg, small_meta, small_snaps, 100.0, 4i64));
+    drop dgt_create(dg, small_meta, small_snaps, 100.0, 4i64);
     // add 6 more snapshots — total attempted = 7, but capacity=4 → count=4
-    drop(dgt_lean_a(dg, small_meta, small_snaps, 5.0));
-    drop(dgt_lean_a(dg, small_meta, small_snaps, 5.0));
-    drop(dgt_lean_a(dg, small_meta, small_snaps, 2.0));
-    drop(dgt_lean_b(dg, small_meta, small_snaps, 1.0));
-    drop(dgt_lean_b(dg, small_meta, small_snaps, 1.0));
-    drop(dgt_lean_b(dg, small_meta, small_snaps, 1.0));
+    drop dgt_lean_a(dg, small_meta, small_snaps, 5.0);
+    drop dgt_lean_a(dg, small_meta, small_snaps, 5.0);
+    drop dgt_lean_a(dg, small_meta, small_snaps, 2.0);
+    drop dgt_lean_b(dg, small_meta, small_snaps, 1.0);
+    drop dgt_lean_b(dg, small_meta, small_snaps, 1.0);
+    drop dgt_lean_b(dg, small_meta, small_snaps, 1.0);
     int64:count20 = dgt_snap_count(small_meta);
     int64:step20  = dgt_step_count(small_meta);
     free(small_meta);
@@ -317,5 +317,5 @@ func:main = int32() {
     print(string_from_int(total));
     print(" tests passed\n");
 
-    exit(0);
+    exit 0;
 };

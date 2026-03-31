@@ -76,98 +76,98 @@ extern "aria_cuda_shim" {
 
 pub func:cuda_last_error = string() {
     string:err = aria_cuda_last_error();
-    pass(err);
+    pass err;
 };
 
 // ── Public API: Device Management ───────────────────────────
 
 pub func:cuda_device_count = int32() {
-    pass(aria_cuda_device_count());
+    pass aria_cuda_device_count();
 };
 
 pub func:cuda_set_device = int32(int32:device) {
-    pass(aria_cuda_set_device(device));
+    pass aria_cuda_set_device(device);
 };
 
 pub func:cuda_get_device = int32() {
-    pass(aria_cuda_get_device());
+    pass aria_cuda_get_device();
 };
 
 pub func:cuda_device_name = string(int32:device) {
     string:nm = aria_cuda_device_name(device);
-    pass(nm);
+    pass nm;
 };
 
 pub func:cuda_device_total_memory = int64(int32:device) {
-    pass(aria_cuda_device_total_memory(device));
+    pass aria_cuda_device_total_memory(device);
 };
 
 pub func:cuda_device_compute_major = int32(int32:device) {
-    pass(aria_cuda_device_compute_major(device));
+    pass aria_cuda_device_compute_major(device);
 };
 
 pub func:cuda_device_compute_minor = int32(int32:device) {
-    pass(aria_cuda_device_compute_minor(device));
+    pass aria_cuda_device_compute_minor(device);
 };
 
 pub func:cuda_device_max_threads = int32(int32:device) {
-    pass(aria_cuda_device_max_threads(device));
+    pass aria_cuda_device_max_threads(device);
 };
 
 pub func:cuda_device_sm_count = int32(int32:device) {
-    pass(aria_cuda_device_sm_count(device));
+    pass aria_cuda_device_sm_count(device);
 };
 
 pub func:cuda_device_warp_size = int32(int32:device) {
-    pass(aria_cuda_device_warp_size(device));
+    pass aria_cuda_device_warp_size(device);
 };
 
 pub func:cuda_device_sync = int32() {
-    pass(aria_cuda_device_sync());
+    pass aria_cuda_device_sync();
 };
 
 pub func:cuda_device_reset = int32() {
-    pass(aria_cuda_device_reset());
+    pass aria_cuda_device_reset();
 };
 
 // ── Public API: GPU Memory ──────────────────────────────────
 
 pub func:cuda_malloc = int64(int64:size_bytes) {
-    pass(aria_cuda_malloc(size_bytes));
+    pass aria_cuda_malloc(size_bytes);
 };
 
 pub func:cuda_release = int32(int64:device_ptr) {
-    pass(aria_cuda_release(device_ptr));
+    pass aria_cuda_release(device_ptr);
 };
 
 pub func:cuda_memcpy_h2d = int32(int64:device_dst, int64:host_src, int64:size_bytes) {
-    pass(aria_cuda_memcpy_h2d(device_dst, host_src, size_bytes));
+    pass aria_cuda_memcpy_h2d(device_dst, host_src, size_bytes);
 };
 
 pub func:cuda_memcpy_d2h = int32(int64:host_dst, int64:device_src, int64:size_bytes) {
-    pass(aria_cuda_memcpy_d2h(host_dst, device_src, size_bytes));
+    pass aria_cuda_memcpy_d2h(host_dst, device_src, size_bytes);
 };
 
 pub func:cuda_memcpy_d2d = int32(int64:device_dst, int64:device_src, int64:size_bytes) {
-    pass(aria_cuda_memcpy_d2d(device_dst, device_src, size_bytes));
+    pass aria_cuda_memcpy_d2d(device_dst, device_src, size_bytes);
 };
 
 pub func:cuda_memset = int32(int64:device_ptr, int32:value, int64:size_bytes) {
-    pass(aria_cuda_memset(device_ptr, value, size_bytes));
+    pass aria_cuda_memset(device_ptr, value, size_bytes);
 };
 
 pub func:cuda_mem_get_free = int64() {
-    pass(aria_cuda_mem_get_free());
+    pass aria_cuda_mem_get_free();
 };
 
 pub func:cuda_mem_get_total = int64() {
-    pass(aria_cuda_mem_get_total());
+    pass aria_cuda_mem_get_total();
 };
 
 // ── Public API: Host Float Buffers ──────────────────────────
 
 pub func:cuda_host_alloc = int64(int32:count) {
-    pass(aria_cuda_host_alloc(count));
+    pass aria_cuda_host_alloc(count);
 };
 
 pub func:cuda_host_release = NIL(int64:handle) {
@@ -179,57 +179,57 @@ pub func:cuda_host_set = NIL(int64:handle, int32:index, flt64:value) {
 };
 
 pub func:cuda_host_get = flt64(int64:handle, int32:index) {
-    pass(aria_cuda_host_get(handle, index));
+    pass aria_cuda_host_get(handle, index);
 };
 
 pub func:cuda_host_upload = int64(int64:host_handle, int32:count) {
-    pass(aria_cuda_host_upload(host_handle, count));
+    pass aria_cuda_host_upload(host_handle, count);
 };
 
 pub func:cuda_host_download = int32(int64:host_handle, int64:device_handle, int32:count) {
-    pass(aria_cuda_host_download(host_handle, device_handle, count));
+    pass aria_cuda_host_download(host_handle, device_handle, count);
 };
 
 // ── Public API: cuBLAS ──────────────────────────────────────
 
 pub func:cuda_blas_init = int32() {
-    pass(aria_cuda_blas_init());
+    pass aria_cuda_blas_init();
 };
 
 pub func:cuda_blas_shutdown = int32() {
-    pass(aria_cuda_blas_shutdown());
+    pass aria_cuda_blas_shutdown();
 };
 
 pub func:cuda_blas_sgemm = int32(int32:M, int32:N, int32:K, flt64:alpha, int64:d_A, int32:lda, int64:d_B, int32:ldb, flt64:beta, int64:d_C, int32:ldc) {
-    pass(aria_cuda_blas_sgemm(M, N, K, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc));
+    pass aria_cuda_blas_sgemm(M, N, K, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc);
 };
 
 pub func:cuda_blas_sgemm_ex = int32(int32:trans_a, int32:trans_b, int32:M, int32:N, int32:K, flt64:alpha, int64:d_A, int32:lda, int64:d_B, int32:ldb, flt64:beta, int64:d_C, int32:ldc) {
-    pass(aria_cuda_blas_sgemm_ex(trans_a, trans_b, M, N, K, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc));
+    pass aria_cuda_blas_sgemm_ex(trans_a, trans_b, M, N, K, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc);
 };
 
 pub func:cuda_blas_saxpy = int32(int32:n, flt64:alpha, int64:d_x, int64:d_y) {
-    pass(aria_cuda_blas_saxpy(n, alpha, d_x, d_y));
+    pass aria_cuda_blas_saxpy(n, alpha, d_x, d_y);
 };
 
 pub func:cuda_blas_sscal = int32(int32:n, flt64:alpha, int64:d_x) {
-    pass(aria_cuda_blas_sscal(n, alpha, d_x));
+    pass aria_cuda_blas_sscal(n, alpha, d_x);
 };
 
 pub func:cuda_blas_sdot = flt64(int32:n, int64:d_x, int64:d_y) {
-    pass(aria_cuda_blas_sdot(n, d_x, d_y));
+    pass aria_cuda_blas_sdot(n, d_x, d_y);
 };
 
 pub func:cuda_blas_snrm2 = flt64(int32:n, int64:d_x) {
-    pass(aria_cuda_blas_snrm2(n, d_x));
+    pass aria_cuda_blas_snrm2(n, d_x);
 };
 
 // ── Public API: Convenience ─────────────────────────────────
 
 pub func:cuda_vec_add = int32(int32:n, int64:d_x, int64:d_y) {
-    pass(aria_cuda_vec_add(n, d_x, d_y));
+    pass aria_cuda_vec_add(n, d_x, d_y);
 };
 
 pub func:cuda_vec_scale = int32(int32:n, flt64:alpha, int64:d_x) {
-    pass(aria_cuda_vec_scale(n, alpha, d_x));
+    pass aria_cuda_vec_scale(n, alpha, d_x);
 };

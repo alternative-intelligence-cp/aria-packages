@@ -1,6 +1,6 @@
 // test_aria_toml.aria — TOML parser tests (10 tests)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_toml_shim" {
     func:aria_toml_parse      = int32(string:text);
@@ -22,54 +22,54 @@ func:main = int32() {
     int32:n = aria_toml_parse("title = \"TOML Test\"\nversion = 42\ndebug = true\npi = 3.14\n\n[server]\nhost = \"localhost\"\nport = 8080\n\n[database]\nname = \"mydb\"\nenabled = false\n");
 
     // T01: parse succeeds, returns entry count
-    if (n > 0i32) { drop(println("[PASS] T01 parse returns count")); }
-    if (n <= 0i32) { drop(println("[FAIL] T01 parse returns count")); }
+    if (n > 0i32) { drop println("[PASS] T01 parse returns count"); }
+    if (n <= 0i32) { drop println("[FAIL] T01 parse returns count"); }
 
     // T02: string value
     int32:h1 = aria_toml_has_key("title");
-    if (h1 == 1i32) { drop(println("[PASS] T02 has_key title")); }
-    if (h1 != 1i32) { drop(println("[FAIL] T02 has_key title")); }
+    if (h1 == 1i32) { drop println("[PASS] T02 has_key title"); }
+    if (h1 != 1i32) { drop println("[FAIL] T02 has_key title"); }
 
     // T03: int value
     int64:ver = aria_toml_get_int("version");
-    if (ver == 42i64) { drop(println("[PASS] T03 get_int version")); }
-    if (ver != 42i64) { drop(println("[FAIL] T03 get_int version")); }
+    if (ver == 42i64) { drop println("[PASS] T03 get_int version"); }
+    if (ver != 42i64) { drop println("[FAIL] T03 get_int version"); }
 
     // T04: bool value
     int32:dbg = aria_toml_get_bool("debug");
-    if (dbg == 1i32) { drop(println("[PASS] T04 get_bool debug")); }
-    if (dbg != 1i32) { drop(println("[FAIL] T04 get_bool debug")); }
+    if (dbg == 1i32) { drop println("[PASS] T04 get_bool debug"); }
+    if (dbg != 1i32) { drop println("[FAIL] T04 get_bool debug"); }
 
     // T05: table key (dotted path)
     int64:port = aria_toml_get_int("server.port");
-    if (port == 8080i64) { drop(println("[PASS] T05 get_int server.port")); }
-    if (port != 8080i64) { drop(println("[FAIL] T05 get_int server.port")); }
+    if (port == 8080i64) { drop println("[PASS] T05 get_int server.port"); }
+    if (port != 8080i64) { drop println("[FAIL] T05 get_int server.port"); }
 
     // T06: nested bool false
     int32:en = aria_toml_get_bool("database.enabled");
-    if (en == 0i32) { drop(println("[PASS] T06 get_bool database.enabled")); }
-    if (en != 0i32) { drop(println("[FAIL] T06 get_bool database.enabled")); }
+    if (en == 0i32) { drop println("[PASS] T06 get_bool database.enabled"); }
+    if (en != 0i32) { drop println("[FAIL] T06 get_bool database.enabled"); }
 
     // T07: missing key
     int32:miss = aria_toml_has_key("nonexistent");
-    if (miss == 0i32) { drop(println("[PASS] T07 missing key")); }
-    if (miss != 0i32) { drop(println("[FAIL] T07 missing key")); }
+    if (miss == 0i32) { drop println("[PASS] T07 missing key"); }
+    if (miss != 0i32) { drop println("[FAIL] T07 missing key"); }
 
     // T08: set_string
     int32:ss = aria_toml_set_string("new.key", "hello");
-    if (ss == 0i32) { drop(println("[PASS] T08 set_string")); }
-    if (ss != 0i32) { drop(println("[FAIL] T08 set_string")); }
+    if (ss == 0i32) { drop println("[PASS] T08 set_string"); }
+    if (ss != 0i32) { drop println("[FAIL] T08 set_string"); }
 
     // T09: count
     int32:c = aria_toml_count();
-    if (c > 7i32) { drop(println("[PASS] T09 count")); }
-    if (c <= 7i32) { drop(println("[FAIL] T09 count")); }
+    if (c > 7i32) { drop println("[PASS] T09 count"); }
+    if (c <= 7i32) { drop println("[FAIL] T09 count"); }
 
     // T10: clear
     aria_toml_clear();
     int32:c2 = aria_toml_count();
-    if (c2 == 0i32) { drop(println("[PASS] T10 clear")); }
-    if (c2 != 0i32) { drop(println("[FAIL] T10 clear")); }
+    if (c2 == 0i32) { drop println("[PASS] T10 clear"); }
+    if (c2 != 0i32) { drop println("[FAIL] T10 clear"); }
 
-    exit(0);
+    exit 0;
 };

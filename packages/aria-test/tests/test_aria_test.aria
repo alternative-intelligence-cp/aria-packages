@@ -1,6 +1,6 @@
 // test_aria_test.aria — Self-test for the aria-test framework
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_test_begin           = void(string:suite);
 extern func:aria_test_set_verbose     = void(int32:v);
@@ -69,5 +69,5 @@ func:main = int32() {
 
     // ── summary ─────────────────────────────────────────────────────
     int32:result = aria_test_end();
-    pass(result);
+    pass result;
 };

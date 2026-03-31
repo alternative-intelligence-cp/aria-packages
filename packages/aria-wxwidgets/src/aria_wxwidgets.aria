@@ -34,95 +34,95 @@ extern "aria_wxwidgets_shim" {
 
 pub func:wx_init = int32() {
     int32:r = aria_wx_init();
-    pass(r);
+    pass r;
 };
 
 pub func:wx_quit = NIL() {
     aria_wx_quit();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:wx_is_init = int32() {
     int32:r = aria_wx_is_init();
-    pass(r);
+    pass r;
 };
 
 pub func:wx_version = str() {
     str:v = aria_wx_version();
-    pass(v);
+    pass v;
 };
 
 pub func:wx_create_frame = int32(str:title, int32:w, int32:h) {
     int32:r = aria_wx_create_frame(title, w, h);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_destroy_frame = NIL(int32:handle) {
     aria_wx_destroy_frame(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:wx_show_frame = int32(int32:handle, int32:show) {
     int32:r = aria_wx_show_frame(handle, show);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_get_frame_title = str(int32:handle) {
     str:t = aria_wx_get_frame_title(handle);
-    pass(t);
+    pass t;
 };
 
 pub func:wx_get_frame_width = int32(int32:handle) {
     int32:r = aria_wx_get_frame_width(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_get_frame_height = int32(int32:handle) {
     int32:r = aria_wx_get_frame_height(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_create_button = int32(int32:frame_h, str:label) {
     int32:r = aria_wx_create_button(frame_h, label);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_create_label = int32(int32:frame_h, str:text) {
     int32:r = aria_wx_create_label(frame_h, text);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_create_textbox = int32(int32:frame_h, str:value) {
     int32:r = aria_wx_create_textbox(frame_h, value);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_destroy_control = NIL(int32:handle) {
     aria_wx_destroy_control(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:wx_get_control_label = str(int32:handle) {
     str:s = aria_wx_get_control_label(handle);
-    pass(s);
+    pass s;
 };
 
 pub func:wx_set_control_label = int32(int32:handle, str:text) {
     int32:r = aria_wx_set_control_label(handle, text);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_msgbox = int32(str:msg, str:title) {
     int32:r = aria_wx_msgbox(msg, title);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_set_sizer_vertical = int32(int32:frame_h) {
     int32:r = aria_wx_set_frame_sizer_vertical(frame_h);
-    pass(r);
+    pass r;
 };
 
 pub func:wx_sizer_add = int32(int32:frame_h, int32:ctrl_h) {
     int32:r = aria_wx_sizer_add_control(frame_h, ctrl_h);
-    pass(r);
+    pass r;
 };

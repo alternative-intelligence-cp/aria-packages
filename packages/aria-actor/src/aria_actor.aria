@@ -20,42 +20,42 @@ Type:ActorGroup = {
     // Create a group of N actors with the same behavior function.
     // behavior_func signature: func:handler = NIL(int64:msg) { ... }
     func:create = int64(?->:behavior_func, int32:count) {
-        pass(aria_actpat_group_create(behavior_func, count));
+        pass aria_actpat_group_create(behavior_func, count);
     };
 
     // Broadcast a message to all actors in the group.
     func:broadcast = int32(int64:slot, int64:message) {
-        pass(aria_actpat_group_broadcast(slot, message));
+        pass aria_actpat_group_broadcast(slot, message);
     };
 
     // Send to one actor (round-robin).
     func:send_rr = int32(int64:slot, int64:message) {
-        pass(aria_actpat_group_send_rr(slot, message));
+        pass aria_actpat_group_send_rr(slot, message);
     };
 
     // Get actor handle at index.
     func:get_actor = int64(int64:slot, int32:index) {
-        pass(aria_actpat_group_get_actor(slot, index));
+        pass aria_actpat_group_get_actor(slot, index);
     };
 
     // Get number of actors in group.
     func:count = int32(int64:slot) {
-        pass(aria_actpat_group_count(slot));
+        pass aria_actpat_group_count(slot);
     };
 
     // Count how many actors are still alive.
     func:alive_count = int32(int64:slot) {
-        pass(aria_actpat_group_alive_count(slot));
+        pass aria_actpat_group_alive_count(slot);
     };
 
     // Stop all actors in the group.
     func:stop_all = int32(int64:slot) {
-        pass(aria_actpat_group_stop_all(slot));
+        pass aria_actpat_group_stop_all(slot);
     };
 
     // Destroy the group and all its actors.
     func:destroy = int32(int64:slot) {
-        pass(aria_actpat_group_destroy(slot));
+        pass aria_actpat_group_destroy(slot);
     };
 };
 
@@ -66,6 +66,6 @@ Type:RequestReply = {
     // Actor convention: first recv = reply_ch handle, second recv = request value.
     // Actor should Channel.send(reply_ch, result) to reply.
     func:call = int64(int64:actor_handle, int64:request, int64:reply_ch) {
-        pass(aria_actpat_request_reply(actor_handle, request, reply_ch));
+        pass aria_actpat_request_reply(actor_handle, request, reply_ch);
     };
 };

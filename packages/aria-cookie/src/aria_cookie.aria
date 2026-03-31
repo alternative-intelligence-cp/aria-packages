@@ -39,90 +39,90 @@ extern "aria_cookie_shim" {
 
 pub func:cookie_parse = int32(string:cookie_header) {
     int32:r = aria_cookie_parse(cookie_header);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_get = string(string:name) {
     string:r = aria_cookie_get(name);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_has = int32(string:name) {
     int32:r = aria_cookie_has(name);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_count = int32() {
     int32:r = aria_cookie_count();
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_name = string(int32:index) {
     string:r = aria_cookie_name(index);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_value = string(int32:index) {
     string:r = aria_cookie_value(index);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_build_reset = NIL() {
     aria_cookie_builder_reset();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_name = NIL(string:name) {
     aria_cookie_builder_name(name);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_value = NIL(string:value) {
     aria_cookie_builder_value(value);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_path = NIL(string:path) {
     aria_cookie_builder_path(path);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_domain = NIL(string:domain) {
     aria_cookie_builder_domain(domain);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_max_age = NIL(int32:seconds) {
     aria_cookie_builder_max_age(seconds);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_secure = NIL(int32:flag) {
     aria_cookie_builder_secure(flag);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_httponly = NIL(int32:flag) {
     aria_cookie_builder_httponly(flag);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build_samesite = NIL(string:policy) {
     aria_cookie_builder_samesite(policy);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:cookie_build = string() {
     string:r = aria_cookie_builder_build();
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_delete_header = string(string:name, string:path) {
     string:r = aria_cookie_delete(name, path);
-    pass(r);
+    pass r;
 };
 
 pub func:cookie_reset = NIL() {
     aria_cookie_reset();
-    pass(NIL);
+    pass NIL;
 };

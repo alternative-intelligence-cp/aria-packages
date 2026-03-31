@@ -6,7 +6,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // ── shim externs (direct for test, no module import) ────────────────
 
@@ -73,44 +73,44 @@ func:main = int32() {
     int32:badtex = aria_rl_is_texture_valid(99i32);
     if (badtex == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] invalid handle returns not-valid"));
+        drop println("[PASS] invalid handle returns not-valid");
     }
     if (badtex != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] invalid handle returns not-valid"));
+        drop println("[FAIL] invalid handle returns not-valid");
     }
 
     // test 02: loading a nonexistent texture returns -1
     int32:nofile = aria_rl_load_texture("nonexistent_file.png");
     if (nofile == 0i32 - 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] nonexistent texture returns -1"));
+        drop println("[PASS] nonexistent texture returns -1");
     }
     if (nofile != 0i32 - 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] nonexistent texture returns -1"));
+        drop println("[FAIL] nonexistent texture returns -1");
     }
 
     // test 03: get_texture_width on bad handle returns 0
     int32:tw = aria_rl_get_texture_width(0i32 - 1i32);
     if (tw == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] bad handle width = 0"));
+        drop println("[PASS] bad handle width = 0");
     }
     if (tw != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] bad handle width = 0"));
+        drop println("[FAIL] bad handle width = 0");
     }
 
     // test 04: get_texture_height on bad handle returns 0
     int32:th = aria_rl_get_texture_height(0i32 - 1i32);
     if (th == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] bad handle height = 0"));
+        drop println("[PASS] bad handle height = 0");
     }
     if (th != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] bad handle height = 0"));
+        drop println("[FAIL] bad handle height = 0");
     }
 
     // test 05: draw_texture with bad handle is safe (no crash)
@@ -119,14 +119,14 @@ func:main = int32() {
     aria_rl_draw_texture(0i32 - 1i32, 0i32, 0i32,
                          255i32, 255i32, 255i32, 255i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw_texture bad handle (no crash)"));
+    drop println("[PASS] draw_texture bad handle (no crash)");
 
     // test 06: draw_texture_ex with bad handle is safe
     aria_rl_draw_texture_ex(0i32 - 1i32, 0.0f32, 0.0f32,
                             0.0f32, 1.0f32,
                             255i32, 255i32, 255i32, 255i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw_texture_ex bad handle (no crash)"));
+    drop println("[PASS] draw_texture_ex bad handle (no crash)");
 
     // test 07: draw_texture_rec with bad handle is safe
     aria_rl_draw_texture_rec(0i32 - 1i32,
@@ -134,12 +134,12 @@ func:main = int32() {
                              0.0f32, 0.0f32,
                              255i32, 255i32, 255i32, 255i32);
     passed = passed + 1i64;
-    drop(println("[PASS] draw_texture_rec bad handle (no crash)"));
+    drop println("[PASS] draw_texture_rec bad handle (no crash)");
 
     // test 08: unload_texture on bad handle is safe
     aria_rl_unload_texture(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] unload_texture bad handle (no crash)"));
+    drop println("[PASS] unload_texture bad handle (no crash)");
 
     aria_rl_end_drawing();
 
@@ -148,55 +148,55 @@ func:main = int32() {
     // test 09: init audio device (no crash)
     aria_rl_init_audio_device();
     passed = passed + 1i64;
-    drop(println("[PASS] init audio device (no crash)"));
+    drop println("[PASS] init audio device (no crash)");
 
     // test 10: audio device is ready
     int32:aready = aria_rl_is_audio_device_ready();
     if (aready == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] audio device ready"));
+        drop println("[PASS] audio device ready");
     }
     if (aready != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] audio device ready"));
+        drop println("[FAIL] audio device ready");
     }
 
     // test 11: set master volume (no crash)
     aria_rl_set_master_volume(0.8f32);
     passed = passed + 1i64;
-    drop(println("[PASS] set master volume (no crash)"));
+    drop println("[PASS] set master volume (no crash)");
 
     // test 12: load nonexistent sound still returns a handle (raylib doesn't fail)
     // but we just test it doesn't crash
     int32:snd = aria_rl_load_sound("nonexistent.wav");
     passed = passed + 1i64;
-    drop(println("[PASS] load_sound nonexistent (no crash)"));
+    drop println("[PASS] load_sound nonexistent (no crash)");
 
     // test 13: is_sound_playing on bad handle returns 0
     int32:sp = aria_rl_is_sound_playing(0i32 - 1i32);
     if (sp == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] is_sound_playing bad handle = 0"));
+        drop println("[PASS] is_sound_playing bad handle = 0");
     }
     if (sp != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] is_sound_playing bad handle = 0"));
+        drop println("[FAIL] is_sound_playing bad handle = 0");
     }
 
     // test 14: set_sound_volume on bad handle (no crash)
     aria_rl_set_sound_volume(0i32 - 1i32, 0.5f32);
     passed = passed + 1i64;
-    drop(println("[PASS] set_sound_volume bad handle (no crash)"));
+    drop println("[PASS] set_sound_volume bad handle (no crash)");
 
     // test 15: stop_sound on bad handle (no crash)
     aria_rl_stop_sound(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] stop_sound bad handle (no crash)"));
+    drop println("[PASS] stop_sound bad handle (no crash)");
 
     // test 16: unload_sound on bad handle (no crash)
     aria_rl_unload_sound(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] unload_sound bad handle (no crash)"));
+    drop println("[PASS] unload_sound bad handle (no crash)");
 
     // unload the test sound handle if valid
     if (snd > 0i32 - 1i32) {
@@ -206,49 +206,49 @@ func:main = int32() {
     // test 17: music on bad handle (no crash)
     aria_rl_play_music(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] play_music bad handle (no crash)"));
+    drop println("[PASS] play_music bad handle (no crash)");
 
     // test 18: is_music_playing on bad handle
     int32:mp = aria_rl_is_music_playing(0i32 - 1i32);
     if (mp == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] is_music_playing bad handle = 0"));
+        drop println("[PASS] is_music_playing bad handle = 0");
     }
     if (mp != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] is_music_playing bad handle = 0"));
+        drop println("[FAIL] is_music_playing bad handle = 0");
     }
 
     // test 19: get_music_time_length on bad handle
     flt32:mtl = aria_rl_get_music_time_length(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] get_music_time_length bad handle (no crash)"));
+    drop println("[PASS] get_music_time_length bad handle (no crash)");
 
     // test 20: update_music on bad handle (no crash)
     aria_rl_update_music(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] update_music bad handle (no crash)"));
+    drop println("[PASS] update_music bad handle (no crash)");
 
     // test 21: pause/resume music on bad handle (no crash)
     aria_rl_pause_music(0i32 - 1i32);
     aria_rl_resume_music(0i32 - 1i32);
     passed = passed + 1i64;
-    drop(println("[PASS] pause/resume music bad handle (no crash)"));
+    drop println("[PASS] pause/resume music bad handle (no crash)");
 
     // ── cleanup ─────────────────────────────────────────────────────
     aria_rl_close_audio_device();
     aria_rl_close_window();
 
     // ── summary ─────────────────────────────────────────────────────
-    drop(println(""));
-    drop(println("=== texture/audio test summary ==="));
+    drop println("");
+    drop println("=== texture/audio test summary ===");
 
     if (failed == 0i64) {
-        drop(println("ALL TESTS PASSED"));
+        drop println("ALL TESTS PASSED");
     }
     if (failed > 0i64) {
-        drop(println("SOME TESTS FAILED"));
+        drop println("SOME TESTS FAILED");
     }
 
-    exit(0);
+    exit 0;
 };

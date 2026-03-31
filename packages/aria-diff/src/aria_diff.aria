@@ -22,40 +22,40 @@ extern "aria_diff_shim" {
 
 pub func:diff_compute = int32(string:text_a, string:text_b) {
     int32:n = aria_diff_compute(text_a, text_b);
-    pass(n);
+    pass n;
 };
 
 pub func:diff_count = int32() {
     int32:n = aria_diff_count();
-    pass(n);
+    pass n;
 };
 
 pub func:diff_get_tag = int32(int32:idx) {
     int32:t = aria_diff_get_tag(idx);
-    pass(t);
+    pass t;
 };
 
 pub func:diff_get_line = string(int32:idx) {
     string:l = aria_diff_get_line(idx);
-    pass(l);
+    pass l;
 };
 
 pub func:diff_additions = int32() {
     int32:n = aria_diff_additions();
-    pass(n);
+    pass n;
 };
 
 pub func:diff_deletions = int32() {
     int32:n = aria_diff_deletions();
-    pass(n);
+    pass n;
 };
 
 pub func:diff_unchanged = int32() {
     int32:n = aria_diff_unchanged();
-    pass(n);
+    pass n;
 };
 
 pub func:diff_unified = string() {
     string:u = aria_diff_unified();
-    pass(u);
+    pass u;
 };

@@ -28,32 +28,32 @@ extern "aria_transformer_shim" {
 
 // ── Public API ──
 
-pub func:transformer_last_error = string() { string:r = aria_transformer_last_error(); pass(r); };
+pub func:transformer_last_error = string() { string:r = aria_transformer_last_error(); pass r; };
 pub func:transformer_set_seed = void(int32:s) { aria_transformer_set_seed(s); };
 
 pub func:transformer_create = int64(int32:d_model, int32:n_heads, int32:n_layers, int32:d_ff, int32:vocab_size, int32:max_seq) {
-    pass(aria_transformer_create(d_model, n_heads, n_layers, d_ff, vocab_size, max_seq));
+    pass aria_transformer_create(d_model, n_heads, n_layers, d_ff, vocab_size, max_seq);
 };
 pub func:transformer_destroy = void(int64:id) { aria_transformer_destroy(id); };
 
-pub func:transformer_d_model = int32(int64:id) { pass(aria_transformer_d_model(id)); };
-pub func:transformer_n_heads = int32(int64:id) { pass(aria_transformer_n_heads(id)); };
-pub func:transformer_n_layers = int32(int64:id) { pass(aria_transformer_n_layers(id)); };
-pub func:transformer_vocab_size = int32(int64:id) { pass(aria_transformer_vocab_size(id)); };
-pub func:transformer_param_count = int64(int64:id) { pass(aria_transformer_param_count(id)); };
+pub func:transformer_d_model = int32(int64:id) { pass aria_transformer_d_model(id); };
+pub func:transformer_n_heads = int32(int64:id) { pass aria_transformer_n_heads(id); };
+pub func:transformer_n_layers = int32(int64:id) { pass aria_transformer_n_layers(id); };
+pub func:transformer_vocab_size = int32(int64:id) { pass aria_transformer_vocab_size(id); };
+pub func:transformer_param_count = int64(int64:id) { pass aria_transformer_param_count(id); };
 
-pub func:transformer_scratch_create = int64(int32:rows, int32:cols) { pass(aria_transformer_scratch_create(rows, cols)); };
+pub func:transformer_scratch_create = int64(int32:rows, int32:cols) { pass aria_transformer_scratch_create(rows, cols); };
 pub func:transformer_scratch_destroy = void(int64:id) { aria_transformer_scratch_destroy(id); };
 pub func:transformer_scratch_set = void(int64:id, int32:idx, flt64:val) { aria_transformer_scratch_set(id, idx, val); };
-pub func:transformer_scratch_get = flt64(int64:id, int32:idx) { pass(aria_transformer_scratch_get(id, idx)); };
-pub func:transformer_scratch_rows = int32(int64:id) { pass(aria_transformer_scratch_rows(id)); };
-pub func:transformer_scratch_cols = int32(int64:id) { pass(aria_transformer_scratch_cols(id)); };
+pub func:transformer_scratch_get = flt64(int64:id, int32:idx) { pass aria_transformer_scratch_get(id, idx); };
+pub func:transformer_scratch_rows = int32(int64:id) { pass aria_transformer_scratch_rows(id); };
+pub func:transformer_scratch_cols = int32(int64:id) { pass aria_transformer_scratch_cols(id); };
 
 pub func:transformer_forward = int64(int64:model, int64:input, int32:causal) {
-    pass(aria_transformer_forward(model, input, causal));
+    pass aria_transformer_forward(model, input, causal);
 };
 pub func:transformer_get_attention = int64(int64:model, int64:input, int32:layer, int32:head, int32:causal) {
-    pass(aria_transformer_get_attention(model, input, layer, head, causal));
+    pass aria_transformer_get_attention(model, input, layer, head, causal);
 };
-pub func:transformer_argmax = int32(int64:s, int32:row) { pass(aria_transformer_argmax(s, row)); };
+pub func:transformer_argmax = int32(int64:s, int32:row) { pass aria_transformer_argmax(s, row); };
 pub func:transformer_softmax_row = void(int64:s, int32:row) { aria_transformer_softmax_row(s, row); };

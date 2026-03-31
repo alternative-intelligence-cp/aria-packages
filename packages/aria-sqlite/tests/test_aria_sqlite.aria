@@ -8,7 +8,7 @@
 //   - "close" in function names: renamed to "disconnect"
 //   - String returns corrupt: column assertions done in C helpers
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_sqlite_shim" {
     func:aria_sqlite_open       = int32(string:path);
@@ -70,7 +70,7 @@ func:test_phase1 = int32() {
     int32:ch = aria_sqlite_changes(d4);
     aria_sqlite_assert_int_eq(ch, 1i32, "T06 changes == 1 after insert");
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 2: parameterized insert (T07-T13) ────────────────────────
@@ -103,28 +103,28 @@ func:test_phase2 = int32() {
     int32:rr = aria_sqlite_reset(s5);
     aria_sqlite_assert_int_eq(rr, 1i32, "T13 reset statement");
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 2b: reuse stmt for Charlie + finalize ─────────────────────
 func:test_phase2b = int32() {
     int32:s1 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_text(s1, 1i32, "Charlie"));
+    drop aria_sqlite_bind_text(s1, 1i32, "Charlie");
 
     int32:s2 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_text(s2, 2i32, "charlie@test.com"));
+    drop aria_sqlite_bind_text(s2, 2i32, "charlie@test.com");
 
     int32:s3 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_int(s3, 3i32, 35i64));
+    drop aria_sqlite_bind_int(s3, 3i32, 35i64);
 
     int32:s4 = aria_sqlite_last_stmt();
     int32:step2 = aria_sqlite_step(s4);
     aria_sqlite_assert_int_eq(step2, 0i32, "T13b reuse stmt for Charlie");
 
     int32:s5 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s5));
+    drop aria_sqlite_finalize(s5);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 3a: SELECT first row (T14-T18) ────────────────────────────
@@ -144,7 +144,7 @@ func:test_phase3a = int32() {
 
     aria_sqlite_assert_col_int_eq(3i32, 30i64, "T18 row 1 age == 30");
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 3b: remaining rows (T19-T21) ──────────────────────────────
@@ -164,9 +164,9 @@ func:test_phase3b = int32() {
     aria_sqlite_assert_int_eq(row4, 0i32, "T21 no more rows (done)");
 
     int32:s4 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s4));
+    drop aria_sqlite_finalize(s4);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 4a: transaction rollback (T22) ────────────────────────────
@@ -176,99 +176,99 @@ func:test_phase4a = int32() {
     aria_sqlite_assert_int_eq(tb, 1i32, "T22 begin transaction");
 
     int32:d2 = aria_sqlite_last_db();
-    drop(aria_sqlite_exec(d2, "INSERT INTO users(name, email, age) VALUES('DeleteMe', 'del@test.com', 99)"));
+    drop aria_sqlite_exec(d2, "INSERT INTO users(name, email, age) VALUES('DeleteMe', 'del@test.com', 99)");
 
     int32:d3 = aria_sqlite_last_db();
     int32:tr = aria_sqlite_rollback(d3);
     aria_sqlite_assert_int_eq(tr, 1i32, "T22b rollback transaction");
 
     int32:d4 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d4, "SELECT COUNT(*) FROM users WHERE name = 'DeleteMe'"));
+    drop aria_sqlite_prepare(d4, "SELECT COUNT(*) FROM users WHERE name = 'DeleteMe'");
     int32:s1 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s1));
+    drop aria_sqlite_step(s1);
     aria_sqlite_assert_col_int_eq(0i32, 0i64, "T22c rollback removed insert");
     int32:s2 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s2));
+    drop aria_sqlite_finalize(s2);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 4b: transaction commit (T23) ──────────────────────────────
 func:test_phase4b = int32() {
     int32:d1 = aria_sqlite_last_db();
-    drop(aria_sqlite_begin(d1));
+    drop aria_sqlite_begin(d1);
 
     int32:d2 = aria_sqlite_last_db();
-    drop(aria_sqlite_exec(d2, "INSERT INTO users(name, email, age) VALUES('Dave', 'dave@test.com', 40)"));
+    drop aria_sqlite_exec(d2, "INSERT INTO users(name, email, age) VALUES('Dave', 'dave@test.com', 40)");
 
     int32:d3 = aria_sqlite_last_db();
     int32:tc = aria_sqlite_commit(d3);
     aria_sqlite_assert_int_eq(tc, 1i32, "T23 commit transaction");
 
     int32:d4 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d4, "SELECT COUNT(*) FROM users WHERE name = 'Dave'"));
+    drop aria_sqlite_prepare(d4, "SELECT COUNT(*) FROM users WHERE name = 'Dave'");
     int32:s1 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s1));
+    drop aria_sqlite_step(s1);
     aria_sqlite_assert_col_int_eq(0i32, 1i64, "T23b commit persisted insert");
     int32:s2 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s2));
+    drop aria_sqlite_finalize(s2);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 5a: SQL injection safety (T24) ────────────────────────────
 func:test_phase5a = int32() {
     int32:d1 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d1, "SELECT COUNT(*) FROM users WHERE name = ?1"));
+    drop aria_sqlite_prepare(d1, "SELECT COUNT(*) FROM users WHERE name = ?1");
 
     int32:s1 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_text(s1, 1i32, "'; DROP TABLE users; --"));
+    drop aria_sqlite_bind_text(s1, 1i32, "'; DROP TABLE users; --");
 
     int32:s2 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s2));
+    drop aria_sqlite_step(s2);
     aria_sqlite_assert_col_int_eq(0i32, 0i64, "T24 injection string finds 0 rows");
     int32:s3 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s3));
+    drop aria_sqlite_finalize(s3);
 
     int32:d2 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d2, "SELECT COUNT(*) FROM users"));
+    drop aria_sqlite_prepare(d2, "SELECT COUNT(*) FROM users");
     int32:s4 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s4));
+    drop aria_sqlite_step(s4);
     aria_sqlite_assert_col_int_eq(0i32, 4i64, "T24b table survived injection (4 rows)");
     int32:s5 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s5));
+    drop aria_sqlite_finalize(s5);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 5b: null binding (T25) ────────────────────────────────────
 func:test_phase5b = int32() {
     int32:d1 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d1, "INSERT INTO users(name, email, age) VALUES(?1, ?2, ?3)"));
+    drop aria_sqlite_prepare(d1, "INSERT INTO users(name, email, age) VALUES(?1, ?2, ?3)");
 
     int32:s1 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_text(s1, 1i32, "Eve"));
+    drop aria_sqlite_bind_text(s1, 1i32, "Eve");
 
     int32:s2 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_null(s2, 2i32));
+    drop aria_sqlite_bind_null(s2, 2i32);
 
     int32:s3 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_bind_int(s3, 3i32, 28i64));
+    drop aria_sqlite_bind_int(s3, 3i32, 28i64);
 
     int32:s4 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s4));
+    drop aria_sqlite_step(s4);
     int32:s5 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s5));
+    drop aria_sqlite_finalize(s5);
 
     int32:d2 = aria_sqlite_last_db();
-    drop(aria_sqlite_prepare(d2, "SELECT email FROM users WHERE name = 'Eve'"));
+    drop aria_sqlite_prepare(d2, "SELECT email FROM users WHERE name = 'Eve'");
     int32:s6 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_step(s6));
+    drop aria_sqlite_step(s6);
     aria_sqlite_assert_col_is_null(0i32, "T25 NULL email is_null == 1");
     int32:s7 = aria_sqlite_last_stmt();
-    drop(aria_sqlite_finalize(s7));
+    drop aria_sqlite_finalize(s7);
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── Phase 5c: error handling + close (T26-T27) ─────────────────────
@@ -281,7 +281,7 @@ func:test_phase5c = int32() {
     int32:cl = aria_sqlite_disconnect(d2);
     aria_sqlite_assert_int_eq(cl, 1i32, "T27 close database");
 
-    pass(0i32);
+    pass 0i32;
 };
 
 // ── main ────────────────────────────────────────────────────────────
@@ -289,19 +289,19 @@ func:main = int32() {
     println("aria-sqlite test suite");
     println("======================");
 
-    drop(aria_sqlite_open(":memory:"));
+    drop aria_sqlite_open(":memory:");
 
-    drop(test_phase1());
-    drop(test_phase2());
-    drop(test_phase2b());
-    drop(test_phase3a());
-    drop(test_phase3b());
-    drop(test_phase4a());
-    drop(test_phase4b());
-    drop(test_phase5a());
-    drop(test_phase5b());
-    drop(test_phase5c());
+    drop test_phase1();
+    drop test_phase2();
+    drop test_phase2b();
+    drop test_phase3a();
+    drop test_phase3b();
+    drop test_phase4a();
+    drop test_phase4b();
+    drop test_phase5a();
+    drop test_phase5b();
+    drop test_phase5c();
 
     aria_sqlite_test_summary();
-    exit(0);
+    exit 0;
 };

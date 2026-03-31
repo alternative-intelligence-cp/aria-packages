@@ -8,7 +8,7 @@
 
 extern func:println = int32(string:msg);
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 // ── shim externs ────────────────────────────────────────────────────
 
@@ -126,12 +126,12 @@ func:main = int32() {
     if (cbuf != 0i32) {
         if (dbuf != 0i32) {
             passed = passed + 1i64;
-            drop(println("[PASS] 01 GL buffer bit constants non-zero"));
+            drop println("[PASS] 01 GL buffer bit constants non-zero");
         }
     }
     if (cbuf == 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 01 GL buffer bit constants are zero"));
+        drop println("[FAIL] 01 GL buffer bit constants are zero");
     }
 
     // ── test 02: shader type constants differ ───────────────────────
@@ -139,11 +139,11 @@ func:main = int32() {
     int32:fs_type = aria_gl_FRAGMENT_SHADER();
     if (vs_type != fs_type) {
         passed = passed + 1i64;
-        drop(println("[PASS] 02 VERTEX vs FRAGMENT shader types differ"));
+        drop println("[PASS] 02 VERTEX vs FRAGMENT shader types differ");
     }
     if (vs_type == fs_type) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 02 shader type constants are equal"));
+        drop println("[FAIL] 02 shader type constants are equal");
     }
 
     // ── test 03: buffer constants differ ────────────────────────────
@@ -151,11 +151,11 @@ func:main = int32() {
     int32:eb = aria_gl_ELEMENT_ARRAY_BUFFER();
     if (ab != eb) {
         passed = passed + 1i64;
-        drop(println("[PASS] 03 ARRAY_BUFFER vs ELEMENT_ARRAY_BUFFER differ"));
+        drop println("[PASS] 03 ARRAY_BUFFER vs ELEMENT_ARRAY_BUFFER differ");
     }
     if (ab == eb) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 03 buffer target constants are equal"));
+        drop println("[FAIL] 03 buffer target constants are equal");
     }
 
     // ── test 04: draw mode constants ────────────────────────────────
@@ -165,25 +165,25 @@ func:main = int32() {
     if (tri != lin) {
         if (lin != pts) {
             passed = passed + 1i64;
-            drop(println("[PASS] 04 draw mode constants are distinct"));
+            drop println("[PASS] 04 draw mode constants are distinct");
         }
     }
     if (tri == lin) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 04 draw mode constants overlap"));
+        drop println("[FAIL] 04 draw mode constants overlap");
     }
 
     // ── test 05: init window + GL context ───────────────────────────
     int32:init_ok = aria_gl_init(320i32, 240i32, "OpenGL Test Suite");
     if (init_ok == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 05 GL context created (320x240)"));
+        drop println("[PASS] 05 GL context created (320x240)");
     }
     if (init_ok != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 05 GL context init failed"));
-        drop(println("  Cannot continue without GL context."));
-        pass(1i32);
+        drop println("[FAIL] 05 GL context init failed");
+        drop println("  Cannot continue without GL context.");
+        pass 1i32;
     }
 
     // ── test 06: ticks are running ──────────────────────────────────
@@ -192,11 +192,11 @@ func:main = int32() {
     int32:t2 = aria_gl_get_ticks();
     if (t2 > t1) {
         passed = passed + 1i64;
-        drop(println("[PASS] 06 SDL ticks advancing"));
+        drop println("[PASS] 06 SDL ticks advancing");
     }
     if (t2 <= t1) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 06 SDL ticks not advancing"));
+        drop println("[FAIL] 06 SDL ticks not advancing");
     }
 
     // ── test 07: float buffer clear + push ──────────────────────────
@@ -208,17 +208,17 @@ func:main = int32() {
     if (c0 == 0i32) {
         if (c2 == 2i32) {
             passed = passed + 1i64;
-            drop(println("[PASS] 07 buf_push: 0 -> 2"));
+            drop println("[PASS] 07 buf_push: 0 -> 2");
         }
     }
     if (c0 != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 07 buf_clear did not reset to 0"));
+        drop println("[FAIL] 07 buf_clear did not reset to 0");
     }
     if (c2 != 2i32) {
         if (c0 == 0i32) {
             failed = failed + 1i64;
-            drop(println("[FAIL] 07 buf_push count mismatch"));
+            drop println("[FAIL] 07 buf_push count mismatch");
         }
     }
 
@@ -228,11 +228,11 @@ func:main = int32() {
     int32:c3 = aria_gl_buf_count();
     if (c3 == 3i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 08 buf_push3 count = 3"));
+        drop println("[PASS] 08 buf_push3 count = 3");
     }
     if (c3 != 3i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 08 buf_push3 count mismatch"));
+        drop println("[FAIL] 08 buf_push3 count mismatch");
     }
 
     // ── test 09: buf_push6 adds 6 floats ───────────────────────────
@@ -241,11 +241,11 @@ func:main = int32() {
     int32:c6 = aria_gl_buf_count();
     if (c6 == 6i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 09 buf_push6 count = 6"));
+        drop println("[PASS] 09 buf_push6 count = 6");
     }
     if (c6 != 6i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 09 buf_push6 count mismatch"));
+        drop println("[FAIL] 09 buf_push6 count mismatch");
     }
 
     // ── test 10: create + compile vertex shader ─────────────────────
@@ -256,11 +256,11 @@ func:main = int32() {
     int32:vs_ok = aria_gl_get_shader_status(vs);
     if (vs_ok == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 10 vertex shader compiled"));
+        drop println("[PASS] 10 vertex shader compiled");
     }
     if (vs_ok != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 10 vertex shader compile failed"));
+        drop println("[FAIL] 10 vertex shader compile failed");
         aria_gl_print_shader_log(vs);
     }
 
@@ -272,11 +272,11 @@ func:main = int32() {
     int32:fs_ok = aria_gl_get_shader_status(fs);
     if (fs_ok == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 11 fragment shader compiled"));
+        drop println("[PASS] 11 fragment shader compiled");
     }
     if (fs_ok != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 11 fragment shader compile failed"));
+        drop println("[FAIL] 11 fragment shader compile failed");
         aria_gl_print_shader_log(fs);
     }
 
@@ -288,11 +288,11 @@ func:main = int32() {
     int32:bad_ok = aria_gl_get_shader_status(bad_sh);
     if (bad_ok == 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 12 bad shader source correctly fails"));
+        drop println("[PASS] 12 bad shader source correctly fails");
     }
     if (bad_ok != 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 12 bad shader source did not fail"));
+        drop println("[FAIL] 12 bad shader source did not fail");
     }
     aria_gl_delete_shader(bad_sh);
 
@@ -304,11 +304,11 @@ func:main = int32() {
     int32:link_ok = aria_gl_get_program_status(prog);
     if (link_ok == 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 13 program linked"));
+        drop println("[PASS] 13 program linked");
     }
     if (link_ok != 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 13 program link failed"));
+        drop println("[FAIL] 13 program link failed");
         aria_gl_print_program_log(prog);
     }
     aria_gl_delete_shader(vs);
@@ -320,33 +320,33 @@ func:main = int32() {
     int32:prog2 = aria_gl_build_program(v2, f2);
     if (prog2 > 0i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 14 build_program returns valid program"));
+        drop println("[PASS] 14 build_program returns valid program");
     }
     if (prog2 <= 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 14 build_program returned error"));
+        drop println("[FAIL] 14 build_program returned error");
     }
 
     // ── test 15: build_program with bad vertex shader ───────────────
     int32:bad_prog = aria_gl_build_program("bad vertex", frag_src);
     if (bad_prog == 0i32 - 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 15 build_program bad vert returns -1"));
+        drop println("[PASS] 15 build_program bad vert returns -1");
     }
     if (bad_prog != 0i32 - 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 15 build_program bad vert wrong error code"));
+        drop println("[FAIL] 15 build_program bad vert wrong error code");
     }
 
     // ── test 16: build_program with bad fragment shader ─────────────
     int32:bad_prog2 = aria_gl_build_program(vert_src, "bad fragment");
     if (bad_prog2 == 0i32 - 2i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 16 build_program bad frag returns -2"));
+        drop println("[PASS] 16 build_program bad frag returns -2");
     }
     if (bad_prog2 != 0i32 - 2i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 16 build_program bad frag wrong error"));
+        drop println("[FAIL] 16 build_program bad frag wrong error");
     }
 
     // ── test 17: gen VAO + VBO ──────────────────────────────────────
@@ -355,17 +355,17 @@ func:main = int32() {
     if (vao > 0i32) {
         if (vbo > 0i32) {
             passed = passed + 1i64;
-            drop(println("[PASS] 17 gen_vao/gen_buffer return positive IDs"));
+            drop println("[PASS] 17 gen_vao/gen_buffer return positive IDs");
         }
     }
     if (vao <= 0i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 17 gen_vao returned non-positive"));
+        drop println("[FAIL] 17 gen_vao returned non-positive");
     }
     if (vbo <= 0i32) {
         if (vao > 0i32) {
             failed = failed + 1i64;
-            drop(println("[FAIL] 17 gen_buffer returned non-positive"));
+            drop println("[FAIL] 17 gen_buffer returned non-positive");
         }
     }
 
@@ -381,11 +381,11 @@ func:main = int32() {
     aria_gl_buffer_data_f(aria_gl_ARRAY_BUFFER(), aria_gl_STATIC_DRAW());
     if (tri_count == 18i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 18 triangle data uploaded (18 floats)"));
+        drop println("[PASS] 18 triangle data uploaded (18 floats)");
     }
     if (tri_count != 18i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 18 triangle float count mismatch"));
+        drop println("[FAIL] 18 triangle float count mismatch");
     }
 
     // ── test 19: vertex attrib setup + draw call ────────────────────
@@ -401,7 +401,7 @@ func:main = int32() {
     aria_gl_swap();
     // if we get here without crashing, the pipeline works
     passed = passed + 1i64;
-    drop(println("[PASS] 19 full draw pipeline: VBO->VAO->shader->draw->swap"));
+    drop println("[PASS] 19 full draw pipeline: VBO->VAO->shader->draw->swap");
 
     // ── test 20: get_uniform_location ───────────────────────────────
     // our vertex shader v2 doesn't have a custom uniform, but we can check
@@ -409,11 +409,11 @@ func:main = int32() {
     int32:uloc = aria_gl_get_uniform_location(prog2, "nonexistent_uniform");
     if (uloc == 0i32 - 1i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 20 nonexistent uniform returns -1"));
+        drop println("[PASS] 20 nonexistent uniform returns -1");
     }
     if (uloc != 0i32 - 1i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 20 nonexistent uniform did not return -1"));
+        drop println("[FAIL] 20 nonexistent uniform did not return -1");
     }
 
     // ── test 21: enable/disable depth test ──────────────────────────
@@ -421,7 +421,7 @@ func:main = int32() {
     aria_gl_disable(aria_gl_DEPTH_TEST());
     // no crash = pass
     passed = passed + 1i64;
-    drop(println("[PASS] 21 enable/disable DEPTH_TEST no crash"));
+    drop println("[PASS] 21 enable/disable DEPTH_TEST no crash");
 
     // ── test 22: matrix identity + store/load ───────────────────────
     aria_gl_mat4_identity();
@@ -429,7 +429,7 @@ func:main = int32() {
     aria_gl_mat4_load(0i32);
     // no crash = pass (values verified indirectly by cube demo)
     passed = passed + 1i64;
-    drop(println("[PASS] 22 mat4 identity/store/load no crash"));
+    drop println("[PASS] 22 mat4 identity/store/load no crash");
 
     // ── test 23: perspective + translate + rotate ────────────────────
     aria_gl_mat4_perspective(45.0f32, 1.333f32, 0.1f32, 100.0f32);
@@ -439,13 +439,13 @@ func:main = int32() {
     aria_gl_mat4_rotate_y(45.0f32);
     // no crash = pass
     passed = passed + 1i64;
-    drop(println("[PASS] 23 perspective/translate/rotate_y no crash"));
+    drop println("[PASS] 23 perspective/translate/rotate_y no crash");
 
     // ── test 24: mat4_mul_slots ─────────────────────────────────────
     aria_gl_mat4_mul_slots(0i32, 1i32);
     // no crash = pass
     passed = passed + 1i64;
-    drop(println("[PASS] 24 mat4_mul_slots(0,1) no crash"));
+    drop println("[PASS] 24 mat4_mul_slots(0,1) no crash");
 
     // ── test 25: load_cube_geometry fills buffer ────────────────────
     aria_gl_buf_clear();
@@ -454,11 +454,11 @@ func:main = int32() {
     // 36 vertices × 6 floats each = 216
     if (cube_count == 216i32) {
         passed = passed + 1i64;
-        drop(println("[PASS] 25 cube geometry: 216 floats (36 verts × 6)"));
+        drop println("[PASS] 25 cube geometry: 216 floats (36 verts × 6)");
     }
     if (cube_count != 216i32) {
         failed = failed + 1i64;
-        drop(println("[FAIL] 25 cube geometry count mismatch"));
+        drop println("[FAIL] 25 cube geometry count mismatch");
     }
 
     // ── cleanup ─────────────────────────────────────────────────────
@@ -471,12 +471,12 @@ func:main = int32() {
     aria_gl_quit();
 
     // ── summary ─────────────────────────────────────────────────────
-    drop(println(""));
-    drop(println("=== OpenGL Test Results ==="));
+    drop println("");
+    drop println("=== OpenGL Test Results ===");
 
     if (failed > 0i64) {
-        pass(1i32);
+        pass 1i32;
     }
 
-    exit(0);
+    exit 0;
 };

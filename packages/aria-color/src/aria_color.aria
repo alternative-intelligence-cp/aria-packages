@@ -22,49 +22,49 @@ pub func:color_pack = uint64(uint64:r, uint64:g, uint64:b, uint64:a) {
     uint64:p2 = g << 16u64;
     uint64:p3 = b << 8u64;
     uint64:packed = p1 | p2 | p3 | a;
-    pass(packed);
+    pass packed;
 };
 
 // ── Channel extraction ────────────────────────────────────────────────────────
 
 pub func:color_r = uint64(uint64:packed) {
-    pass((packed >> 24u64) & 255u64);
+    pass (packed >> 24u64) & 255u64;
 };
 
 pub func:color_g = uint64(uint64:packed) {
-    pass((packed >> 16u64) & 255u64);
+    pass (packed >> 16u64) & 255u64;
 };
 
 pub func:color_b = uint64(uint64:packed) {
-    pass((packed >> 8u64) & 255u64);
+    pass (packed >> 8u64) & 255u64;
 };
 
 pub func:color_a = uint64(uint64:packed) {
-    pass(packed & 255u64);
+    pass packed & 255u64;
 };
 
 // ── Transforms ───────────────────────────────────────────────────────────────
 
 // color_invert: invert R, G, B channels (255 - ch); alpha is preserved.
 pub func:color_invert = uint64(uint64:packed) {
-    uint64:r = raw(color_r(packed));
-    uint64:g = raw(color_g(packed));
-    uint64:b = raw(color_b(packed));
-    uint64:a = raw(color_a(packed));
+    uint64:r = raw color_r(packed);
+    uint64:g = raw color_g(packed);
+    uint64:b = raw color_b(packed);
+    uint64:a = raw color_a(packed);
     uint64:ir = 255u64 - r;
     uint64:ig = 255u64 - g;
     uint64:ib = 255u64 - b;
-    pass(raw(color_pack(ir, ig, ib, a)));
+    pass raw color_pack(ir, ig, ib, a);
 };
 
 // color_gray: convert to grayscale via simple average (R+G+B)/3; alpha preserved.
 pub func:color_gray = uint64(uint64:packed) {
-    uint64:r = raw(color_r(packed));
-    uint64:g = raw(color_g(packed));
-    uint64:b = raw(color_b(packed));
-    uint64:a = raw(color_a(packed));
+    uint64:r = raw color_r(packed);
+    uint64:g = raw color_g(packed);
+    uint64:b = raw color_b(packed);
+    uint64:a = raw color_a(packed);
     uint64:avg = (r + g + b) / 3u64;
-    pass(raw(color_pack(avg, avg, avg, a)));
+    pass raw color_pack(avg, avg, avg, a);
 };
 
 // ── 16-color indexed palette (PICO-8-style) ──────────────────────────────────
@@ -82,46 +82,46 @@ pub func:color_gray = uint64(uint64:packed) {
 //  7  white       #FFF1E8    15  peach       #FFCCAA
 
 pub func:pal_get = uint64(int32:idx) {
-    if (idx == 0i32)  { pass(raw(color_pack(0u64,     0u64,   0u64,   255u64))); }
-    if (idx == 1i32)  { pass(raw(color_pack(29u64,   43u64,  83u64,  255u64))); }
-    if (idx == 2i32)  { pass(raw(color_pack(126u64,  37u64,  83u64,  255u64))); }
-    if (idx == 3i32)  { pass(raw(color_pack(0u64,   135u64,  81u64,  255u64))); }
-    if (idx == 4i32)  { pass(raw(color_pack(171u64,  82u64,  54u64,  255u64))); }
-    if (idx == 5i32)  { pass(raw(color_pack(95u64,   87u64,  79u64,  255u64))); }
-    if (idx == 6i32)  { pass(raw(color_pack(194u64, 195u64, 199u64, 255u64))); }
-    if (idx == 7i32)  { pass(raw(color_pack(255u64, 241u64, 232u64, 255u64))); }
-    if (idx == 8i32)  { pass(raw(color_pack(255u64,   0u64,  77u64, 255u64))); }
-    if (idx == 9i32)  { pass(raw(color_pack(255u64, 163u64,   0u64, 255u64))); }
-    if (idx == 10i32) { pass(raw(color_pack(255u64, 236u64,  39u64, 255u64))); }
-    if (idx == 11i32) { pass(raw(color_pack(0u64,   228u64,  54u64, 255u64))); }
-    if (idx == 12i32) { pass(raw(color_pack(41u64,  173u64, 255u64, 255u64))); }
-    if (idx == 13i32) { pass(raw(color_pack(131u64, 118u64, 156u64, 255u64))); }
-    if (idx == 14i32) { pass(raw(color_pack(255u64, 119u64, 168u64, 255u64))); }
-    if (idx == 15i32) { pass(raw(color_pack(255u64, 204u64, 170u64, 255u64))); }
-    pass(0u64);
+    if (idx == 0i32)  { pass raw color_pack(0u64,     0u64,   0u64,   255u64); }
+    if (idx == 1i32)  { pass raw color_pack(29u64,   43u64,  83u64,  255u64); }
+    if (idx == 2i32)  { pass raw color_pack(126u64,  37u64,  83u64,  255u64); }
+    if (idx == 3i32)  { pass raw color_pack(0u64,   135u64,  81u64,  255u64); }
+    if (idx == 4i32)  { pass raw color_pack(171u64,  82u64,  54u64,  255u64); }
+    if (idx == 5i32)  { pass raw color_pack(95u64,   87u64,  79u64,  255u64); }
+    if (idx == 6i32)  { pass raw color_pack(194u64, 195u64, 199u64, 255u64); }
+    if (idx == 7i32)  { pass raw color_pack(255u64, 241u64, 232u64, 255u64); }
+    if (idx == 8i32)  { pass raw color_pack(255u64,   0u64,  77u64, 255u64); }
+    if (idx == 9i32)  { pass raw color_pack(255u64, 163u64,   0u64, 255u64); }
+    if (idx == 10i32) { pass raw color_pack(255u64, 236u64,  39u64, 255u64); }
+    if (idx == 11i32) { pass raw color_pack(0u64,   228u64,  54u64, 255u64); }
+    if (idx == 12i32) { pass raw color_pack(41u64,  173u64, 255u64, 255u64); }
+    if (idx == 13i32) { pass raw color_pack(131u64, 118u64, 156u64, 255u64); }
+    if (idx == 14i32) { pass raw color_pack(255u64, 119u64, 168u64, 255u64); }
+    if (idx == 15i32) { pass raw color_pack(255u64, 204u64, 170u64, 255u64); }
+    pass 0u64;
 };
 
 // Number of palette entries.
-pub func:PAL_SIZE = int32() { pass(16i32); };
+pub func:PAL_SIZE = int32() { pass 16i32; };
 
 // Map palette index (0-15) to nearest ANSI terminal color (0-15).
 // Useful with aria-display's disp_set_fg/disp_set_bg which take 0-15.
 pub func:pal_to_ansi = int32(int32:idx) {
-    if (idx == 0i32)  { pass(0i32);  }  // black   -> ANSI 0
-    if (idx == 1i32)  { pass(4i32);  }  // dk blue -> ANSI 4 (blue)
-    if (idx == 2i32)  { pass(5i32);  }  // dk purp -> ANSI 5 (magenta)
-    if (idx == 3i32)  { pass(2i32);  }  // dk gre  -> ANSI 2 (green)
-    if (idx == 4i32)  { pass(1i32);  }  // brown   -> ANSI 1 (red)
-    if (idx == 5i32)  { pass(8i32);  }  // dk grey -> ANSI 8 (bright black)
-    if (idx == 6i32)  { pass(7i32);  }  // lt grey -> ANSI 7 (white)
-    if (idx == 7i32)  { pass(15i32); }  // white   -> ANSI 15 (bright white)
-    if (idx == 8i32)  { pass(9i32);  }  // red     -> ANSI 9 (bright red)
-    if (idx == 9i32)  { pass(3i32);  }  // orange  -> ANSI 3 (yellow)
-    if (idx == 10i32) { pass(11i32); }  // yellow  -> ANSI 11 (bright yellow)
-    if (idx == 11i32) { pass(10i32); }  // green   -> ANSI 10 (bright green)
-    if (idx == 12i32) { pass(12i32); }  // blue    -> ANSI 12 (bright blue)
-    if (idx == 13i32) { pass(13i32); }  // lavend  -> ANSI 13 (bright magenta)
-    if (idx == 14i32) { pass(9i32);  }  // pink    -> ANSI 9 (bright red)
-    if (idx == 15i32) { pass(7i32);  }  // peach   -> ANSI 7 (white)
-    pass(0i32 - 1i32);
+    if (idx == 0i32)  { pass 0i32;  }  // black   -> ANSI 0
+    if (idx == 1i32)  { pass 4i32;  }  // dk blue -> ANSI 4 (blue)
+    if (idx == 2i32)  { pass 5i32;  }  // dk purp -> ANSI 5 (magenta)
+    if (idx == 3i32)  { pass 2i32;  }  // dk gre  -> ANSI 2 (green)
+    if (idx == 4i32)  { pass 1i32;  }  // brown   -> ANSI 1 (red)
+    if (idx == 5i32)  { pass 8i32;  }  // dk grey -> ANSI 8 (bright black)
+    if (idx == 6i32)  { pass 7i32;  }  // lt grey -> ANSI 7 (white)
+    if (idx == 7i32)  { pass 15i32; }  // white   -> ANSI 15 (bright white)
+    if (idx == 8i32)  { pass 9i32;  }  // red     -> ANSI 9 (bright red)
+    if (idx == 9i32)  { pass 3i32;  }  // orange  -> ANSI 3 (yellow)
+    if (idx == 10i32) { pass 11i32; }  // yellow  -> ANSI 11 (bright yellow)
+    if (idx == 11i32) { pass 10i32; }  // green   -> ANSI 10 (bright green)
+    if (idx == 12i32) { pass 12i32; }  // blue    -> ANSI 12 (bright blue)
+    if (idx == 13i32) { pass 13i32; }  // lavend  -> ANSI 13 (bright magenta)
+    if (idx == 14i32) { pass 9i32;  }  // pink    -> ANSI 9 (bright red)
+    if (idx == 15i32) { pass 7i32;  }  // peach   -> ANSI 7 (white)
+    pass 0i32 - 1i32;
 };

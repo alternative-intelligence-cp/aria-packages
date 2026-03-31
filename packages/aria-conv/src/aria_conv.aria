@@ -30,7 +30,7 @@ pub func:conv_sat_i64_i32 = int64(int64:n) {
     int64:r = n;
     if (n > hi) { r = hi; }
     if (n < lo) { r = lo; }
-    pass(r);
+    pass r;
 };
 
 // Saturate int64 to int16 range [-32768, 32767].
@@ -41,7 +41,7 @@ pub func:conv_sat_i64_i16 = int64(int64:n) {
     int64:r = n;
     if (n > hi) { r = hi; }
     if (n < lo) { r = lo; }
-    pass(r);
+    pass r;
 };
 
 // Saturate int64 to int8 range [-128, 127].
@@ -52,7 +52,7 @@ pub func:conv_sat_i64_i8 = int64(int64:n) {
     int64:r = n;
     if (n > hi) { r = hi; }
     if (n < lo) { r = lo; }
-    pass(r);
+    pass r;
 };
 
 // ── Unsigned saturating narrowing ─────────────────────────────────────────────
@@ -63,7 +63,7 @@ pub func:conv_sat_u64_u32 = uint64(uint64:n) {
     uint64:hi = 4294967295u64;
     uint64:r = n;
     if (n > hi) { r = hi; }
-    pass(r);
+    pass r;
 };
 
 // Saturate uint64 to uint16 range [0, 65535].
@@ -72,7 +72,7 @@ pub func:conv_sat_u64_u16 = uint64(uint64:n) {
     uint64:hi = 65535u64;
     uint64:r = n;
     if (n > hi) { r = hi; }
-    pass(r);
+    pass r;
 };
 
 // Saturate uint64 to uint8 range [0, 255].
@@ -81,7 +81,7 @@ pub func:conv_sat_u64_u8 = uint64(uint64:n) {
     uint64:hi = 255u64;
     uint64:r = n;
     if (n > hi) { r = hi; }
-    pass(r);
+    pass r;
 };
 
 // ── Float ↔ integer ───────────────────────────────────────────────────────────
@@ -89,11 +89,11 @@ pub func:conv_sat_u64_u8 = uint64(uint64:n) {
 // Convert int64 to float64.
 // Exact for |n| ≤ 2^53 (53-bit mantissa); larger values round to nearest.
 pub func:conv_i64_to_f64 = float64(int64:n) {
-    pass(@cast<float64>(n));
+    pass @cast<float64>(n);
 };
 
 // Convert float64 to int64, truncating toward zero.
 // Caller must ensure the value is in [-2^63, 2^63-1]; no range check is done.
 pub func:conv_f64_to_i64 = int64(float64:f) {
-    pass(@cast<int64>(f));
+    pass @cast<int64>(f);
 };

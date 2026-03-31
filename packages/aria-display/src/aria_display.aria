@@ -50,20 +50,20 @@ extern "aria_display" {
 // Returns 0 on success, -1 on error.
 pub func:disp_raw_enter = int32() {
     int32:r = aria_display_enter_raw();
-    pass(r);
+    pass r;
 };
 
 // Restore terminal to cooked mode.
 // Returns 0 on success, -1 on error.
 pub func:disp_raw_exit = int32() {
     int32:r = aria_display_exit_raw();
-    pass(r);
+    pass r;
 };
 
 // Returns 1 if raw mode is active, 0 otherwise.
 pub func:disp_is_raw = int32() {
     int32:r = aria_display_is_raw();
-    pass(r);
+    pass r;
 };
 
 // ---------------------------------------------------------------------------
@@ -72,26 +72,26 @@ pub func:disp_is_raw = int32() {
 
 // Move cursor to (col, row), 1-based.
 pub func:disp_move = NIL(int32:col, int32:row) {
-    drop(aria_display_move(col, row));
-    pass(NIL);
+    drop aria_display_move(col, row);
+    pass NIL;
 };
 
 // Move cursor to top-left (1, 1).
 pub func:disp_home = NIL() {
-    drop(aria_display_home());
-    pass(NIL);
+    drop aria_display_home();
+    pass NIL;
 };
 
 // Hide the cursor.
 pub func:disp_hide_cursor = NIL() {
-    drop(aria_display_hide_cursor());
-    pass(NIL);
+    drop aria_display_hide_cursor();
+    pass NIL;
 };
 
 // Show the cursor.
 pub func:disp_show_cursor = NIL() {
-    drop(aria_display_show_cursor());
-    pass(NIL);
+    drop aria_display_show_cursor();
+    pass NIL;
 };
 
 // ---------------------------------------------------------------------------
@@ -100,20 +100,20 @@ pub func:disp_show_cursor = NIL() {
 
 // Clear entire screen and home cursor.
 pub func:disp_clear = NIL() {
-    drop(aria_display_clear());
-    pass(NIL);
+    drop aria_display_clear();
+    pass NIL;
 };
 
 // Clear from cursor to end of current line.
 pub func:disp_clear_eol = NIL() {
-    drop(aria_display_clear_eol());
-    pass(NIL);
+    drop aria_display_clear_eol();
+    pass NIL;
 };
 
 // Clear from cursor to end of screen.
 pub func:disp_clear_eos = NIL() {
-    drop(aria_display_clear_eos());
-    pass(NIL);
+    drop aria_display_clear_eos();
+    pass NIL;
 };
 
 // ---------------------------------------------------------------------------
@@ -122,32 +122,32 @@ pub func:disp_clear_eos = NIL() {
 
 // Set foreground color (0-15, or -1 to reset).
 pub func:disp_set_fg = NIL(int32:color) {
-    drop(aria_display_set_fg(color));
-    pass(NIL);
+    drop aria_display_set_fg(color);
+    pass NIL;
 };
 
 // Set background color (0-15, or -1 to reset).
 pub func:disp_set_bg = NIL(int32:color) {
-    drop(aria_display_set_bg(color));
-    pass(NIL);
+    drop aria_display_set_bg(color);
+    pass NIL;
 };
 
 // Reset all text attributes to default.
 pub func:disp_reset_attr = NIL() {
-    drop(aria_display_reset_attr());
-    pass(NIL);
+    drop aria_display_reset_attr();
+    pass NIL;
 };
 
 // Set bold: 1=on, 0=off.
 pub func:disp_set_bold = NIL(int32:on) {
-    drop(aria_display_set_bold(on));
-    pass(NIL);
+    drop aria_display_set_bold(on);
+    pass NIL;
 };
 
 // Set reverse video: 1=on, 0=off.
 pub func:disp_set_reverse = NIL(int32:on) {
-    drop(aria_display_set_reverse(on));
-    pass(NIL);
+    drop aria_display_set_reverse(on);
+    pass NIL;
 };
 
 // ---------------------------------------------------------------------------
@@ -157,20 +157,20 @@ pub func:disp_set_reverse = NIL(int32:on) {
 // Draw a horizontal line of character ch, width cells long, starting at (col, row).
 // fg/bg: color index (-1 = unchanged).
 pub func:disp_hline = NIL(int32:col, int32:row, int32:fg, int32:bg, int32:ch, int32:w) {
-    drop(aria_display_hline(col, row, fg, bg, ch, w));
-    pass(NIL);
+    drop aria_display_hline(col, row, fg, bg, ch, w);
+    pass NIL;
 };
 
 // Draw a vertical line of character ch, height cells tall, starting at (col, row).
 pub func:disp_vline = NIL(int32:col, int32:row, int32:fg, int32:bg, int32:ch, int32:h) {
-    drop(aria_display_vline(col, row, fg, bg, ch, h));
-    pass(NIL);
+    drop aria_display_vline(col, row, fg, bg, ch, h);
+    pass NIL;
 };
 
 // Draw an ASCII box (border only) at (col, row) with dimensions w x h.
 pub func:disp_box = NIL(int32:col, int32:row, int32:fg, int32:bg, int32:w, int32:h) {
-    drop(aria_display_box(col, row, fg, bg, w, h));
-    pass(NIL);
+    drop aria_display_box(col, row, fg, bg, w, h);
+    pass NIL;
 };
 
 // ---------------------------------------------------------------------------
@@ -179,11 +179,11 @@ pub func:disp_box = NIL(int32:col, int32:row, int32:fg, int32:bg, int32:w, int32
 
 // Move to (col, row), set fg/bg, then print text using Aria built-in print().
 pub func:disp_print_at = NIL(int32:col, int32:row, int32:fg, int32:bg, string:text) {
-    drop(aria_display_move(col, row));
-    drop(aria_display_set_fg(fg));
-    drop(aria_display_set_bg(bg));
+    drop aria_display_move(col, row);
+    drop aria_display_set_fg(fg);
+    drop aria_display_set_bg(bg);
     print(text);
-    pass(NIL);
+    pass NIL;
 };
 
 // ---------------------------------------------------------------------------
@@ -194,7 +194,7 @@ pub func:disp_print_at = NIL(int32:col, int32:row, int32:fg, int32:bg, string:te
 // Use disp_cols() and disp_rows() to unpack.
 pub func:disp_size = int64() {
     int64:packed = aria_display_get_size();
-    pass(packed);
+    pass packed;
 };
 
 // Extract column count from a packed size value returned by disp_size().
@@ -202,7 +202,7 @@ pub func:disp_cols = int32(int64:packed) {
     uint64:upacked = @cast<uint64>(packed);
     uint64:shifted = upacked >> 32u64;
     int32:cols = @cast<int32>(shifted);
-    pass(cols);
+    pass cols;
 };
 
 // Extract row count from a packed size value returned by disp_size().
@@ -211,7 +211,7 @@ pub func:disp_rows = int32(int64:packed) {
     uint64:mask = 4294967295u64;
     uint64:low = upacked & mask;
     int32:rows = @cast<int32>(low);
-    pass(rows);
+    pass rows;
 };
 
 // ---------------------------------------------------------------------------
@@ -220,6 +220,6 @@ pub func:disp_rows = int32(int64:packed) {
 
 // Flush stdout. Call once per frame after all drawing is complete.
 pub func:disp_flush = NIL() {
-    drop(aria_display_flush());
-    pass(NIL);
+    drop aria_display_flush();
+    pass NIL;
 };

@@ -40,85 +40,85 @@ extern "aria_session_shim" {
 
 pub func:session_max_age = NIL(int32:seconds) {
     aria_session_set_max_age(seconds);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_cookie_name = NIL(string:name) {
     aria_session_set_cookie_name(name);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_get_cookie_name = string() {
     string:r = aria_session_get_cookie_name();
-    pass(r);
+    pass r;
 };
 
 pub func:session_create = string() {
     string:r = aria_session_create();
-    pass(r);
+    pass r;
 };
 
 pub func:session_load = int32(string:id) {
     int32:r = aria_session_load(id);
-    pass(r);
+    pass r;
 };
 
 pub func:session_destroy = NIL() {
     aria_session_destroy();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_destroy_id = NIL(string:id) {
     aria_session_destroy_id(id);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_id = string() {
     string:r = aria_session_id();
-    pass(r);
+    pass r;
 };
 
 pub func:session_set = NIL(string:key, string:value) {
     aria_session_set(key, value);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_get = string(string:key) {
     string:r = aria_session_get(key);
-    pass(r);
+    pass r;
 };
 
 pub func:session_has = int32(string:key) {
     int32:r = aria_session_has(key);
-    pass(r);
+    pass r;
 };
 
 pub func:session_remove = NIL(string:key) {
     aria_session_remove(key);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:session_var_count = int32() {
     int32:r = aria_session_var_count();
-    pass(r);
+    pass r;
 };
 
 pub func:session_active_count = int32() {
     int32:r = aria_session_count();
-    pass(r);
+    pass r;
 };
 
 pub func:session_cookie_header = string() {
     string:r = aria_session_cookie_header();
-    pass(r);
+    pass r;
 };
 
 pub func:session_clear_cookie = string() {
     string:r = aria_session_clear_cookie();
-    pass(r);
+    pass r;
 };
 
 pub func:session_reset = NIL() {
     aria_session_reset();
-    pass(NIL);
+    pass NIL;
 };

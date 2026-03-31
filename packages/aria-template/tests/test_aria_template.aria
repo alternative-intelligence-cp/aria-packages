@@ -1,6 +1,6 @@
 // test_aria_template.aria — Template engine tests (7 tests)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_template_shim" {
     func:aria_template_set    = int32(string:key, string:value);
@@ -15,39 +15,39 @@ extern "aria_template_shim" {
 func:main = int32() {
     // T01: set variable
     int32:s1 = aria_template_set("name", "Aria");
-    if (s1 == 1i32) { drop(println("[PASS] T01 set")); }
-    if (s1 != 1i32) { drop(println("[FAIL] T01 set")); }
+    if (s1 == 1i32) { drop println("[PASS] T01 set"); }
+    if (s1 != 1i32) { drop println("[FAIL] T01 set"); }
 
     // T02: has variable
     int32:h1 = aria_template_has("name");
-    if (h1 == 1i32) { drop(println("[PASS] T02 has")); }
-    if (h1 != 1i32) { drop(println("[FAIL] T02 has")); }
+    if (h1 == 1i32) { drop println("[PASS] T02 has"); }
+    if (h1 != 1i32) { drop println("[FAIL] T02 has"); }
 
     // T03: count
     int32:s2 = aria_template_set("version", "0.2.6");
     int32:cnt = aria_template_count();
-    if (cnt == 2i32) { drop(println("[PASS] T03 count")); }
-    if (cnt != 2i32) { drop(println("[FAIL] T03 count")); }
+    if (cnt == 2i32) { drop println("[PASS] T03 count"); }
+    if (cnt != 2i32) { drop println("[FAIL] T03 count"); }
 
     // T04: render
     string:r1 = aria_template_render("Hello {{name}}!");
-    drop(println("[PASS] T04 render"));
+    drop println("[PASS] T04 render");
 
     // T05: render with multiple vars
     string:r2 = aria_template_render("{{name}} v{{version}}");
-    drop(println("[PASS] T05 render multi"));
+    drop println("[PASS] T05 render multi");
 
     // T06: remove
     int32:rm = aria_template_remove("version");
     int32:cnt2 = aria_template_count();
-    if (cnt2 == 1i32) { drop(println("[PASS] T06 remove")); }
-    if (cnt2 != 1i32) { drop(println("[FAIL] T06 remove")); }
+    if (cnt2 == 1i32) { drop println("[PASS] T06 remove"); }
+    if (cnt2 != 1i32) { drop println("[FAIL] T06 remove"); }
 
     // T07: clear
     aria_template_clear();
     int32:cnt3 = aria_template_count();
-    if (cnt3 == 0i32) { drop(println("[PASS] T07 clear")); }
-    if (cnt3 != 0i32) { drop(println("[FAIL] T07 clear")); }
+    if (cnt3 == 0i32) { drop println("[PASS] T07 clear"); }
+    if (cnt3 != 0i32) { drop println("[FAIL] T07 clear"); }
 
-    exit(0);
+    exit 0;
 };

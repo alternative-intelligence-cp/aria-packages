@@ -96,24 +96,24 @@ extern "aria_tensor_shim" {
 
 pub func:tensor_last_error = string() {
     string:e = aria_tensor_last_error();
-    pass(e);
+    pass e;
 };
 
 // Creation
 pub func:tensor_create = int64(int32:d0, int32:d1, int32:d2, int32:d3, int32:d4, int32:d5, int32:d6, int32:d7) {
-    pass(aria_tensor_create(d0, d1, d2, d3, d4, d5, d6, d7));
+    pass aria_tensor_create(d0, d1, d2, d3, d4, d5, d6, d7);
 };
 
 pub func:tensor_create_1d = int64(int32:n) {
-    pass(aria_tensor_create_1d(n));
+    pass aria_tensor_create_1d(n);
 };
 
 pub func:tensor_create_2d = int64(int32:rows, int32:cols) {
-    pass(aria_tensor_create_2d(rows, cols));
+    pass aria_tensor_create_2d(rows, cols);
 };
 
 pub func:tensor_create_3d = int64(int32:d0, int32:d1, int32:d2) {
-    pass(aria_tensor_create_3d(d0, d1, d2));
+    pass aria_tensor_create_3d(d0, d1, d2);
 };
 
 pub func:tensor_destroy = NIL(int64:id) {
@@ -121,24 +121,24 @@ pub func:tensor_destroy = NIL(int64:id) {
 };
 
 pub func:tensor_clone = int64(int64:id) {
-    pass(aria_tensor_clone(id));
+    pass aria_tensor_clone(id);
 };
 
 // Metadata
 pub func:tensor_ndim = int32(int64:id) {
-    pass(aria_tensor_ndim(id));
+    pass aria_tensor_ndim(id);
 };
 
 pub func:tensor_size = int32(int64:id) {
-    pass(aria_tensor_size(id));
+    pass aria_tensor_size(id);
 };
 
 pub func:tensor_shape_at = int32(int64:id, int32:dim) {
-    pass(aria_tensor_shape_at(id, dim));
+    pass aria_tensor_shape_at(id, dim);
 };
 
 pub func:tensor_data_ptr = int64(int64:id) {
-    pass(aria_tensor_data_ptr(id));
+    pass aria_tensor_data_ptr(id);
 };
 
 // Element access
@@ -147,7 +147,7 @@ pub func:tensor_set_1d = NIL(int64:id, int32:i, flt64:val) {
 };
 
 pub func:tensor_get_1d = flt64(int64:id, int32:i) {
-    pass(aria_tensor_get_1d(id, i));
+    pass aria_tensor_get_1d(id, i);
 };
 
 pub func:tensor_set_2d = NIL(int64:id, int32:r, int32:c, flt64:val) {
@@ -155,7 +155,7 @@ pub func:tensor_set_2d = NIL(int64:id, int32:r, int32:c, flt64:val) {
 };
 
 pub func:tensor_get_2d = flt64(int64:id, int32:r, int32:c) {
-    pass(aria_tensor_get_2d(id, r, c));
+    pass aria_tensor_get_2d(id, r, c);
 };
 
 // Fill
@@ -181,36 +181,36 @@ pub func:tensor_set_rng_seed = NIL(int32:seed) {
 
 // Shape
 pub func:tensor_reshape = int64(int64:id, int32:d0, int32:d1, int32:d2, int32:d3) {
-    pass(aria_tensor_reshape(id, d0, d1, d2, d3));
+    pass aria_tensor_reshape(id, d0, d1, d2, d3);
 };
 
 pub func:tensor_transpose = int64(int64:id) {
-    pass(aria_tensor_transpose(id));
+    pass aria_tensor_transpose(id);
 };
 
 pub func:tensor_flatten = int64(int64:id) {
-    pass(aria_tensor_flatten(id));
+    pass aria_tensor_flatten(id);
 };
 
 // Arithmetic
 pub func:tensor_add = int64(int64:a, int64:b) {
-    pass(aria_tensor_add(a, b));
+    pass aria_tensor_add(a, b);
 };
 
 pub func:tensor_sub = int64(int64:a, int64:b) {
-    pass(aria_tensor_sub(a, b));
+    pass aria_tensor_sub(a, b);
 };
 
 pub func:tensor_mul = int64(int64:a, int64:b) {
-    pass(aria_tensor_mul(a, b));
+    pass aria_tensor_mul(a, b);
 };
 
 pub func:tensor_scale = int64(int64:id, flt64:alpha) {
-    pass(aria_tensor_scale(id, alpha));
+    pass aria_tensor_scale(id, alpha);
 };
 
 pub func:tensor_add_bias = int64(int64:id, int64:bias) {
-    pass(aria_tensor_add_bias(id, bias));
+    pass aria_tensor_add_bias(id, bias);
 };
 
 pub func:tensor_add_inplace = NIL(int64:a, int64:b) {
@@ -223,63 +223,63 @@ pub func:tensor_scale_inplace = NIL(int64:id, flt64:alpha) {
 
 // Matmul
 pub func:tensor_matmul = int64(int64:a, int64:b) {
-    pass(aria_tensor_matmul(a, b));
+    pass aria_tensor_matmul(a, b);
 };
 
 // Activations
 pub func:tensor_relu = int64(int64:id) {
-    pass(aria_tensor_relu(id));
+    pass aria_tensor_relu(id);
 };
 
 pub func:tensor_sigmoid = int64(int64:id) {
-    pass(aria_tensor_sigmoid(id));
+    pass aria_tensor_sigmoid(id);
 };
 
 pub func:tensor_tanh_act = int64(int64:id) {
-    pass(aria_tensor_tanh_act(id));
+    pass aria_tensor_tanh_act(id);
 };
 
 pub func:tensor_silu = int64(int64:id) {
-    pass(aria_tensor_silu(id));
+    pass aria_tensor_silu(id);
 };
 
 pub func:tensor_gelu = int64(int64:id) {
-    pass(aria_tensor_gelu(id));
+    pass aria_tensor_gelu(id);
 };
 
 pub func:tensor_softmax = int64(int64:id) {
-    pass(aria_tensor_softmax(id));
+    pass aria_tensor_softmax(id);
 };
 
 // Reductions
 pub func:tensor_sum = flt64(int64:id) {
-    pass(aria_tensor_sum(id));
+    pass aria_tensor_sum(id);
 };
 
 pub func:tensor_mean = flt64(int64:id) {
-    pass(aria_tensor_mean(id));
+    pass aria_tensor_mean(id);
 };
 
 pub func:tensor_max_val = flt64(int64:id) {
-    pass(aria_tensor_max_val(id));
+    pass aria_tensor_max_val(id);
 };
 
 pub func:tensor_min_val = flt64(int64:id) {
-    pass(aria_tensor_min_val(id));
+    pass aria_tensor_min_val(id);
 };
 
 // Layer norm
 pub func:tensor_layer_norm = int64(int64:id, flt64:eps) {
-    pass(aria_tensor_layer_norm(id, eps));
+    pass aria_tensor_layer_norm(id, eps);
 };
 
 // Concatenation / slicing
 pub func:tensor_concat_rows = int64(int64:a, int64:b) {
-    pass(aria_tensor_concat_rows(a, b));
+    pass aria_tensor_concat_rows(a, b);
 };
 
 pub func:tensor_slice_rows = int64(int64:id, int32:start, int32:count) {
-    pass(aria_tensor_slice_rows(id, start, count));
+    pass aria_tensor_slice_rows(id, start, count);
 };
 
 // Debug

@@ -9,7 +9,7 @@
 //   - "close" in function names: renamed to "disconnect"
 //   - String returns corrupt: column assertions done in C helpers
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_postgres_shim" {
     func:aria_postgres_connect    = int32(string:conninfo);
@@ -87,7 +87,7 @@ func:test_phase1 = NIL() {
     int32:ins = aria_postgres_exec(c6, "INSERT INTO users(name, age, email) VALUES('Alice', 30, 'alice@example.com')");
     aria_postgres_assert_true(ins == 1i32, "T06 INSERT Alice via exec");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 2: parameterized insert, affected rows ────────────────────
@@ -113,7 +113,7 @@ func:test_phase2 = NIL() {
     int32:r2 = aria_postgres_execute(c3, "INSERT INTO users(name, age, email) VALUES($1, $2, $3)");
     aria_postgres_assert_true(r2 == 1i32, "T09 parameterized INSERT Charlie");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 3a: SELECT + column accessors ─────────────────────────────
@@ -147,7 +147,7 @@ func:test_phase3a = NIL() {
     int32:c6 = aria_postgres_last_conn();
     aria_postgres_assert_col_int_eq(c6, 2i32, 30i64, "T15 row 1 age == 30");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 3b: more rows, end of results ─────────────────────────────
@@ -181,7 +181,7 @@ func:test_phase3b = NIL() {
     int32:c7 = aria_postgres_last_conn();
     aria_postgres_clear_result(c7);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 4a: transaction rollback ──────────────────────────────────
@@ -211,7 +211,7 @@ func:test_phase4a = NIL() {
     int32:c6 = aria_postgres_last_conn();
     aria_postgres_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 4b: transaction commit ────────────────────────────────────
@@ -243,7 +243,7 @@ func:test_phase4b = NIL() {
     int32:c6 = aria_postgres_last_conn();
     aria_postgres_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5a: SQL injection safety ──────────────────────────────────
@@ -268,7 +268,7 @@ func:test_phase5a = NIL() {
     int32:c5 = aria_postgres_last_conn();
     aria_postgres_clear_result(c5);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5b: NULL handling ─────────────────────────────────────────
@@ -295,7 +295,7 @@ func:test_phase5b = NIL() {
     int32:c5 = aria_postgres_last_conn();
     aria_postgres_clear_result(c5);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5c: UPDATE ────────────────────────────────────────────────
@@ -323,7 +323,7 @@ func:test_phase5c = NIL() {
     int32:c6 = aria_postgres_last_conn();
     aria_postgres_clear_result(c6);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 5d: DELETE ────────────────────────────────────────────────
@@ -341,7 +341,7 @@ func:test_phase5d = NIL() {
     int32:c3 = aria_postgres_last_conn();
     aria_postgres_clear_result(c3);
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 6: LISTEN / NOTIFY ────────────────────────────────────────
@@ -357,7 +357,7 @@ func:test_phase6 = NIL() {
     int32:nt = aria_postgres_notify(c2, "test_channel", "hello_aria");
     aria_postgres_assert_true(nt == 1i32, "T29 NOTIFY test_channel");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── Phase 7: error handling + cleanup ───────────────────────────────
@@ -378,25 +378,25 @@ func:test_phase7 = NIL() {
     int32:dc = aria_postgres_disconnect(c3);
     aria_postgres_assert_true(dc == 1i32, "T32 disconnect");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── main ────────────────────────────────────────────────────────────
 
 func:main = int32() {
-    drop(test_phase1());
-    drop(test_phase2());
-    drop(test_phase3a());
-    drop(test_phase3b());
-    drop(test_phase4a());
-    drop(test_phase4b());
-    drop(test_phase5a());
-    drop(test_phase5b());
-    drop(test_phase5c());
-    drop(test_phase5d());
-    drop(test_phase6());
-    drop(test_phase7());
+    drop test_phase1();
+    drop test_phase2();
+    drop test_phase3a();
+    drop test_phase3b();
+    drop test_phase4a();
+    drop test_phase4b();
+    drop test_phase5a();
+    drop test_phase5b();
+    drop test_phase5c();
+    drop test_phase5d();
+    drop test_phase6();
+    drop test_phase7();
 
     aria_postgres_test_summary();
-    exit(0);
+    exit 0;
 };

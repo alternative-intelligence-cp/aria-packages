@@ -147,86 +147,86 @@ extern "aria_raylib_shim" {
 
 pub func:rl_init_window = NIL(int32:w, int32:h, string:title) {
     aria_rl_init_window(w, h, title);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_close_window = NIL() {
     aria_rl_close_window();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_window_should_close = int32() {
     int32:r = aria_rl_window_should_close();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_window_ready = int32() {
     int32:r = aria_rl_is_window_ready();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_toggle_fullscreen = NIL() {
     aria_rl_toggle_fullscreen();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_set_window_size = NIL(int32:w, int32:h) {
     aria_rl_set_window_size(w, h);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_set_window_title = NIL(string:title) {
     aria_rl_set_window_title(title);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_get_screen_width = int32() {
     int32:r = aria_rl_get_screen_width();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_screen_height = int32() {
     int32:r = aria_rl_get_screen_height();
-    pass(r);
+    pass r;
 };
 
 // ── public API: drawing lifecycle ───────────────────────────────────
 
 pub func:rl_begin_drawing = NIL() {
     aria_rl_begin_drawing();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_end_drawing = NIL() {
     aria_rl_end_drawing();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_clear_background = NIL(int32:r, int32:g, int32:b, int32:a) {
     aria_rl_clear_background(r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: timing ──────────────────────────────────────────────
 
 pub func:rl_set_target_fps = NIL(int32:fps) {
     aria_rl_set_target_fps(fps);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_get_fps = int32() {
     int32:r = aria_rl_get_fps();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_frame_time = flt32() {
     flt32:r = aria_rl_get_frame_time();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_time = flt64() {
     flt64:r = aria_rl_get_time();
-    pass(r);
+    pass r;
 };
 
 // ── public API: shapes ──────────────────────────────────────────────
@@ -234,37 +234,37 @@ pub func:rl_get_time = flt64() {
 pub func:rl_draw_pixel = NIL(int32:x, int32:y,
                               int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_pixel(x, y, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_line = NIL(int32:x1, int32:y1, int32:x2, int32:y2,
                              int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_line(x1, y1, x2, y2, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_circle = NIL(int32:cx, int32:cy, flt32:radius,
                                int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_circle(cx, cy, radius, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_circle_lines = NIL(int32:cx, int32:cy, flt32:radius,
                                      int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_circle_lines(cx, cy, radius, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_rectangle = NIL(int32:x, int32:y, int32:w, int32:h,
                                   int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_rectangle(x, y, w, h, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_rectangle_lines = NIL(int32:x, int32:y, int32:w, int32:h,
                                         int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_rectangle_lines(x, y, w, h, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_triangle = NIL(flt32:x1, flt32:y1,
@@ -272,7 +272,7 @@ pub func:rl_draw_triangle = NIL(flt32:x1, flt32:y1,
                                  flt32:x3, flt32:y3,
                                  int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_triangle(x1, y1, x2, y2, x3, y3, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: text ────────────────────────────────────────────────
@@ -281,147 +281,147 @@ pub func:rl_draw_text = NIL(string:text, int32:x, int32:y,
                              int32:font_size,
                              int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_text(text, x, y, font_size, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_fps = NIL(int32:x, int32:y) {
     aria_rl_draw_fps(x, y);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_measure_text = int32(string:text, int32:font_size) {
     int32:r = aria_rl_measure_text(text, font_size);
-    pass(r);
+    pass r;
 };
 
 // ── public API: keyboard ────────────────────────────────────────────
 
 pub func:rl_is_key_pressed = int32(int32:key) {
     int32:r = aria_rl_is_key_pressed(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_key_down = int32(int32:key) {
     int32:r = aria_rl_is_key_down(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_key_released = int32(int32:key) {
     int32:r = aria_rl_is_key_released(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_key_pressed = int32() {
     int32:r = aria_rl_get_key_pressed();
-    pass(r);
+    pass r;
 };
 
 // ── public API: mouse ───────────────────────────────────────────────
 
 pub func:rl_get_mouse_x = int32() {
     int32:r = aria_rl_get_mouse_x();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_mouse_y = int32() {
     int32:r = aria_rl_get_mouse_y();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_mouse_button_pressed = int32(int32:button) {
     int32:r = aria_rl_is_mouse_button_pressed(button);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_mouse_button_down = int32(int32:button) {
     int32:r = aria_rl_is_mouse_button_down(button);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_mouse_wheel_move = flt32() {
     flt32:r = aria_rl_get_mouse_wheel_move();
-    pass(r);
+    pass r;
 };
 
 // ── key constants (raylib KEY_* values) ─────────────────────────────
 
-pub func:KEY_ESCAPE = int32() { pass(256i32); };
-pub func:KEY_ENTER  = int32() { pass(257i32); };
-pub func:KEY_SPACE  = int32() { pass(32i32); };
-pub func:KEY_RIGHT  = int32() { pass(262i32); };
-pub func:KEY_LEFT   = int32() { pass(263i32); };
-pub func:KEY_DOWN   = int32() { pass(264i32); };
-pub func:KEY_UP     = int32() { pass(265i32); };
-pub func:KEY_A      = int32() { pass(65i32); };
-pub func:KEY_B      = int32() { pass(66i32); };
-pub func:KEY_C      = int32() { pass(67i32); };
-pub func:KEY_D      = int32() { pass(68i32); };
-pub func:KEY_E      = int32() { pass(69i32); };
-pub func:KEY_F      = int32() { pass(70i32); };
-pub func:KEY_G      = int32() { pass(71i32); };
-pub func:KEY_H      = int32() { pass(72i32); };
-pub func:KEY_I      = int32() { pass(73i32); };
-pub func:KEY_J      = int32() { pass(74i32); };
-pub func:KEY_K      = int32() { pass(75i32); };
-pub func:KEY_L      = int32() { pass(76i32); };
-pub func:KEY_M      = int32() { pass(77i32); };
-pub func:KEY_N      = int32() { pass(78i32); };
-pub func:KEY_O      = int32() { pass(79i32); };
-pub func:KEY_P      = int32() { pass(80i32); };
-pub func:KEY_Q      = int32() { pass(81i32); };
-pub func:KEY_R      = int32() { pass(82i32); };
-pub func:KEY_S      = int32() { pass(83i32); };
-pub func:KEY_T      = int32() { pass(84i32); };
-pub func:KEY_U      = int32() { pass(85i32); };
-pub func:KEY_V      = int32() { pass(86i32); };
-pub func:KEY_W      = int32() { pass(87i32); };
-pub func:KEY_X      = int32() { pass(88i32); };
-pub func:KEY_Y      = int32() { pass(89i32); };
-pub func:KEY_Z      = int32() { pass(90i32); };
+pub func:KEY_ESCAPE = int32() { pass 256i32; };
+pub func:KEY_ENTER  = int32() { pass 257i32; };
+pub func:KEY_SPACE  = int32() { pass 32i32; };
+pub func:KEY_RIGHT  = int32() { pass 262i32; };
+pub func:KEY_LEFT   = int32() { pass 263i32; };
+pub func:KEY_DOWN   = int32() { pass 264i32; };
+pub func:KEY_UP     = int32() { pass 265i32; };
+pub func:KEY_A      = int32() { pass 65i32; };
+pub func:KEY_B      = int32() { pass 66i32; };
+pub func:KEY_C      = int32() { pass 67i32; };
+pub func:KEY_D      = int32() { pass 68i32; };
+pub func:KEY_E      = int32() { pass 69i32; };
+pub func:KEY_F      = int32() { pass 70i32; };
+pub func:KEY_G      = int32() { pass 71i32; };
+pub func:KEY_H      = int32() { pass 72i32; };
+pub func:KEY_I      = int32() { pass 73i32; };
+pub func:KEY_J      = int32() { pass 74i32; };
+pub func:KEY_K      = int32() { pass 75i32; };
+pub func:KEY_L      = int32() { pass 76i32; };
+pub func:KEY_M      = int32() { pass 77i32; };
+pub func:KEY_N      = int32() { pass 78i32; };
+pub func:KEY_O      = int32() { pass 79i32; };
+pub func:KEY_P      = int32() { pass 80i32; };
+pub func:KEY_Q      = int32() { pass 81i32; };
+pub func:KEY_R      = int32() { pass 82i32; };
+pub func:KEY_S      = int32() { pass 83i32; };
+pub func:KEY_T      = int32() { pass 84i32; };
+pub func:KEY_U      = int32() { pass 85i32; };
+pub func:KEY_V      = int32() { pass 86i32; };
+pub func:KEY_W      = int32() { pass 87i32; };
+pub func:KEY_X      = int32() { pass 88i32; };
+pub func:KEY_Y      = int32() { pass 89i32; };
+pub func:KEY_Z      = int32() { pass 90i32; };
 
 // mouse button constants
-pub func:MOUSE_LEFT   = int32() { pass(0i32); };
-pub func:MOUSE_RIGHT  = int32() { pass(1i32); };
-pub func:MOUSE_MIDDLE = int32() { pass(2i32); };
+pub func:MOUSE_LEFT   = int32() { pass 0i32; };
+pub func:MOUSE_RIGHT  = int32() { pass 1i32; };
+pub func:MOUSE_MIDDLE = int32() { pass 2i32; };
 
 // ── public API: textures ────────────────────────────────────────────
 
 pub func:rl_load_texture = int32(string:path) {
     int32:r = aria_rl_load_texture(path);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_unload_texture = NIL(int32:handle) {
     aria_rl_unload_texture(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_is_texture_valid = int32(int32:handle) {
     int32:r = aria_rl_is_texture_valid(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_texture_width = int32(int32:handle) {
     int32:r = aria_rl_get_texture_width(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_texture_height = int32(int32:handle) {
     int32:r = aria_rl_get_texture_height(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_draw_texture = NIL(int32:handle, int32:x, int32:y,
                                 int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_texture(handle, x, y, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_texture_ex = NIL(int32:handle, flt32:x, flt32:y,
                                    flt32:rotation, flt32:scale,
                                    int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_texture_ex(handle, x, y, rotation, scale, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_texture_rec = NIL(int32:handle,
@@ -429,7 +429,7 @@ pub func:rl_draw_texture_rec = NIL(int32:handle,
                                     flt32:dx, flt32:dy,
                                     int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_texture_rec(handle, sx, sy, sw, sh, dx, dy, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_draw_texture_pro = NIL(int32:handle,
@@ -439,178 +439,178 @@ pub func:rl_draw_texture_pro = NIL(int32:handle,
                                     int32:r, int32:g, int32:b, int32:a) {
     aria_rl_draw_texture_pro(handle, sx, sy, sw, sh, dx, dy, dw, dh,
                              ox, oy, rotation, r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: audio device ────────────────────────────────────────
 
 pub func:rl_init_audio_device = NIL() {
     aria_rl_init_audio_device();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_close_audio_device = NIL() {
     aria_rl_close_audio_device();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_is_audio_device_ready = int32() {
     int32:r = aria_rl_is_audio_device_ready();
-    pass(r);
+    pass r;
 };
 
 pub func:rl_set_master_volume = NIL(flt32:vol) {
     aria_rl_set_master_volume(vol);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: sounds ──────────────────────────────────────────────
 
 pub func:rl_load_sound = int32(string:path) {
     int32:r = aria_rl_load_sound(path);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_unload_sound = NIL(int32:handle) {
     aria_rl_unload_sound(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_play_sound = NIL(int32:handle) {
     aria_rl_play_sound(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_stop_sound = NIL(int32:handle) {
     aria_rl_stop_sound(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_is_sound_playing = int32(int32:handle) {
     int32:r = aria_rl_is_sound_playing(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_set_sound_volume = NIL(int32:handle, flt32:vol) {
     aria_rl_set_sound_volume(handle, vol);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: music ───────────────────────────────────────────────
 
 pub func:rl_load_music = int32(string:path) {
     int32:r = aria_rl_load_music(path);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_unload_music = NIL(int32:handle) {
     aria_rl_unload_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_play_music = NIL(int32:handle) {
     aria_rl_play_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_stop_music = NIL(int32:handle) {
     aria_rl_stop_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_update_music = NIL(int32:handle) {
     aria_rl_update_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_pause_music = NIL(int32:handle) {
     aria_rl_pause_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_resume_music = NIL(int32:handle) {
     aria_rl_resume_music(handle);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_is_music_playing = int32(int32:handle) {
     int32:r = aria_rl_is_music_playing(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_set_music_volume = NIL(int32:handle, flt32:vol) {
     aria_rl_set_music_volume(handle, vol);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rl_get_music_time_length = flt32(int32:handle) {
     flt32:r = aria_rl_get_music_time_length(handle);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_music_time_played = flt32(int32:handle) {
     flt32:r = aria_rl_get_music_time_played(handle);
-    pass(r);
+    pass r;
 };
 
 // ── public API: gamepad ───────────────────────────────────────────────
 
 pub func:rl_is_gamepad_available = int32(int32:gamepad) {
     int32:r = aria_rl_is_gamepad_available(gamepad);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_gamepad_button_pressed = int32(int32:gamepad, int32:button) {
     int32:r = aria_rl_is_gamepad_button_pressed(gamepad, button);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_gamepad_button_down = int32(int32:gamepad, int32:button) {
     int32:r = aria_rl_is_gamepad_button_down(gamepad, button);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_is_gamepad_button_released = int32(int32:gamepad, int32:button) {
     int32:r = aria_rl_is_gamepad_button_released(gamepad, button);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_get_gamepad_axis_movement = flt32(int32:gamepad, int32:axis) {
     flt32:r = aria_rl_get_gamepad_axis_movement(gamepad, axis);
-    pass(r);
+    pass r;
 };
 
 pub func:rl_gen_beep = int32(int32:freq, int32:dur_ms, int32:wave, flt32:vol) {
     int32:r = aria_rl_gen_beep(freq, dur_ms, wave, vol);
-    pass(r);
+    pass r;
 };
 
 // Gamepad button constants (raylib GamepadButton enum)
 // Left face (D-pad)
-pub func:GP_DPAD_UP    = int32() { pass(1i32); };
-pub func:GP_DPAD_RIGHT = int32() { pass(2i32); };
-pub func:GP_DPAD_DOWN  = int32() { pass(3i32); };
-pub func:GP_DPAD_LEFT  = int32() { pass(4i32); };
+pub func:GP_DPAD_UP    = int32() { pass 1i32; };
+pub func:GP_DPAD_RIGHT = int32() { pass 2i32; };
+pub func:GP_DPAD_DOWN  = int32() { pass 3i32; };
+pub func:GP_DPAD_LEFT  = int32() { pass 4i32; };
 // Right face buttons: △/Y=5  ○/B=6  ✕/A=7  □/X=8
-pub func:GP_FACE_Y     = int32() { pass(5i32); };   // △ / Y
-pub func:GP_FACE_B     = int32() { pass(6i32); };   // ○ / B
-pub func:GP_FACE_A     = int32() { pass(7i32); };   // ✕ / A
-pub func:GP_FACE_X     = int32() { pass(8i32); };   // □ / X
+pub func:GP_FACE_Y     = int32() { pass 5i32; };   // △ / Y
+pub func:GP_FACE_B     = int32() { pass 6i32; };   // ○ / B
+pub func:GP_FACE_A     = int32() { pass 7i32; };   // ✕ / A
+pub func:GP_FACE_X     = int32() { pass 8i32; };   // □ / X
 // Shoulder / trigger
-pub func:GP_L1         = int32() { pass(9i32); };
-pub func:GP_L2         = int32() { pass(10i32); };
-pub func:GP_R1         = int32() { pass(11i32); };
-pub func:GP_R2         = int32() { pass(12i32); };
+pub func:GP_L1         = int32() { pass 9i32; };
+pub func:GP_L2         = int32() { pass 10i32; };
+pub func:GP_R1         = int32() { pass 11i32; };
+pub func:GP_R2         = int32() { pass 12i32; };
 // Middle
-pub func:GP_SELECT     = int32() { pass(13i32); };
-pub func:GP_HOME       = int32() { pass(14i32); };
-pub func:GP_START      = int32() { pass(15i32); };
+pub func:GP_SELECT     = int32() { pass 13i32; };
+pub func:GP_HOME       = int32() { pass 14i32; };
+pub func:GP_START      = int32() { pass 15i32; };
 // Thumbsticks
-pub func:GP_L3         = int32() { pass(16i32); };
-pub func:GP_R3         = int32() { pass(17i32); };
+pub func:GP_L3         = int32() { pass 16i32; };
+pub func:GP_R3         = int32() { pass 17i32; };
 
 // Gamepad axis constants
-pub func:GP_AXIS_LEFT_X  = int32() { pass(0i32); };
-pub func:GP_AXIS_LEFT_Y  = int32() { pass(1i32); };
-pub func:GP_AXIS_RIGHT_X = int32() { pass(2i32); };
-pub func:GP_AXIS_RIGHT_Y = int32() { pass(3i32); };
+pub func:GP_AXIS_LEFT_X  = int32() { pass 0i32; };
+pub func:GP_AXIS_LEFT_Y  = int32() { pass 1i32; };
+pub func:GP_AXIS_RIGHT_X = int32() { pass 2i32; };
+pub func:GP_AXIS_RIGHT_Y = int32() { pass 3i32; };

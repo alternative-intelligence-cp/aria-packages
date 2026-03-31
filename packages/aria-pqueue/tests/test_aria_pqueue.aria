@@ -1,6 +1,6 @@
 // test_aria_pqueue.aria — Tests for aria-pqueue (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_pqueue_create        = int64(int32:capacity);
 extern func:aria_pqueue_destroy       = void(int64:handle);
@@ -91,5 +91,5 @@ func:main = int32() {
     // ── cleanup ──
     aria_pqueue_destroy(pq);
     aria_pqueue_test_summary();
-    exit(0);
+    exit 0;
 };

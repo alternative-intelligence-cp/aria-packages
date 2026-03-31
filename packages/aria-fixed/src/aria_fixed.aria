@@ -17,27 +17,27 @@
 
 // Construct Q32.32 from an integer n (n < 2^32)
 pub func:fixed_from_int = uint64(uint64:n) {
-    pass(n << 32u64);
+    pass n << 32u64;
 };
 
 // Extract integer part (floor)
 pub func:fixed_to_int = uint64(uint64:x) {
-    pass(x >> 32u64);
+    pass x >> 32u64;
 };
 
 // Extract fractional bits (bits 31:0)
 pub func:fixed_frac_bits = uint64(uint64:x) {
-    pass(x & 4294967295u64);
+    pass x & 4294967295u64;
 };
 
 // Add two Q32.32 values
 pub func:fixed_add = uint64(uint64:a, uint64:b) {
-    pass(a + b);
+    pass a + b;
 };
 
 // Subtract: a - b (caller must ensure a >= b)
 pub func:fixed_sub = uint64(uint64:a, uint64:b) {
-    pass(a - b);
+    pass a - b;
 };
 
 // Multiply two Q32.32 values using 32-bit limb split.
@@ -49,29 +49,29 @@ pub func:fixed_mul = uint64(uint64:a, uint64:b) {
     uint64:b_lo = b & 4294967295u64;
     uint64:top = (a_hi * b_hi) << 32u64;
     uint64:mid = (a_hi * b_lo) + (a_lo * b_hi);
-    pass(top + mid);
+    pass top + mid;
 };
 
 // Halve: x / 2
 pub func:fixed_half = uint64(uint64:x) {
-    pass(x >> 1u64);
+    pass x >> 1u64;
 };
 
 // Double: x * 2
 pub func:fixed_double = uint64(uint64:x) {
-    pass(x + x);
+    pass x + x;
 };
 
 // Compare: returns 1 if a > b, 0 otherwise
 pub func:fixed_gt = uint64(uint64:a, uint64:b) {
     uint64:result = 0u64;
     if (a > b) { result = 1u64; }
-    pass(result);
+    pass result;
 };
 
 // Compare: returns 1 if a == b, 0 otherwise
 pub func:fixed_eq = uint64(uint64:a, uint64:b) {
     uint64:result = 0u64;
     if (a == b) { result = 1u64; }
-    pass(result);
+    pass result;
 };

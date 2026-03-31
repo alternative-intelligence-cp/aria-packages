@@ -9,21 +9,21 @@ extern "aria_mime_shim" {
 }
 
 pub func:from_filename = string(string:filename) {
-    pass(aria_mime_from_filename(filename));
+    pass aria_mime_from_filename(filename);
 };
 
 pub func:from_extension = string(string:ext) {
-    pass(aria_mime_from_extension(ext));
+    pass aria_mime_from_extension(ext);
 };
 
 pub func:to_extension = string(string:mime) {
-    pass(aria_mime_to_extension(mime));
+    pass aria_mime_to_extension(mime);
 };
 
 pub func:is_text = int32(string:mime) {
-    pass(aria_mime_is_text(mime));
+    pass aria_mime_is_text(mime);
 };
 
 pub func:count = int32() {
-    pass(aria_mime_count());
+    pass aria_mime_count();
 };

@@ -139,188 +139,188 @@ extern "aria_opengl_shim" {
 
 pub func:gl_init = int32(int32:width, int32:height, string:title) {
     int32:r = aria_gl_init(width, height, title);
-    pass(r);
+    pass r;
 };
 
 pub func:gl_quit = NIL() {
     aria_gl_quit();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_swap = NIL() {
     aria_gl_swap();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_set_vsync = int32(int32:on) {
     int32:r = aria_gl_set_vsync(on);
-    pass(r);
+    pass r;
 };
 
 // ── public API: viewport + clear ────────────────────────────────────
 
 pub func:gl_viewport = NIL(int32:x, int32:y, int32:w, int32:h) {
     aria_gl_viewport(x, y, w, h);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_clear_color = NIL(flt32:r, flt32:g, flt32:b, flt32:a) {
     aria_gl_clear_color(r, g, b, a);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_clear = NIL(int32:mask) {
     aria_gl_clear(mask);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_enable = NIL(int32:cap) {
     aria_gl_enable(cap);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_disable = NIL(int32:cap) {
     aria_gl_disable(cap);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: shaders ─────────────────────────────────────────────
 
 pub func:gl_create_shader = int32(int32:shader_type) {
     int32:r = aria_gl_create_shader(shader_type);
-    pass(r);
+    pass r;
 };
 
 pub func:gl_shader_source = NIL(int32:shader, string:source) {
     aria_gl_shader_source(shader, source);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_compile_shader = NIL(int32:shader) {
     aria_gl_compile_shader(shader);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_get_shader_status = int32(int32:shader) {
     int32:r = aria_gl_get_shader_status(shader);
-    pass(r);
+    pass r;
 };
 
 pub func:gl_print_shader_log = NIL(int32:shader) {
     aria_gl_print_shader_log(shader);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_delete_shader = NIL(int32:shader) {
     aria_gl_delete_shader(shader);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: programs ────────────────────────────────────────────
 
 pub func:gl_create_program = int32() {
     int32:r = aria_gl_create_program();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_attach_shader = NIL(int32:program, int32:shader) {
     aria_gl_attach_shader(program, shader);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_link_program = NIL(int32:program) {
     aria_gl_link_program(program);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_get_program_status = int32(int32:program) {
     int32:r = aria_gl_get_program_status(program);
-    pass(r);
+    pass r;
 };
 
 pub func:gl_use_program = NIL(int32:program) {
     aria_gl_use_program(program);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_delete_program = NIL(int32:program) {
     aria_gl_delete_program(program);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_print_program_log = NIL(int32:program) {
     aria_gl_print_program_log(program);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_build_program = int32(string:vert_src, string:frag_src) {
     int32:r = aria_gl_build_program(vert_src, frag_src);
-    pass(r);
+    pass r;
 };
 
 // ── public API: buffers ─────────────────────────────────────────────
 
 pub func:gl_gen_vao = int32() {
     int32:r = aria_gl_gen_vao();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_bind_vao = NIL(int32:vao) {
     aria_gl_bind_vao(vao);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_delete_vao = NIL(int32:vao) {
     aria_gl_delete_vao(vao);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_gen_buffer = int32() {
     int32:r = aria_gl_gen_buffer();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_bind_buffer = NIL(int32:target, int32:buffer) {
     aria_gl_bind_buffer(target, buffer);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_delete_buffer = NIL(int32:buffer) {
     aria_gl_delete_buffer(buffer);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: float buffer ────────────────────────────────────────
 
 pub func:gl_buf_clear = NIL() {
     aria_gl_buf_clear();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_buf_push = NIL(flt32:val) {
     aria_gl_buf_push(val);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_buf_push3 = NIL(flt32:a, flt32:b, flt32:c) {
     aria_gl_buf_push3(a, b, c);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_buf_push6 = NIL(flt32:a, flt32:b, flt32:c,
                              flt32:d, flt32:e, flt32:f) {
     aria_gl_buf_push6(a, b, c, d, e, f);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_buf_count = int32() {
     int32:r = aria_gl_buf_count();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_buffer_data_f = NIL(int32:target, int32:usage) {
     aria_gl_buffer_data_f(target, usage);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: vertex attributes ───────────────────────────────────
@@ -328,62 +328,62 @@ pub func:gl_buffer_data_f = NIL(int32:target, int32:usage) {
 pub func:gl_vertex_attrib_pointer = NIL(int32:index, int32:size,
                                          int32:stride_floats, int32:offset_floats) {
     aria_gl_vertex_attrib_pointer(index, size, stride_floats, offset_floats);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_enable_vertex_attrib = NIL(int32:index) {
     aria_gl_enable_vertex_attrib(index);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_disable_vertex_attrib = NIL(int32:index) {
     aria_gl_disable_vertex_attrib(index);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: drawing ─────────────────────────────────────────────
 
 pub func:gl_draw_arrays = NIL(int32:mode, int32:first, int32:count) {
     aria_gl_draw_arrays(mode, first, count);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_draw_elements = NIL(int32:mode, int32:count, int32:elem_type,
                                  int32:offset) {
     aria_gl_draw_elements(mode, count, elem_type, offset);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: uniforms ────────────────────────────────────────────
 
 pub func:gl_get_uniform_location = int32(int32:program, string:name) {
     int32:r = aria_gl_get_uniform_location(program, name);
-    pass(r);
+    pass r;
 };
 
 pub func:gl_uniform1i = NIL(int32:loc, int32:val) {
     aria_gl_uniform1i(loc, val);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_uniform1f = NIL(int32:loc, flt32:val) {
     aria_gl_uniform1f(loc, val);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_uniform3f = NIL(int32:loc, flt32:x, flt32:y, flt32:z) {
     aria_gl_uniform3f(loc, x, y, z);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_uniform4f = NIL(int32:loc, flt32:x, flt32:y, flt32:z, flt32:w) {
     aria_gl_uniform4f(loc, x, y, z, w);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_uniform_matrix4fv = NIL(int32:loc) {
     aria_gl_uniform_matrix4fv(loc);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_uniform_mat4 = NIL(int32:loc,
@@ -393,234 +393,234 @@ pub func:gl_uniform_mat4 = NIL(int32:loc,
                                 flt32:m12, flt32:m13, flt32:m14, flt32:m15) {
     aria_gl_uniform_mat4(loc, m0, m1, m2, m3, m4, m5, m6, m7,
                          m8, m9, m10, m11, m12, m13, m14, m15);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: textures ────────────────────────────────────────────
 
 pub func:gl_gen_texture = int32() {
     int32:r = aria_gl_gen_texture();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_bind_texture = NIL(int32:target, int32:texture) {
     aria_gl_bind_texture(target, texture);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_tex_parameter_i = NIL(int32:target, int32:pname, int32:param) {
     aria_gl_tex_parameter_i(target, pname, param);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_delete_texture = NIL(int32:texture) {
     aria_gl_delete_texture(texture);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: matrix helpers ──────────────────────────────────────
 
 pub func:gl_mat4_identity = NIL() {
     aria_gl_mat4_identity();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_perspective = NIL(flt32:fov_deg, flt32:aspect,
                                     flt32:near, flt32:far) {
     aria_gl_mat4_perspective(fov_deg, aspect, near, far);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_translate = NIL(flt32:x, flt32:y, flt32:z) {
     aria_gl_mat4_translate(x, y, z);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_rotate_y = NIL(flt32:angle_deg) {
     aria_gl_mat4_rotate_y(angle_deg);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_rotate_x = NIL(flt32:angle_deg) {
     aria_gl_mat4_rotate_x(angle_deg);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_multiply = NIL() {
     aria_gl_mat4_multiply();
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_store = NIL(int32:slot) {
     aria_gl_mat4_store(slot);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_load = NIL(int32:slot) {
     aria_gl_mat4_load(slot);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:gl_mat4_mul_slots = NIL(int32:a_slot, int32:b_slot) {
     aria_gl_mat4_mul_slots(a_slot, b_slot);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: events + timing ─────────────────────────────────────
 
 pub func:gl_poll_event = int32() {
     int32:r = aria_gl_poll_event();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_event_type = int32() {
     int32:r = aria_gl_event_type();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_event_key_scancode = int32() {
     int32:r = aria_gl_event_key_scancode();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_event_key_keycode = int32() {
     int32:r = aria_gl_event_key_keycode();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_get_ticks = int32() {
     int32:r = aria_gl_get_ticks();
-    pass(r);
+    pass r;
 };
 
 pub func:gl_delay = NIL(int32:ms) {
     aria_gl_delay(ms);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── public API: pre-built geometry ──────────────────────────────────
 
 pub func:gl_load_cube_geometry = NIL() {
     aria_gl_load_cube_geometry();
-    pass(NIL);
+    pass NIL;
 };
 
 // ── GL constants (from shim) ────────────────────────────────────────
 
 pub func:GL_COLOR_BUFFER_BIT = int32() {
     int32:r = aria_gl_COLOR_BUFFER_BIT();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_DEPTH_BUFFER_BIT = int32() {
     int32:r = aria_gl_DEPTH_BUFFER_BIT();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_DEPTH_TEST = int32() {
     int32:r = aria_gl_DEPTH_TEST();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_VERTEX_SHADER = int32() {
     int32:r = aria_gl_VERTEX_SHADER();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_FRAGMENT_SHADER = int32() {
     int32:r = aria_gl_FRAGMENT_SHADER();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_ARRAY_BUFFER = int32() {
     int32:r = aria_gl_ARRAY_BUFFER();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_ELEMENT_ARRAY_BUFFER = int32() {
     int32:r = aria_gl_ELEMENT_ARRAY_BUFFER();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_STATIC_DRAW = int32() {
     int32:r = aria_gl_STATIC_DRAW();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_TRIANGLES = int32() {
     int32:r = aria_gl_TRIANGLES();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_LINES = int32() {
     int32:r = aria_gl_LINES();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_TEXTURE_2D = int32() {
     int32:r = aria_gl_TEXTURE_2D();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_LINEAR = int32() {
     int32:r = aria_gl_LINEAR();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_NEAREST = int32() {
     int32:r = aria_gl_NEAREST();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_CULL_FACE = int32() {
     int32:r = aria_gl_CULL_FACE();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_BLEND = int32() {
     int32:r = aria_gl_BLEND();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_DYNAMIC_DRAW = int32() {
     int32:r = aria_gl_DYNAMIC_DRAW();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_POINTS = int32() {
     int32:r = aria_gl_POINTS();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_UNSIGNED_INT = int32() {
     int32:r = aria_gl_UNSIGNED_INT();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_UNSIGNED_SHORT = int32() {
     int32:r = aria_gl_UNSIGNED_SHORT();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_TEXTURE_MIN_FILTER = int32() {
     int32:r = aria_gl_TEXTURE_MIN_FILTER();
-    pass(r);
+    pass r;
 };
 
 pub func:GL_TEXTURE_MAG_FILTER = int32() {
     int32:r = aria_gl_TEXTURE_MAG_FILTER();
-    pass(r);
+    pass r;
 };
 
 // ── SDL2 event type constants ───────────────────────────────────────
 
-pub func:SDL_QUIT_EVENT    = int32() { pass(256i32); };
-pub func:SDL_KEYDOWN_EVENT = int32() { pass(768i32); };
-pub func:SDL_KEYUP_EVENT   = int32() { pass(769i32); };
+pub func:SDL_QUIT_EVENT    = int32() { pass 256i32; };
+pub func:SDL_KEYDOWN_EVENT = int32() { pass 768i32; };
+pub func:SDL_KEYUP_EVENT   = int32() { pass 769i32; };
 
 // ── SDL2 key constants ──────────────────────────────────────────────
 
-pub func:SDLK_ESCAPE = int32() { pass(27i32); };
-pub func:SDLK_SPACE  = int32() { pass(32i32); };
-pub func:SDLK_RETURN = int32() { pass(13i32); };
-pub func:SDLK_q      = int32() { pass(113i32); };
+pub func:SDLK_ESCAPE = int32() { pass 27i32; };
+pub func:SDLK_SPACE  = int32() { pass 32i32; };
+pub func:SDLK_RETURN = int32() { pass 13i32; };
+pub func:SDLK_q      = int32() { pass 113i32; };

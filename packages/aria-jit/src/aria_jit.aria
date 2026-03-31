@@ -64,7 +64,7 @@ pub func:jit_return_const = int64(int64:val) {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Builder: add two int64 arguments (SysV ABI) ────────────────────
@@ -79,7 +79,7 @@ pub func:jit_add_two = int64() {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Builder: subtract two int64 arguments (arg1 - arg2) ────────────
@@ -93,7 +93,7 @@ pub func:jit_sub_two = int64() {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Builder: identity (return first argument) ───────────────────────
@@ -106,7 +106,7 @@ pub func:jit_identity = int64() {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Builder: double the argument (arg * 2) ──────────────────────────
@@ -121,7 +121,7 @@ pub func:jit_double = int64() {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Builder: negate the argument (0 - arg) ──────────────────────────
@@ -135,29 +135,29 @@ pub func:jit_negate = int64() {
     aria_jit_shim_ret(ctx);
     int64:code = aria_jit_shim_finalize(ctx);
     aria_jit_shim_destroy(ctx);
-    pass(code);
+    pass code;
 };
 
 // ── Execution Wrappers ──────────────────────────────────────────────
 
 pub func:jit_exec = int64(int64:code) {
     int64:r = aria_jit_shim_execute(code);
-    pass(r);
+    pass r;
 };
 
 pub func:jit_exec1 = int64(int64:code, int64:a) {
     int64:r = aria_jit_shim_execute_i64(code, a);
-    pass(r);
+    pass r;
 };
 
 pub func:jit_exec2 = int64(int64:code, int64:a, int64:b) {
     int64:r = aria_jit_shim_execute_i64_i64(code, a, b);
-    pass(r);
+    pass r;
 };
 
 // ── Cleanup ─────────────────────────────────────────────────────────
 
 pub func:jit_release = NIL(int64:code) {
     aria_jit_shim_free(code);
-    pass(NIL);
+    pass NIL;
 };

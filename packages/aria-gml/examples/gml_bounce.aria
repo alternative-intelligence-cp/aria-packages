@@ -34,7 +34,7 @@ func:game_create = NIL() {
     game_set_target_fps(60i32);
     randomize(42i32);
     ball_color = make_color_rgb(0i32, 200i32, 255i32);
-    pass(NIL);
+    pass NIL;
 };
 
 // ── step event ──
@@ -106,7 +106,7 @@ func:game_step = NIL() {
         score = 0i32;
     }
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── draw event ──
@@ -138,22 +138,22 @@ func:game_draw = NIL() {
     draw_set_font_size(16i32);
     draw_text(720.0f32, 10.0f32, "FPS");
 
-    pass(NIL);
+    pass NIL;
 };
 
 // ── main ──
 func:main = int32() {
     game_init(800i32, 600i32, "GML Bounce - Aria");
-    drop(game_create());
+    drop game_create();
 
     while (game_should_close() == 0i32) {
         game_begin_step();
-        drop(game_step());
+        drop game_step();
         game_begin_draw();
-        drop(game_draw());
+        drop game_draw();
         game_end_draw();
     }
 
     game_shutdown();
-    exit(0);
+    exit 0;
 };

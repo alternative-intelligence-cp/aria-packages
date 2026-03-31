@@ -5,7 +5,7 @@
 //         http://127.0.0.1:19080/api/users?page=1
 //       curl http://127.0.0.1:19080/
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_server_shim" {
     func:aria_server_listen           = int32(string:addr, int32:port, int32:backlog);
@@ -55,5 +55,5 @@ func:main = int32() {
     int64:s2 = aria_server_respond(c2, 200i32, "OK", "text/html", "<h1>Home</h1>");
 
     aria_server_test_summary();
-    exit(0);
+    exit 0;
 };

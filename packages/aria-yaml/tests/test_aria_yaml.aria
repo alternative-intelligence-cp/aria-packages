@@ -1,6 +1,6 @@
 // test_aria_yaml.aria — YAML parser tests (8 tests)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern "aria_yaml_shim" {
     func:aria_yaml_parse      = int32(string:text);
@@ -16,44 +16,44 @@ func:main = int32() {
     int32:n = aria_yaml_parse("name: MyApp\nversion: 3\ndebug: true\npi: 3.14\n\nserver:\n  host: localhost\n  port: 8080\n\ndatabase:\n  name: mydb\n  enabled: false\n");
 
     // T01: parse
-    if (n > 0i32) { drop(println("[PASS] T01 parse")); }
-    if (n <= 0i32) { drop(println("[FAIL] T01 parse")); }
+    if (n > 0i32) { drop println("[PASS] T01 parse"); }
+    if (n <= 0i32) { drop println("[FAIL] T01 parse"); }
 
     // T02: top-level string
     int32:h1 = aria_yaml_has_key("name");
-    if (h1 == 1i32) { drop(println("[PASS] T02 has_key name")); }
-    if (h1 != 1i32) { drop(println("[FAIL] T02 has_key name")); }
+    if (h1 == 1i32) { drop println("[PASS] T02 has_key name"); }
+    if (h1 != 1i32) { drop println("[FAIL] T02 has_key name"); }
 
     // T03: top-level int
     int64:ver = aria_yaml_get_int("version");
-    if (ver == 3i64) { drop(println("[PASS] T03 get_int version")); }
-    if (ver != 3i64) { drop(println("[FAIL] T03 get_int version")); }
+    if (ver == 3i64) { drop println("[PASS] T03 get_int version"); }
+    if (ver != 3i64) { drop println("[FAIL] T03 get_int version"); }
 
     // T04: bool true
     int32:dbg = aria_yaml_get_bool("debug");
-    if (dbg == 1i32) { drop(println("[PASS] T04 get_bool debug")); }
-    if (dbg != 1i32) { drop(println("[FAIL] T04 get_bool debug")); }
+    if (dbg == 1i32) { drop println("[PASS] T04 get_bool debug"); }
+    if (dbg != 1i32) { drop println("[FAIL] T04 get_bool debug"); }
 
     // T05: nested int
     int64:port = aria_yaml_get_int("server.port");
-    if (port == 8080i64) { drop(println("[PASS] T05 get_int server.port")); }
-    if (port != 8080i64) { drop(println("[FAIL] T05 get_int server.port")); }
+    if (port == 8080i64) { drop println("[PASS] T05 get_int server.port"); }
+    if (port != 8080i64) { drop println("[FAIL] T05 get_int server.port"); }
 
     // T06: nested bool false
     int32:en = aria_yaml_get_bool("database.enabled");
-    if (en == 0i32) { drop(println("[PASS] T06 get_bool database.enabled")); }
-    if (en != 0i32) { drop(println("[FAIL] T06 get_bool database.enabled")); }
+    if (en == 0i32) { drop println("[PASS] T06 get_bool database.enabled"); }
+    if (en != 0i32) { drop println("[FAIL] T06 get_bool database.enabled"); }
 
     // T07: missing key
     int32:miss = aria_yaml_has_key("nonexistent");
-    if (miss == 0i32) { drop(println("[PASS] T07 missing key")); }
-    if (miss != 0i32) { drop(println("[FAIL] T07 missing key")); }
+    if (miss == 0i32) { drop println("[PASS] T07 missing key"); }
+    if (miss != 0i32) { drop println("[FAIL] T07 missing key"); }
 
     // T08: clear
     aria_yaml_clear();
     int32:c2 = aria_yaml_count();
-    if (c2 == 0i32) { drop(println("[PASS] T08 clear")); }
-    if (c2 != 0i32) { drop(println("[FAIL] T08 clear")); }
+    if (c2 == 0i32) { drop println("[PASS] T08 clear"); }
+    if (c2 != 0i32) { drop println("[FAIL] T08 clear"); }
 
-    exit(0);
+    exit 0;
 };

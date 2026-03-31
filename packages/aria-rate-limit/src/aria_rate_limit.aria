@@ -34,45 +34,45 @@ extern "aria_rate_limit_shim" {
 
 pub func:rate_limit_configure = NIL(int32:max_tokens, int32:refill_per_sec, int32:window_sec) {
     aria_rate_limit_configure(max_tokens, refill_per_sec, window_sec);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rate_limit_max = NIL(int32:max_tokens) {
     aria_rate_limit_set_max(max_tokens);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rate_limit_rate = NIL(int32:tokens_per_sec) {
     aria_rate_limit_set_rate(tokens_per_sec);
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:rate_limit_check = int32(string:key) {
     int32:r = aria_rate_limit_check(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rate_limit_check_cost = int32(string:key, int32:cost) {
     int32:r = aria_rate_limit_check_cost(key, cost);
-    pass(r);
+    pass r;
 };
 
 pub func:rate_limit_remaining = int32(string:key) {
     int32:r = aria_rate_limit_remaining(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rate_limit_retry_after = int32(string:key) {
     int32:r = aria_rate_limit_retry_after(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rate_limit_headers = string(string:key) {
     string:r = aria_rate_limit_headers(key);
-    pass(r);
+    pass r;
 };
 
 pub func:rate_limit_reset = NIL() {
     aria_rate_limit_reset();
-    pass(NIL);
+    pass NIL;
 };

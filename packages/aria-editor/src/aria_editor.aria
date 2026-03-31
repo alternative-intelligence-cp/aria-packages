@@ -95,29 +95,29 @@ extern "libc" {
     func:fclose  = int32(int64:fp);
 }
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 // ═══════════════════════════════════════════════════════════════════════════════
 // Virtual key code constants
 // ═══════════════════════════════════════════════════════════════════════════════
-func:KEY_UP     = int32() { pass(200i32); };
-func:KEY_DOWN   = int32() { pass(201i32); };
-func:KEY_LEFT   = int32() { pass(202i32); };
-func:KEY_RIGHT  = int32() { pass(203i32); };
-func:KEY_HOME   = int32() { pass(204i32); };
-func:KEY_END    = int32() { pass(205i32); };
-func:KEY_DELETE = int32() { pass(206i32); };
-func:KEY_PGUP   = int32() { pass(207i32); };
-func:KEY_PGDN   = int32() { pass(208i32); };
-func:KEY_ESC    = int32() { pass(27i32); };
-func:KEY_ENTER  = int32() { pass(13i32); };
-func:KEY_TAB    = int32() { pass(9i32); };
-func:KEY_BACKSPACE = int32() { pass(127i32); };
-func:CTRL_Q     = int32() { pass(17i32); };
-func:CTRL_S     = int32() { pass(19i32); };
-func:CTRL_F     = int32() { pass(6i32); };
-func:CTRL_G     = int32() { pass(7i32); };
-func:CTRL_H     = int32() { pass(8i32); };
-func:KEY_NONE   = int32() { pass(-1i32); };
+func:KEY_UP     = int32() { pass 200i32; };
+func:KEY_DOWN   = int32() { pass 201i32; };
+func:KEY_LEFT   = int32() { pass 202i32; };
+func:KEY_RIGHT  = int32() { pass 203i32; };
+func:KEY_HOME   = int32() { pass 204i32; };
+func:KEY_END    = int32() { pass 205i32; };
+func:KEY_DELETE = int32() { pass 206i32; };
+func:KEY_PGUP   = int32() { pass 207i32; };
+func:KEY_PGDN   = int32() { pass 208i32; };
+func:KEY_ESC    = int32() { pass 27i32; };
+func:KEY_ENTER  = int32() { pass 13i32; };
+func:KEY_TAB    = int32() { pass 9i32; };
+func:KEY_BACKSPACE = int32() { pass 127i32; };
+func:CTRL_Q     = int32() { pass 17i32; };
+func:CTRL_S     = int32() { pass 19i32; };
+func:CTRL_F     = int32() { pass 6i32; };
+func:CTRL_G     = int32() { pass 7i32; };
+func:CTRL_H     = int32() { pass 8i32; };
+func:KEY_NONE   = int32() { pass -1i32; };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Terminal size helpers
@@ -125,14 +125,14 @@ func:KEY_NONE   = int32() { pass(-1i32); };
 func:get_cols = int32(int64:packed) {
     uint64:u = @cast<uint64>(packed);
     uint64:shifted = u >> 32u64;
-    pass(@cast<int32>(shifted));
+    pass @cast<int32>(shifted);
 };
 
 func:get_rows = int32(int64:packed) {
     uint64:u = @cast<uint64>(packed);
     uint64:mask = 4294967295u64;
     uint64:low = u & mask;
-    pass(@cast<int32>(low));
+    pass @cast<int32>(low);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -140,7 +140,7 @@ func:get_rows = int32(int64:packed) {
 // ═══════════════════════════════════════════════════════════════════════════════
 func:get_filename_arg = string() {
     int64:fp = fopen("/proc/self/cmdline", "r");
-    if (fp == 0i64) { pass(""); }
+    if (fp == 0i64) { pass ""; }
 
     int32:arg_num = 0i32;
     string:current = "";
@@ -148,8 +148,8 @@ func:get_filename_arg = string() {
     while (c >= 0i32) {
         if (c == 0i32) {
             if (arg_num == 1i32) {
-                drop(fclose(fp));
-                pass(current);
+                drop fclose(fp);
+                pass current;
             }
             arg_num = arg_num + 1i32;
             current = "";
@@ -159,9 +159,9 @@ func:get_filename_arg = string() {
         }
         c = fgetc(fp);
     }
-    drop(fclose(fp));
-    if (arg_num == 1i32) { pass(current); }
-    pass("");
+    drop fclose(fp);
+    if (arg_num == 1i32) { pass current; }
+    pass "";
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -175,12 +175,12 @@ func:draw_rows = NIL(int32:rowoff, int32:coloff, int32:screen_rows, int32:screen
     int32:y = 0i32;
     while (y < screen_rows) {
         int32:file_row = y + rowoff;
-        drop(aria_display_move(1i32, y + 1i32));
+        drop aria_display_move(1i32, y + 1i32);
         if (file_row >= total_lines) {
             // Past end of file — draw tilde
-            drop(aria_display_set_fg(6i32));
+            drop aria_display_set_fg(6i32);
             print("~");
-            drop(aria_display_reset_attr());
+            drop aria_display_reset_attr();
         }
         if (file_row < total_lines) {
             // Draw file content
@@ -197,10 +197,10 @@ func:draw_rows = NIL(int32:rowoff, int32:coloff, int32:screen_rows, int32:screen
                 print(visible);
             }
         }
-        drop(aria_display_clear_eol());
+        drop aria_display_clear_eol();
         y = y + 1i32;
     }
-    pass(NIL);
+    pass NIL;
 };
 
 // Draw the status bar (reverse video) at row (screen_rows + 1)
@@ -208,8 +208,8 @@ func:draw_status_bar = NIL(string:filename, int32:cy, int32:screen_rows, int32:s
     int32:total_lines = aria_editor_line_count();
     int32:dirty = aria_editor_is_dirty();
     int32:bar_row = screen_rows + 1i32;
-    drop(aria_display_move(1i32, bar_row));
-    drop(aria_display_set_reverse(1i32));
+    drop aria_display_move(1i32, bar_row);
+    drop aria_display_set_reverse(1i32);
 
     // Left side: filename + modified indicator + line count
     string:fname_display = filename;
@@ -247,16 +247,16 @@ func:draw_status_bar = NIL(string:filename, int32:cy, int32:screen_rows, int32:s
         }
     }
 
-    drop(aria_display_set_reverse(0i32));
-    drop(aria_display_reset_attr());
-    pass(NIL);
+    drop aria_display_set_reverse(0i32);
+    drop aria_display_reset_attr();
+    pass NIL;
 };
 
 // Draw the message bar at row (screen_rows + 2)
 func:draw_message_bar = NIL(string:msg, int32:screen_rows, int32:screen_cols) {
     int32:msg_row = screen_rows + 2i32;
-    drop(aria_display_move(1i32, msg_row));
-    drop(aria_display_clear_eol());
+    drop aria_display_move(1i32, msg_row);
+    drop aria_display_clear_eol();
     int64:msg_len = string_length(msg);
     int64:cols_64 = @cast<int64>(screen_cols);
     if (msg_len > 0i64) {
@@ -267,7 +267,7 @@ func:draw_message_bar = NIL(string:msg, int32:screen_rows, int32:screen_cols) {
             print(msg);
         }
     }
-    pass(NIL);
+    pass NIL;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -284,11 +284,11 @@ func:editor_prompt = string(string:prompt_text, int32:screen_rows, int32:screen_
     while (prompting == 1i32) {
         // Draw prompt in message bar
         int32:msg_row = screen_rows + 2i32;
-        drop(aria_display_move(1i32, msg_row));
-        drop(aria_display_clear_eol());
+        drop aria_display_move(1i32, msg_row);
+        drop aria_display_clear_eol();
         string:full_prompt = string_concat(prompt_text, input);
         print(full_prompt);
-        drop(aria_display_flush());
+        drop aria_display_flush();
 
         int32:key = aria_input_read_key();
         if (key == -1i32) {
@@ -320,7 +320,7 @@ func:editor_prompt = string(string:prompt_text, int32:screen_rows, int32:screen_
             }
         }
     }
-    pass(input);
+    pass input;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -328,7 +328,7 @@ func:editor_prompt = string(string:prompt_text, int32:screen_rows, int32:screen_
 // ═══════════════════════════════════════════════════════════════════════════════
 func:main = int32() {
     // ── Parse arguments ──────────────────────────────────────────────────────
-    string:filename = raw(get_filename_arg());
+    string:filename = raw get_filename_arg();
 
     // ── Initialize editor buffer ─────────────────────────────────────────────
     aria_editor_init();
@@ -343,12 +343,12 @@ func:main = int32() {
     }
 
     // ── Enter raw mode ───────────────────────────────────────────────────────
-    drop(aria_input_enter_raw());
+    drop aria_input_enter_raw();
 
     // ── Get terminal size ────────────────────────────────────────────────────
     int64:size_packed = aria_display_get_size();
-    int32:screen_cols = raw(get_cols(size_packed));
-    int32:screen_rows = raw(get_rows(size_packed));
+    int32:screen_cols = raw get_cols(size_packed);
+    int32:screen_rows = raw get_rows(size_packed);
     // Reserve 2 rows for status bar and message bar
     screen_rows = screen_rows - 2i32;
 
@@ -402,18 +402,18 @@ func:main = int32() {
         }
 
         // ── Render screen ────────────────────────────────────────────────────
-        drop(aria_display_hide_cursor());
-        drop(aria_display_home());
-        drop(raw(draw_rows(rowoff, coloff, screen_rows, screen_cols)));
-        drop(raw(draw_status_bar(filename, cy, screen_rows, screen_cols)));
-        drop(raw(draw_message_bar(status_msg, screen_rows, screen_cols)));
+        drop aria_display_hide_cursor();
+        drop aria_display_home();
+        drop raw draw_rows(rowoff, coloff, screen_rows, screen_cols);
+        drop raw draw_status_bar(filename, cy, screen_rows, screen_cols);
+        drop raw draw_message_bar(status_msg, screen_rows, screen_cols);
 
         // Position cursor
         int32:cursor_screen_col = cx - coloff + 1i32;
         int32:cursor_screen_row = cy - rowoff + 1i32;
-        drop(aria_display_move(cursor_screen_col, cursor_screen_row));
-        drop(aria_display_show_cursor());
-        drop(aria_display_flush());
+        drop aria_display_move(cursor_screen_col, cursor_screen_row);
+        drop aria_display_show_cursor();
+        drop aria_display_flush();
 
         // ── Read input ───────────────────────────────────────────────────────
         int32:key = aria_input_read_key();
@@ -447,7 +447,7 @@ func:main = int32() {
         // ── Ctrl-S: Save ─────────────────────────────────────────────────────
         if (key == k_ctrl_s) {
             if (string_length(filename) == 0i64) {
-                filename = raw(editor_prompt("Save as: ", screen_rows, screen_cols));
+                filename = raw editor_prompt("Save as: ", screen_rows, screen_cols);
                 if (string_length(filename) == 0i64) {
                     status_msg = "Save aborted.";
                 }
@@ -468,7 +468,7 @@ func:main = int32() {
 
         // ── Ctrl-F: Find ─────────────────────────────────────────────────────
         if (key == k_ctrl_f) {
-            string:query = raw(editor_prompt("Search: ", screen_rows, screen_cols));
+            string:query = raw editor_prompt("Search: ", screen_rows, screen_cols);
             if (string_length(query) > 0i64) {
                 int32:search_col = cx + 1i32;
                 int64:result = aria_editor_find(query, cy, search_col);
@@ -493,7 +493,7 @@ func:main = int32() {
 
         // ── Ctrl-G: Go to line ───────────────────────────────────────────────
         if (key == k_ctrl_g) {
-            string:line_str = raw(editor_prompt("Go to line: ", screen_rows, screen_cols));
+            string:line_str = raw editor_prompt("Go to line: ", screen_rows, screen_cols);
             if (string_length(line_str) > 0i64) {
                 // Parse number manually (Aria has no string-to-int builtin)
                 int32:target = 0i32;
@@ -711,11 +711,11 @@ func:main = int32() {
     // ══════════════════════════════════════════════════════════════════════════
     // Cleanup
     // ══════════════════════════════════════════════════════════════════════════
-    drop(aria_display_clear());
-    drop(aria_display_home());
-    drop(aria_display_show_cursor());
-    drop(aria_display_flush());
-    drop(aria_input_exit_raw());
+    drop aria_display_clear();
+    drop aria_display_home();
+    drop aria_display_show_cursor();
+    drop aria_display_flush();
+    drop aria_input_exit_raw();
 
-    exit(0);
+    exit 0;
 };

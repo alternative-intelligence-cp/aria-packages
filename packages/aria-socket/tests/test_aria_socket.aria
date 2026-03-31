@@ -1,6 +1,6 @@
 // test_aria_socket.aria — UDP loopback tests (C-side assertions)
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 extern func:aria_socket_udp_create       = int32();
 extern func:aria_socket_udp_bind         = int32(int32:fd, string:addr, int32:port);
@@ -32,5 +32,5 @@ func:main = int32() {
     aria_socket_assert_int_eq(pr2, 0i32, "test 05: poll_read=0 (timeout)");
 
     aria_socket_test_summary();
-    exit(0);
+    exit 0;
 };

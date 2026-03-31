@@ -7,7 +7,7 @@
 
 use "../src/aria_str.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit(1); };
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
     int64:passed = 0i64;
@@ -396,13 +396,13 @@ func:main = int32() {
         print("PASS: all ");
         print(string_from_int(total));
         print(" aria-str tests passed\n");
-        exit(0);
+        exit 0;
     } else {
         print("FAIL: ");
         print(string_from_int(passed));
         print("/");
         print(string_from_int(total));
         print(" passed\n");
-        pass(1i32);
+        pass 1i32;
     }
 };

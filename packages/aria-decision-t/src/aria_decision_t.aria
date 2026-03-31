@@ -38,82 +38,82 @@ extern func:aria_free  = void(wild float64*:ptr);
 extern func:malloc     = wild int64*(int64:size);
 extern func:free       = void(wild int64*:ptr);
 
-pub func:dt_none    = int64() { pass(0i64); };
-pub func:dt_unknown = int64() { pass(1i64); };
-pub func:dt_a       = int64() { pass(2i64); };
-pub func:dt_b       = int64() { pass(3i64); };
-pub func:dt_both    = int64() { pass(4i64); };
+pub func:dt_none    = int64() { pass 0i64; };
+pub func:dt_unknown = int64() { pass 1i64; };
+pub func:dt_a       = int64() { pass 2i64; };
+pub func:dt_b       = int64() { pass 3i64; };
+pub func:dt_both    = int64() { pass 4i64; };
 
-pub func:dt_trig_manual    = int64() { pass(0i64); };
-pub func:dt_trig_init      = int64() { pass(1i64); };
-pub func:dt_trig_lean_a    = int64() { pass(2i64); };
-pub func:dt_trig_lean_unkn = int64() { pass(3i64); };
-pub func:dt_trig_lean_b    = int64() { pass(4i64); };
-pub func:dt_trig_tilt_both = int64() { pass(5i64); };
-pub func:dt_trig_tilt_unkn = int64() { pass(6i64); };
-pub func:dt_trig_tilt_none = int64() { pass(7i64); };
-pub func:dt_trig_observe   = int64() { pass(8i64); };
+pub func:dt_trig_manual    = int64() { pass 0i64; };
+pub func:dt_trig_init      = int64() { pass 1i64; };
+pub func:dt_trig_lean_a    = int64() { pass 2i64; };
+pub func:dt_trig_lean_unkn = int64() { pass 3i64; };
+pub func:dt_trig_lean_b    = int64() { pass 4i64; };
+pub func:dt_trig_tilt_both = int64() { pass 5i64; };
+pub func:dt_trig_tilt_unkn = int64() { pass 6i64; };
+pub func:dt_trig_tilt_none = int64() { pass 7i64; };
+pub func:dt_trig_observe   = int64() { pass 8i64; };
 
-pub func:dt_axis_a = int64() { pass(0i64); };
-pub func:dt_axis_b = int64() { pass(1i64); };
+pub func:dt_axis_a = int64() { pass 0i64; };
+pub func:dt_axis_b = int64() { pass 1i64; };
 
 func:_dg_factor = float64(float64:m) {
-    pass(m * m + 0.5 * m + 0.5);
+    pass m * m + 0.5 * m + 0.5;
 };
 
 func:_dg_clamp = float64(float64:v, float64:lo, float64:hi) {
-    if (v < lo) { pass(lo); }
-    if (v > hi) { pass(hi); }
-    pass(v);
+    if (v < lo) { pass lo; }
+    if (v > hi) { pass hi; }
+    pass v;
 };
 
 func:_dg_fmax = float64(float64:a, float64:b) {
-    if (a > b) { pass(a); }
-    pass(b);
+    if (a > b) { pass a; }
+    pass b;
 };
 
 func:_dg_fmin = float64(float64:a, float64:b) {
-    if (a < b) { pass(a); }
-    pass(b);
+    if (a < b) { pass a; }
+    pass b;
 };
 
 pub func:dg_opt_a = float64(float64:pbc, float64:pbm, float64:width) {
-    float64:factor   = raw(_dg_factor(pbm));
+    float64:factor   = raw _dg_factor(pbm);
     float64:c        = pbc / width;
     float64:hw       = 0.5 * factor / 2.0;
     float64:lo       = c - hw;
     float64:hi       = c + hw;
-    float64:chi      = raw(_dg_fmin(0.5, hi));
-    float64:clo      = raw(_dg_fmax(0.0, lo));
-    float64:overlap  = raw(_dg_fmax(0.0, chi - clo));
-    float64:result   = raw(_dg_fmin(1.0, overlap / 0.5));
-    pass(result);
+    float64:chi      = raw _dg_fmin(0.5, hi);
+    float64:clo      = raw _dg_fmax(0.0, lo);
+    float64:overlap  = raw _dg_fmax(0.0, chi - clo);
+    float64:result   = raw _dg_fmin(1.0, overlap / 0.5);
+    pass result;
 };
 
 pub func:dg_opt_b = float64(float64:pbc, float64:pbm, float64:width) {
-    float64:factor   = raw(_dg_factor(pbm));
+    float64:factor   = raw _dg_factor(pbm);
     float64:c        = pbc / width;
     float64:hw       = 0.5 * factor / 2.0;
     float64:lo       = c - hw;
     float64:hi       = c + hw;
-    float64:chi      = raw(_dg_fmin(1.0, hi));
-    float64:clo      = raw(_dg_fmax(0.5, lo));
-    float64:overlap  = raw(_dg_fmax(0.0, chi - clo));
-    float64:result   = raw(_dg_fmin(1.0, overlap / 0.5));
-    pass(result);
+    float64:chi      = raw _dg_fmin(1.0, hi);
+    float64:clo      = raw _dg_fmax(0.5, lo);
+    float64:overlap  = raw _dg_fmax(0.0, chi - clo);
+    float64:result   = raw _dg_fmin(1.0, overlap / 0.5);
+    pass result;
 };
 
 pub func:dg_decision_code = int64(float64:pbc, float64:pbm, float64:width) {
-    float64:a = raw(dg_opt_a(pbc, pbm, width));
-    float64:b = raw(dg_opt_b(pbc, pbm, width));
+    float64:a = raw dg_opt_a(pbc, pbm, width);
+    float64:b = raw dg_opt_b(pbc, pbm, width);
     if (a > 0.25) {
-        if (b > 0.25) { pass(4i64); }
-        pass(2i64);
+        if (b > 0.25) { pass 4i64; }
+        pass 2i64;
     }
-    if (b > 0.25) { pass(3i64); }
-    if (a >= 0.125) { pass(1i64); }
-    if (b >= 0.125) { pass(1i64); }
-    pass(0i64);
+    if (b > 0.25) { pass 3i64; }
+    if (a >= 0.125) { pass 1i64; }
+    if (b >= 0.125) { pass 1i64; }
+    pass 0i64;
 };
 
 pub func:dg_create = NIL(wild float64->:dg, float64:width) {
@@ -122,7 +122,7 @@ pub func:dg_create = NIL(wild float64->:dg, float64:width) {
     dg[2i64] = width;
     dg[3i64] = width * 0.5;
     dg[4i64] = 0.0;
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:dg_lean_a = NIL(wild float64->:dg, float64:amount) {
@@ -130,8 +130,8 @@ pub func:dg_lean_a = NIL(wild float64->:dg, float64:amount) {
     float64:width   = dg[2i64];
     float64:lo_lim  = width * 0.25;
     float64:hi_lim  = width * 0.75;
-    dg[0i64] = raw(_dg_clamp(pbc_cur - amount, lo_lim, hi_lim));
-    pass(NIL);
+    dg[0i64] = raw _dg_clamp(pbc_cur - amount, lo_lim, hi_lim);
+    pass NIL;
 };
 
 pub func:dg_lean_unkn = NIL(wild float64->:dg, float64:amount) {
@@ -142,13 +142,13 @@ pub func:dg_lean_unkn = NIL(wild float64->:dg, float64:amount) {
     float64:center  = width * 0.5;
     float64:pbc_new = pbc_cur;
     if (pbc_cur < center) {
-        pbc_new = raw(_dg_clamp(pbc_cur + amount, lo_lim, hi_lim));
+        pbc_new = raw _dg_clamp(pbc_cur + amount, lo_lim, hi_lim);
     }
     if (pbc_cur >= center) {
-        pbc_new = raw(_dg_clamp(pbc_cur - amount, lo_lim, hi_lim));
+        pbc_new = raw _dg_clamp(pbc_cur - amount, lo_lim, hi_lim);
     }
     dg[0i64] = pbc_new;
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:dg_lean_b = NIL(wild float64->:dg, float64:amount) {
@@ -156,15 +156,15 @@ pub func:dg_lean_b = NIL(wild float64->:dg, float64:amount) {
     float64:width   = dg[2i64];
     float64:lo_lim  = width * 0.25;
     float64:hi_lim  = width * 0.75;
-    dg[0i64] = raw(_dg_clamp(pbc_cur + amount, lo_lim, hi_lim));
-    pass(NIL);
+    dg[0i64] = raw _dg_clamp(pbc_cur + amount, lo_lim, hi_lim);
+    pass NIL;
 };
 
 pub func:dg_tilt_both = NIL(wild float64->:dg, float64:amount) {
     float64:pbm_cur = dg[1i64];
     float64:pbw     = dg[3i64];
-    dg[1i64] = raw(_dg_clamp(pbm_cur + amount / pbw, 0.0, 1.0));
-    pass(NIL);
+    dg[1i64] = raw _dg_clamp(pbm_cur + amount / pbw, 0.0, 1.0);
+    pass NIL;
 };
 
 pub func:dg_tilt_unkn = NIL(wild float64->:dg, float64:amount) {
@@ -173,25 +173,25 @@ pub func:dg_tilt_unkn = NIL(wild float64->:dg, float64:amount) {
     float64:step    = amount / pbw;
     float64:pbm_new = pbm_cur;
     if (pbm_cur < 0.5) {
-        pbm_new = raw(_dg_clamp(pbm_cur + step, 0.0, 1.0));
+        pbm_new = raw _dg_clamp(pbm_cur + step, 0.0, 1.0);
     }
     if (pbm_cur >= 0.5) {
-        pbm_new = raw(_dg_clamp(pbm_cur - step, 0.0, 1.0));
+        pbm_new = raw _dg_clamp(pbm_cur - step, 0.0, 1.0);
     }
     dg[1i64] = pbm_new;
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:dg_tilt_none = NIL(wild float64->:dg, float64:amount) {
     float64:pbm_cur = dg[1i64];
     float64:pbw     = dg[3i64];
-    dg[1i64] = raw(_dg_clamp(pbm_cur - amount / pbw, 0.0, 1.0));
-    pass(NIL);
+    dg[1i64] = raw _dg_clamp(pbm_cur - amount / pbw, 0.0, 1.0);
+    pass NIL;
 };
 
-pub func:dg_pbc   = float64(wild float64->:dg) { pass(dg[0i64]); };
-pub func:dg_pbm   = float64(wild float64->:dg) { pass(dg[1i64]); };
-pub func:dg_width = float64(wild float64->:dg) { pass(dg[2i64]); };
+pub func:dg_pbc   = float64(wild float64->:dg) { pass dg[0i64]; };
+pub func:dg_pbm   = float64(wild float64->:dg) { pass dg[1i64]; };
+pub func:dg_width = float64(wild float64->:dg) { pass dg[2i64]; };
 
 pub func:dgt_snapshot = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, int64:trigger_code) {
     int64:step_count = meta[0i64];
@@ -201,9 +201,9 @@ pub func:dgt_snapshot = NIL(wild float64->:dg, wild int64->:meta, wild float64->
     float64:pbc      = dg[0i64];
     float64:pbm      = dg[1i64];
     float64:width    = dg[2i64];
-    float64:a        = raw(dg_opt_a(pbc, pbm, width));
-    float64:b        = raw(dg_opt_b(pbc, pbm, width));
-    int64:dec_code   = raw(dg_decision_code(pbc, pbm, width));
+    float64:a        = raw dg_opt_a(pbc, pbm, width);
+    float64:b        = raw dg_opt_b(pbc, pbm, width);
+    int64:dec_code   = raw dg_decision_code(pbc, pbm, width);
 
     int64:slot = count;
     if (count >= capacity) {
@@ -227,64 +227,64 @@ pub func:dgt_snapshot = NIL(wild float64->:dg, wild int64->:meta, wild float64->
     meta[0i64] = step_count;
     meta[2i64] = head;
     meta[3i64] = count;
-    pass(NIL);
+    pass NIL;
 };
 
 pub func:dgt_create = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:width, int64:capacity) {
-    drop(dg_create(dg, width));
+    drop dg_create(dg, width);
     meta[0i64] = 0i64;
     meta[1i64] = capacity;
     meta[2i64] = 0i64;
     meta[3i64] = 0i64;
     meta[4i64] = capacity;
-    drop(dgt_snapshot(dg, meta, snaps, 1i64));
-    pass(NIL);
+    drop dgt_snapshot(dg, meta, snaps, 1i64);
+    pass NIL;
 };
 
 pub func:dgt_lean_a = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_lean_a(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 2i64));
-    pass(NIL);
+    drop dg_lean_a(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 2i64);
+    pass NIL;
 };
 
 pub func:dgt_lean_unkn = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_lean_unkn(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 3i64));
-    pass(NIL);
+    drop dg_lean_unkn(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 3i64);
+    pass NIL;
 };
 
 pub func:dgt_lean_b = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_lean_b(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 4i64));
-    pass(NIL);
+    drop dg_lean_b(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 4i64);
+    pass NIL;
 };
 
 pub func:dgt_tilt_both = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_tilt_both(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 5i64));
-    pass(NIL);
+    drop dg_tilt_both(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 5i64);
+    pass NIL;
 };
 
 pub func:dgt_tilt_unkn = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_tilt_unkn(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 6i64));
-    pass(NIL);
+    drop dg_tilt_unkn(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 6i64);
+    pass NIL;
 };
 
 pub func:dgt_tilt_none = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:amount) {
-    drop(dg_tilt_none(dg, amount));
-    drop(dgt_snapshot(dg, meta, snaps, 7i64));
-    pass(NIL);
+    drop dg_tilt_none(dg, amount);
+    drop dgt_snapshot(dg, meta, snaps, 7i64);
+    pass NIL;
 };
 
 // observe: compound lean + tilt, single snapshot. dir_code: 0=lean_a 1=lean_unkn 2=lean_b
 pub func:dgt_observe = NIL(wild float64->:dg, wild int64->:meta, wild float64->:snaps, float64:lean_amount, float64:tilt_amount, int64:trigger_code, int64:dir_code) {
-    if (dir_code == 0i64) { drop(dg_lean_a(dg, lean_amount)); }
-    if (dir_code == 1i64) { drop(dg_lean_unkn(dg, lean_amount)); }
-    if (dir_code == 2i64) { drop(dg_lean_b(dg, lean_amount)); }
-    drop(dg_tilt_both(dg, tilt_amount));
-    drop(dgt_snapshot(dg, meta, snaps, trigger_code));
-    pass(NIL);
+    if (dir_code == 0i64) { drop dg_lean_a(dg, lean_amount); }
+    if (dir_code == 1i64) { drop dg_lean_unkn(dg, lean_amount); }
+    if (dir_code == 2i64) { drop dg_lean_b(dg, lean_amount); }
+    drop dg_tilt_both(dg, tilt_amount);
+    drop dgt_snapshot(dg, meta, snaps, trigger_code);
+    pass NIL;
 };
 
 // Read snapshot at logical index (0=oldest) into 8-slot out_snap. Returns 1=ok 0=oob.
@@ -292,8 +292,8 @@ pub func:dgt_get_snap = int64(wild float64->:snaps, wild int64->:meta, int64:idx
     int64:count    = meta[3i64];
     int64:capacity = meta[1i64];
     int64:head     = meta[2i64];
-    if (idx < 0i64)   { pass(0i64); }
-    if (idx >= count) { pass(0i64); }
+    if (idx < 0i64)   { pass 0i64; }
+    if (idx >= count) { pass 0i64; }
     int64:phys = (head + idx) % capacity;
     int64:base = phys * 8i64;
     out_snap[0i64] = snaps[base + 0i64];
@@ -304,7 +304,7 @@ pub func:dgt_get_snap = int64(wild float64->:snaps, wild int64->:meta, int64:idx
     out_snap[5i64] = snaps[base + 5i64];
     out_snap[6i64] = snaps[base + 6i64];
     out_snap[7i64] = snaps[base + 7i64];
-    pass(1i64);
+    pass 1i64;
 };
 
 // Count decision transitions. Writes logical indices into out_indices (up to max_out). Returns count.
@@ -330,7 +330,7 @@ pub func:dgt_find_decision_changes = int64(wild float64->:snaps, wild int64->:me
         prev_dec = dec_i;
         i = i + 1i64;
     }
-    pass(found);
+    pass found;
 };
 
 // Snapshots where axis metric changed > threshold. Returns count, writes indices.
@@ -360,7 +360,7 @@ pub func:dgt_find_triggers = int64(wild float64->:snaps, wild int64->:meta, int6
         prev_val = val;
         i = i + 1i64;
     }
-    pass(found);
+    pass found;
 };
 
 // Peak confidence on given axis. Fills out_result[0]=step_f, out_result[1]=peak_val.
@@ -385,7 +385,7 @@ pub func:dgt_peak_confidence = NIL(wild float64->:snaps, wild int64->:meta, int6
     }
     out_result[0i64] = best_step;
     out_result[1i64] = best_val;
-    pass(NIL);
+    pass NIL;
 };
 
 // Stability report: count snapshots per decision zone (0..4).
@@ -410,8 +410,8 @@ pub func:dgt_stability_report = NIL(wild float64->:snaps, wild int64->:meta, wil
         }
         i = i + 1i64;
     }
-    pass(NIL);
+    pass NIL;
 };
 
-pub func:dgt_step_count = int64(wild int64->:meta) { pass(meta[0i64]); };
-pub func:dgt_snap_count = int64(wild int64->:meta) { pass(meta[3i64]); };
+pub func:dgt_step_count = int64(wild int64->:meta) { pass meta[0i64]; };
+pub func:dgt_snap_count = int64(wild int64->:meta) { pass meta[3i64]; };
