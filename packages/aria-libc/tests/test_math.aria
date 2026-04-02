@@ -1,0 +1,106 @@
+/* Test: aria-libc math operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_math" {
+    func:aria_libc_math_sin     = flt64(flt64:x);
+    func:aria_libc_math_cos     = flt64(flt64:x);
+    func:aria_libc_math_sqrt    = flt64(flt64:x);
+    func:aria_libc_math_pow     = flt64(flt64:base, flt64:exp_val);
+    func:aria_libc_math_log     = flt64(flt64:x);
+    func:aria_libc_math_exp     = flt64(flt64:x);
+    func:aria_libc_math_floor   = flt64(flt64:x);
+    func:aria_libc_math_ceil    = flt64(flt64:x);
+    func:aria_libc_math_round   = flt64(flt64:x);
+    func:aria_libc_math_fabs    = flt64(flt64:x);
+    func:aria_libc_math_fmod    = flt64(flt64:x, flt64:y);
+    func:aria_libc_math_fmin    = flt64(flt64:a, flt64:b);
+    func:aria_libc_math_fmax    = flt64(flt64:a, flt64:b);
+    func:aria_libc_math_pi      = flt64();
+    func:aria_libc_math_isnan   = int32(flt64:x);
+    func:aria_libc_math_isinf   = int32(flt64:x);
+    func:aria_libc_math_isfinite = int32(flt64:x);
+    func:aria_libc_math_min_i64 = int64(int64:a, int64:b);
+    func:aria_libc_math_max_i64 = int64(int64:a, int64:b);
+    func:aria_libc_math_abs_i64 = int64(int64:x);
+    func:aria_libc_math_hypot   = flt64(flt64:x, flt64:y);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:approx = bool(flt64:a, flt64:b, flt64:tol) {
+    flt64:diff = aria_libc_math_fabs(a - b);
+    if (diff < tol) {
+        pass true;
+    }
+    pass false;
+};
+
+func:main = int32() {
+    println("=== aria-libc math tests ===");
+
+    flt64:sq = aria_libc_math_sqrt(4.0);
+    drop check(raw approx(sq, 2.0, 0.0001), "sqrt(4)=2");
+
+    flt64:pw = aria_libc_math_pow(2.0, 10.0);
+    drop check(raw approx(pw, 1024.0, 0.0001), "pow(2,10)=1024");
+
+    flt64:lg = aria_libc_math_log(1.0);
+    drop check(raw approx(lg, 0.0, 0.0001), "log(1)=0");
+
+    flt64:ex = aria_libc_math_exp(0.0);
+    drop check(raw approx(ex, 1.0, 0.0001), "exp(0)=1");
+
+    flt64:sn = aria_libc_math_sin(0.0);
+    drop check(raw approx(sn, 0.0, 0.0001), "sin(0)=0");
+
+    flt64:cs = aria_libc_math_cos(0.0);
+    drop check(raw approx(cs, 1.0, 0.0001), "cos(0)=1");
+
+    flt64:fl = aria_libc_math_floor(3.7);
+    drop check(raw approx(fl, 3.0, 0.0001), "floor(3.7)=3");
+
+    flt64:cl = aria_libc_math_ceil(3.2);
+    drop check(raw approx(cl, 4.0, 0.0001), "ceil(3.2)=4");
+
+    flt64:rn = aria_libc_math_round(3.5);
+    drop check(raw approx(rn, 4.0, 0.0001), "round(3.5)=4");
+
+    flt64:ab = aria_libc_math_fabs(0.0 - 5.3);
+    drop check(raw approx(ab, 5.3, 0.0001), "fabs(-5.3)=5.3");
+
+    flt64:fm = aria_libc_math_fmod(10.0, 3.0);
+    drop check(raw approx(fm, 1.0, 0.0001), "fmod(10,3)=1");
+
+    flt64:mn = aria_libc_math_fmin(3.0, 7.0);
+    drop check(raw approx(mn, 3.0, 0.0001), "fmin(3,7)=3");
+
+    flt64:mx = aria_libc_math_fmax(3.0, 7.0);
+    drop check(raw approx(mx, 7.0, 0.0001), "fmax(3,7)=7");
+
+    int64:mi = aria_libc_math_min_i64(5i64, 3i64);
+    drop check(mi == 3i64, "min_i64(5,3)=3");
+
+    int64:mxi = aria_libc_math_max_i64(5i64, 3i64);
+    drop check(mxi == 5i64, "max_i64(5,3)=5");
+
+    int64:ai = aria_libc_math_abs_i64(0i64 - 42i64);
+    drop check(ai == 42i64, "abs_i64(-42)=42");
+
+    int32:fin = aria_libc_math_isfinite(1.0);
+    drop check(fin == 1i32, "isfinite(1.0)=1");
+
+    flt64:hy = aria_libc_math_hypot(3.0, 4.0);
+    drop check(raw approx(hy, 5.0, 0.0001), "hypot(3,4)=5");
+
+    exit 0;
+};

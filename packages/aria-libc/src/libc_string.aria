@@ -1,0 +1,149 @@
+/* aria-libc :: string — C string operations
+ * Wraps: strlen, strcmp, strstr, substr, toupper, tolower, trim, ctype
+ */
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen    = int64(string:s);
+    func:aria_libc_string_strcmp    = int32(string:a, string:b);
+    func:aria_libc_string_strncmp  = int32(string:a, string:b, int64:n);
+    func:aria_libc_string_strcasecmp = int32(string:a, string:b);
+
+    func:aria_libc_string_strstr   = int64(string:haystack, string:needle);
+    func:aria_libc_string_strchr   = int64(string:s, int32:c);
+    func:aria_libc_string_strrchr  = int64(string:s, int32:c);
+
+    func:aria_libc_string_strcat   = string(string:a, string:b);
+    func:aria_libc_string_substr   = string(string:s, int64:start, int64:len);
+    func:aria_libc_string_strdup   = string(string:s);
+
+    func:aria_libc_string_memcpy   = void(int64:dst, int64:src, int64:n);
+    func:aria_libc_string_memset   = void(int64:dst, int32:val, int64:n);
+    func:aria_libc_string_memcmp   = int32(int64:a, int64:b, int64:n);
+
+    func:aria_libc_string_toupper  = string(string:s);
+    func:aria_libc_string_tolower  = string(string:s);
+    func:aria_libc_string_trim     = string(string:s);
+
+    func:aria_libc_string_isalpha  = int32(int32:c);
+    func:aria_libc_string_isdigit  = int32(int32:c);
+    func:aria_libc_string_isalnum  = int32(int32:c);
+    func:aria_libc_string_isspace  = int32(int32:c);
+    func:aria_libc_string_ispunct  = int32(int32:c);
+
+    func:aria_libc_string_atoi     = int64(string:s);
+    func:aria_libc_string_atof     = flt64(string:s);
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:str_len = int64(string:s) {
+    int64:r = aria_libc_string_strlen(s);
+    pass r;
+}
+
+pub func:str_compare = int32(string:a, string:b) {
+    int32:r = aria_libc_string_strcmp(a, b);
+    pass r;
+}
+
+pub func:str_compare_n = int32(string:a, string:b, int64:n) {
+    int32:r = aria_libc_string_strncmp(a, b, n);
+    pass r;
+}
+
+pub func:str_compare_nocase = int32(string:a, string:b) {
+    int32:r = aria_libc_string_strcasecmp(a, b);
+    pass r;
+}
+
+pub func:str_find = int64(string:haystack, string:needle) {
+    int64:r = aria_libc_string_strstr(haystack, needle);
+    pass r;
+}
+
+pub func:str_find_char = int64(string:s, int32:c) {
+    int64:r = aria_libc_string_strchr(s, c);
+    pass r;
+}
+
+pub func:str_find_char_last = int64(string:s, int32:c) {
+    int64:r = aria_libc_string_strrchr(s, c);
+    pass r;
+}
+
+pub func:str_concat = string(string:a, string:b) {
+    string:r = aria_libc_string_strcat(a, b);
+    pass r;
+}
+
+pub func:str_sub = string(string:s, int64:start, int64:len) {
+    string:r = aria_libc_string_substr(s, start, len);
+    pass r;
+}
+
+pub func:str_clone = string(string:s) {
+    string:r = aria_libc_string_strdup(s);
+    pass r;
+}
+
+pub func:str_upper = string(string:s) {
+    string:r = aria_libc_string_toupper(s);
+    pass r;
+}
+
+pub func:str_lower = string(string:s) {
+    string:r = aria_libc_string_tolower(s);
+    pass r;
+}
+
+pub func:str_trim = string(string:s) {
+    string:r = aria_libc_string_trim(s);
+    pass r;
+}
+
+pub func:str_to_int = int64(string:s) {
+    int64:r = aria_libc_string_atoi(s);
+    pass r;
+}
+
+pub func:str_to_float = flt64(string:s) {
+    flt64:r = aria_libc_string_atof(s);
+    pass r;
+}
+
+pub func:char_is_alpha = int32(int32:c) {
+    int32:r = aria_libc_string_isalpha(c);
+    pass r;
+}
+
+pub func:char_is_digit = int32(int32:c) {
+    int32:r = aria_libc_string_isdigit(c);
+    pass r;
+}
+
+pub func:char_is_alnum = int32(int32:c) {
+    int32:r = aria_libc_string_isalnum(c);
+    pass r;
+}
+
+pub func:char_is_space = int32(int32:c) {
+    int32:r = aria_libc_string_isspace(c);
+    pass r;
+}
+
+pub func:mem_copy = NIL(int64:dst, int64:src, int64:n) {
+    drop aria_libc_string_memcpy(dst, src, n);
+    pass NIL;
+}
+
+pub func:mem_set = NIL(int64:dst, int32:val, int64:n) {
+    drop aria_libc_string_memset(dst, val, n);
+    pass NIL;
+}
+
+pub func:mem_compare = int32(int64:a, int64:b, int64:n) {
+    int32:r = aria_libc_string_memcmp(a, b, n);
+    pass r;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

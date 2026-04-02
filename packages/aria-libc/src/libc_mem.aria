@@ -1,0 +1,168 @@
+/* aria-libc :: mem — Memory allocation & utilities
+ * Wraps: malloc, free, realloc, calloc, getenv, rand, exit
+ */
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc       = int64(int64:size);
+    func:aria_libc_mem_calloc       = int64(int64:count, int64:size);
+    func:aria_libc_mem_realloc      = int64(int64:ptr, int64:size);
+    func:aria_libc_mem_free         = void(int64:ptr);
+    func:aria_libc_mem_alloc_zeroed = int64(int64:size);
+    func:aria_libc_mem_copy         = void(int64:dst, int64:src, int64:n);
+    func:aria_libc_mem_move         = void(int64:dst, int64:src, int64:n);
+    func:aria_libc_mem_zero         = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64     = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_read_i32     = int32(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64    = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_write_i32    = void(int64:ptr, int64:offset, int32:val);
+    func:aria_libc_mem_read_byte    = int32(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte   = void(int64:ptr, int64:offset, int32:val);
+    func:aria_libc_mem_atoi         = int64(string:s);
+    func:aria_libc_mem_atof         = flt64(string:s);
+    func:aria_libc_mem_srand        = void(int64:seed);
+    func:aria_libc_mem_rand         = int32();
+    func:aria_libc_mem_rand_range   = int32(int32:lo, int32:hi);
+    func:aria_libc_mem_exit         = void(int32:code);
+    func:aria_libc_mem_abort        = void();
+    func:aria_libc_mem_getenv       = string(string:name);
+    func:aria_libc_mem_setenv       = int32(string:name, string:value);
+    func:aria_libc_mem_ptr_add      = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_size_of_i32  = int64();
+    func:aria_libc_mem_size_of_i64  = int64();
+    func:aria_libc_mem_size_of_f64  = int64();
+    func:aria_libc_mem_size_of_ptr  = int64();
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:mem_alloc = int64(int64:size) {
+    int64:p = aria_libc_mem_malloc(size);
+    pass p;
+}
+
+pub func:mem_alloc_zero = int64(int64:size) {
+    int64:p = aria_libc_mem_alloc_zeroed(size);
+    pass p;
+}
+
+pub func:mem_alloc_array = int64(int64:count, int64:size) {
+    int64:p = aria_libc_mem_calloc(count, size);
+    pass p;
+}
+
+pub func:mem_realloc = int64(int64:ptr, int64:size) {
+    int64:p = aria_libc_mem_realloc(ptr, size);
+    pass p;
+}
+
+pub func:mem_release = NIL(int64:ptr) {
+    drop aria_libc_mem_free(ptr);
+    pass NIL;
+}
+
+pub func:mem_copy_bytes = NIL(int64:dst, int64:src, int64:n) {
+    drop aria_libc_mem_copy(dst, src, n);
+    pass NIL;
+}
+
+pub func:mem_move_bytes = NIL(int64:dst, int64:src, int64:n) {
+    drop aria_libc_mem_move(dst, src, n);
+    pass NIL;
+}
+
+pub func:mem_zero_bytes = NIL(int64:ptr, int64:n) {
+    drop aria_libc_mem_zero(ptr, n);
+    pass NIL;
+}
+
+pub func:mem_get_i64 = int64(int64:ptr, int64:offset) {
+    int64:v = aria_libc_mem_read_i64(ptr, offset);
+    pass v;
+}
+
+pub func:mem_get_i32 = int32(int64:ptr, int64:offset) {
+    int32:v = aria_libc_mem_read_i32(ptr, offset);
+    pass v;
+}
+
+pub func:mem_put_i64 = NIL(int64:ptr, int64:offset, int64:val) {
+    drop aria_libc_mem_write_i64(ptr, offset, val);
+    pass NIL;
+}
+
+pub func:mem_put_i32 = NIL(int64:ptr, int64:offset, int32:val) {
+    drop aria_libc_mem_write_i32(ptr, offset, val);
+    pass NIL;
+}
+
+pub func:mem_get_byte = int32(int64:ptr, int64:offset) {
+    int32:v = aria_libc_mem_read_byte(ptr, offset);
+    pass v;
+}
+
+pub func:mem_put_byte = NIL(int64:ptr, int64:offset, int32:val) {
+    drop aria_libc_mem_write_byte(ptr, offset, val);
+    pass NIL;
+}
+
+pub func:parse_int = int64(string:s) {
+    int64:v = aria_libc_mem_atoi(s);
+    pass v;
+}
+
+pub func:parse_float = flt64(string:s) {
+    flt64:v = aria_libc_mem_atof(s);
+    pass v;
+}
+
+pub func:random_seed = NIL(int64:seed) {
+    drop aria_libc_mem_srand(seed);
+    pass NIL;
+}
+
+pub func:random_int = int32() {
+    int32:v = aria_libc_mem_rand();
+    pass v;
+}
+
+pub func:random_range = int32(int32:lo, int32:hi) {
+    int32:v = aria_libc_mem_rand_range(lo, hi);
+    pass v;
+}
+
+pub func:env_get = string(string:name) {
+    string:v = aria_libc_mem_getenv(name);
+    pass v;
+}
+
+pub func:env_set = int32(string:name, string:value) {
+    int32:r = aria_libc_mem_setenv(name, value);
+    pass r;
+}
+
+pub func:ptr_offset = int64(int64:ptr, int64:offset) {
+    int64:p = aria_libc_mem_ptr_add(ptr, offset);
+    pass p;
+}
+
+pub func:size_of_i32 = int64() {
+    int64:s = aria_libc_mem_size_of_i32();
+    pass s;
+}
+
+pub func:size_of_i64 = int64() {
+    int64:s = aria_libc_mem_size_of_i64();
+    pass s;
+}
+
+pub func:size_of_f64 = int64() {
+    int64:s = aria_libc_mem_size_of_f64();
+    pass s;
+}
+
+pub func:size_of_ptr = int64() {
+    int64:s = aria_libc_mem_size_of_ptr();
+    pass s;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

@@ -1,0 +1,87 @@
+/* Test: aria-libc time operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_time" {
+    func:aria_libc_time_now          = int64();
+    func:aria_libc_time_monotonic_ms = int64();
+    func:aria_libc_time_monotonic_ns = int64();
+    func:aria_libc_time_year         = int32(int64:epoch);
+    func:aria_libc_time_month        = int32(int64:epoch);
+    func:aria_libc_time_day          = int32(int64:epoch);
+    func:aria_libc_time_hour         = int32(int64:epoch);
+    func:aria_libc_time_minute       = int32(int64:epoch);
+    func:aria_libc_time_second       = int32(int64:epoch);
+    func:aria_libc_time_weekday      = int32(int64:epoch);
+    func:aria_libc_time_make_utc     = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second);
+    func:aria_libc_time_iso8601      = string(int64:epoch);
+    func:aria_libc_time_format       = string(int64:epoch, string:fmt);
+    func:aria_libc_time_clocks_per_sec = int64();
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int32(string:a, string:b);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc time tests ===");
+
+    int64:now = aria_libc_time_now();
+    drop check(now > 1700000000i64, "time_now > 1700000000");
+
+    int64:ms = aria_libc_time_monotonic_ms();
+    drop check(ms > 0i64, "monotonic_ms > 0");
+
+    int64:ns = aria_libc_time_monotonic_ns();
+    drop check(ns > ms, "monotonic_ns > ms");
+
+    int64:y2k = 946684800i64;
+
+    int32:yr = aria_libc_time_year(y2k);
+    drop check(yr == 2000i32, "year(y2k)=2000");
+
+    int32:mo = aria_libc_time_month(y2k);
+    drop check(mo == 1i32, "month(y2k)=1");
+
+    int32:dy = aria_libc_time_day(y2k);
+    drop check(dy == 1i32, "day(y2k)=1");
+
+    int32:hr = aria_libc_time_hour(y2k);
+    drop check(hr == 0i32, "hour(y2k)=0");
+
+    int32:mn = aria_libc_time_minute(y2k);
+    drop check(mn == 0i32, "minute(y2k)=0");
+
+    int32:sc = aria_libc_time_second(y2k);
+    drop check(sc == 0i32, "second(y2k)=0");
+
+    int32:wd = aria_libc_time_weekday(y2k);
+    drop check(wd == 6i32, "weekday(y2k)=6 Saturday");
+
+    int64:made = aria_libc_time_make_utc(2000i32, 1i32, 1i32, 0i32, 0i32, 0i32);
+    drop check(made == y2k, "make_utc roundtrip");
+
+    string:iso = aria_libc_time_iso8601(y2k);
+    int32:iso_ok = aria_libc_string_strcmp(iso, "2000-01-01T00:00:00Z");
+    drop check(iso_ok == 0i32, "iso8601 format");
+
+    string:fmt = aria_libc_time_format(y2k, "%Y/%m/%d");
+    int32:fmt_ok = aria_libc_string_strcmp(fmt, "2000/01/01");
+    drop check(fmt_ok == 0i32, "custom format Y/m/d");
+
+    int64:cps = aria_libc_time_clocks_per_sec();
+    drop check(cps > 0i64, "clocks_per_sec > 0");
+
+    exit 0;
+};

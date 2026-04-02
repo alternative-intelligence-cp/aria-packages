@@ -1,0 +1,116 @@
+/* aria-libc :: io — File I/O operations
+ * Wraps: fopen, fclose, fread, fwrite, fgets, fseek, ftell, puts
+ */
+
+extern "aria_libc_io" {
+    func:aria_libc_io_fopen     = int64(string:path, string:mode);
+    func:aria_libc_io_fclose    = int32(int64:handle);
+    func:aria_libc_io_fread     = int64(int64:buf, int64:size, int64:count, int64:handle);
+    func:aria_libc_io_fwrite    = int64(int64:buf, int64:size, int64:count, int64:handle);
+    func:aria_libc_io_fgets     = string(int64:handle);
+    func:aria_libc_io_feof      = int32(int64:handle);
+    func:aria_libc_io_fflush    = int32(int64:handle);
+    func:aria_libc_io_fseek     = int32(int64:handle, int64:offset, int32:whence);
+    func:aria_libc_io_ftell     = int64(int64:handle);
+    func:aria_libc_io_fputs     = int32(string:s, int64:handle);
+    func:aria_libc_io_puts      = int32(string:s);
+    func:aria_libc_io_fprintf_s = int32(int64:handle, string:fmt, string:arg);
+    func:aria_libc_io_fprintf_d = int32(int64:handle, string:fmt, int64:arg);
+    func:aria_libc_io_write_file = int32(string:path, string:content);
+    func:aria_libc_io_read_file  = string(string:path);
+    func:aria_libc_io_stdin     = int64();
+    func:aria_libc_io_stdout    = int64();
+    func:aria_libc_io_stderr    = int64();
+    func:aria_libc_io_seek_set  = int32();
+    func:aria_libc_io_seek_cur  = int32();
+    func:aria_libc_io_seek_end  = int32();
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:io_open = int64(string:path, string:mode) {
+    int64:h = aria_libc_io_fopen(path, mode);
+    pass h;
+}
+
+pub func:io_close = int32(int64:handle) {
+    int32:r = aria_libc_io_fclose(handle);
+    pass r;
+}
+
+pub func:io_read_line = string(int64:handle) {
+    string:r = aria_libc_io_fgets(handle);
+    pass r;
+}
+
+pub func:io_is_eof = int32(int64:handle) {
+    int32:r = aria_libc_io_feof(handle);
+    pass r;
+}
+
+pub func:io_flush = int32(int64:handle) {
+    int32:r = aria_libc_io_fflush(handle);
+    pass r;
+}
+
+pub func:io_seek = int32(int64:handle, int64:offset, int32:whence) {
+    int32:r = aria_libc_io_fseek(handle, offset, whence);
+    pass r;
+}
+
+pub func:io_tell = int64(int64:handle) {
+    int64:r = aria_libc_io_ftell(handle);
+    pass r;
+}
+
+pub func:io_write_str = int32(int64:handle, string:s) {
+    int32:r = aria_libc_io_fputs(s, handle);
+    pass r;
+}
+
+pub func:io_print = int32(string:s) {
+    int32:r = aria_libc_io_puts(s);
+    pass r;
+}
+
+pub func:io_write_file = int32(string:path, string:content) {
+    int32:r = aria_libc_io_write_file(path, content);
+    pass r;
+}
+
+pub func:io_read_file = string(string:path) {
+    string:r = aria_libc_io_read_file(path);
+    pass r;
+}
+
+pub func:io_stdin = int64() {
+    int64:h = aria_libc_io_stdin();
+    pass h;
+}
+
+pub func:io_stdout = int64() {
+    int64:h = aria_libc_io_stdout();
+    pass h;
+}
+
+pub func:io_stderr = int64() {
+    int64:h = aria_libc_io_stderr();
+    pass h;
+}
+
+pub func:io_SEEK_SET = int32() {
+    int32:v = aria_libc_io_seek_set();
+    pass v;
+}
+
+pub func:io_SEEK_CUR = int32() {
+    int32:v = aria_libc_io_seek_cur();
+    pass v;
+}
+
+pub func:io_SEEK_END = int32() {
+    int32:v = aria_libc_io_seek_end();
+    pass v;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

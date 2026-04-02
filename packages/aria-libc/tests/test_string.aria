@@ -1,0 +1,98 @@
+/* Test: aria-libc string operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen    = int64(string:s);
+    func:aria_libc_string_strcmp    = int32(string:a, string:b);
+    func:aria_libc_string_strncmp  = int32(string:a, string:b, int64:n);
+    func:aria_libc_string_strcasecmp = int32(string:a, string:b);
+    func:aria_libc_string_strstr   = int64(string:haystack, string:needle);
+    func:aria_libc_string_strchr   = int64(string:s, int32:c);
+    func:aria_libc_string_strrchr  = int64(string:s, int32:c);
+    func:aria_libc_string_strcat   = string(string:a, string:b);
+    func:aria_libc_string_substr   = string(string:s, int64:start, int64:len);
+    func:aria_libc_string_toupper  = string(string:s);
+    func:aria_libc_string_tolower  = string(string:s);
+    func:aria_libc_string_trim     = string(string:s);
+    func:aria_libc_string_isalpha  = int32(int32:c);
+    func:aria_libc_string_isdigit  = int32(int32:c);
+    func:aria_libc_string_atoi     = int64(string:s);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc string tests ===");
+
+    int64:len = aria_libc_string_strlen("hello");
+    drop check(len == 5i64, "strlen hello=5");
+
+    int64:len2 = aria_libc_string_strlen("");
+    drop check(len2 == 0i64, "strlen empty=0");
+
+    int32:cmp1 = aria_libc_string_strcmp("abc", "abc");
+    drop check(cmp1 == 0i32, "strcmp equal=0");
+
+    int32:cmp2 = aria_libc_string_strcmp("abc", "abd");
+    drop check(cmp2 < 0i32, "strcmp abc<abd");
+
+    int32:cmp3 = aria_libc_string_strncmp("hello world", "hello there", 5i64);
+    drop check(cmp3 == 0i32, "strncmp prefix match");
+
+    int32:cmp4 = aria_libc_string_strcasecmp("Hello", "hello");
+    drop check(cmp4 == 0i32, "strcasecmp case insensitive");
+
+    int64:pos = aria_libc_string_strstr("hello world", "world");
+    drop check(pos == 6i64, "strstr finds world at 6");
+
+    int64:pos2 = aria_libc_string_strstr("hello", "xyz");
+    int64:neg1 = 0i64 - 1i64;
+    drop check(pos2 == neg1, "strstr not found = -1");
+
+    int64:ci = aria_libc_string_strchr("hello", 108i32);
+    drop check(ci == 2i64, "strchr finds l at 2");
+
+    int64:ri = aria_libc_string_strrchr("hello", 108i32);
+    drop check(ri == 3i64, "strrchr finds last l at 3");
+
+    string:cat = aria_libc_string_strcat("hello ", "world");
+    int32:cat_ok = aria_libc_string_strcmp(cat, "hello world");
+    drop check(cat_ok == 0i32, "strcat concat");
+
+    string:sub = aria_libc_string_substr("hello world", 6i64, 5i64);
+    int32:sub_ok = aria_libc_string_strcmp(sub, "world");
+    drop check(sub_ok == 0i32, "substr extracts world");
+
+    string:upper = aria_libc_string_toupper("hello");
+    int32:up_ok = aria_libc_string_strcmp(upper, "HELLO");
+    drop check(up_ok == 0i32, "toupper HELLO");
+
+    string:lower = aria_libc_string_tolower("HELLO");
+    int32:lo_ok = aria_libc_string_strcmp(lower, "hello");
+    drop check(lo_ok == 0i32, "tolower hello");
+
+    string:trimmed = aria_libc_string_trim("  hello  ");
+    int32:trim_ok = aria_libc_string_strcmp(trimmed, "hello");
+    drop check(trim_ok == 0i32, "trim whitespace");
+
+    int32:alpha = aria_libc_string_isalpha(65i32);
+    drop check(alpha == 1i32, "isalpha A=1");
+
+    int32:digit = aria_libc_string_isdigit(48i32);
+    drop check(digit == 1i32, "isdigit 0=1");
+
+    int64:num = aria_libc_string_atoi("12345");
+    drop check(num == 12345i64, "atoi 12345");
+
+    exit 0;
+};

@@ -1,0 +1,110 @@
+/* Test: aria-libc mem operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_calloc      = int64(int64:count, int64:size);
+    func:aria_libc_mem_realloc     = int64(int64:ptr, int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_alloc_zeroed = int64(int64:size);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte  = void(int64:ptr, int64:offset, int32:val);
+    func:aria_libc_mem_read_byte   = int32(int64:ptr, int64:offset);
+    func:aria_libc_mem_zero        = void(int64:ptr, int64:n);
+    func:aria_libc_mem_copy        = void(int64:dst, int64:src, int64:n);
+    func:aria_libc_mem_rand        = int32();
+    func:aria_libc_mem_rand_range  = int32(int32:lo, int32:hi);
+    func:aria_libc_mem_srand       = void(int64:seed);
+    func:aria_libc_mem_getenv      = string(string:name);
+    func:aria_libc_mem_size_of_i64 = int64();
+    func:aria_libc_mem_size_of_ptr = int64();
+    func:aria_libc_mem_ptr_add     = int64(int64:ptr, int64:offset);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc mem tests ===");
+
+    int64:p = aria_libc_mem_malloc(64i64);
+    drop check(p > 0i64, "malloc returns nonzero");
+
+    drop aria_libc_mem_write_i64(p, 0i64, 42i64);
+    int64:v = aria_libc_mem_read_i64(p, 0i64);
+    drop check(v == 42i64, "write/read i64 = 42");
+
+    drop aria_libc_mem_write_byte(p, 16i64, 255i32);
+    int32:b = aria_libc_mem_read_byte(p, 16i64);
+    drop check(b == 255i32, "write/read byte = 255");
+
+    drop aria_libc_mem_zero(p, 64i64);
+    int64:z = aria_libc_mem_read_i64(p, 0i64);
+    drop check(z == 0i64, "zero clears memory");
+
+    drop aria_libc_mem_free(p);
+
+    int64:cp = aria_libc_mem_calloc(10i64, 8i64);
+    drop check(cp > 0i64, "calloc returns nonzero");
+
+    int64:cv = aria_libc_mem_read_i64(cp, 0i64);
+    drop check(cv == 0i64, "calloc memory is zeroed");
+
+    int64:rp = aria_libc_mem_realloc(cp, 160i64);
+    drop check(rp > 0i64, "realloc returns nonzero");
+    drop aria_libc_mem_free(rp);
+
+    int64:zp = aria_libc_mem_alloc_zeroed(32i64);
+    int64:zv = aria_libc_mem_read_i64(zp, 0i64);
+    drop check(zv == 0i64, "alloc_zeroed is zero");
+    drop aria_libc_mem_free(zp);
+
+    int64:src = aria_libc_mem_malloc(16i64);
+    int64:dst = aria_libc_mem_malloc(16i64);
+    drop aria_libc_mem_write_i64(src, 0i64, 99i64);
+    drop aria_libc_mem_copy(dst, src, 8i64);
+    int64:copied = aria_libc_mem_read_i64(dst, 0i64);
+    drop check(copied == 99i64, "mem_copy copies data");
+    drop aria_libc_mem_free(src);
+    drop aria_libc_mem_free(dst);
+
+    drop aria_libc_mem_srand(42i64);
+    int32:r1 = aria_libc_mem_rand();
+    drop check(r1 >= 0i32, "rand returns values");
+
+    int32:rr = aria_libc_mem_rand_range(10i32, 20i32);
+    drop check(rr >= 10i32, "rand_range lower bound");
+    drop check(rr <= 20i32, "rand_range upper bound");
+
+    string:home = aria_libc_mem_getenv("HOME");
+    int64:homelen = aria_libc_string_strlen(home);
+    drop check(homelen > 0i64, "getenv HOME non-empty");
+
+    int64:si = aria_libc_mem_size_of_i64();
+    drop check(si == 8i64, "size_of_i64 = 8");
+
+    int64:sp = aria_libc_mem_size_of_ptr();
+    drop check(sp == 8i64, "size_of_ptr = 8");
+
+    int64:base = aria_libc_mem_malloc(32i64);
+    int64:off = aria_libc_mem_ptr_add(base, 16i64);
+    int64:expected = base + 16i64;
+    drop check(off == expected, "ptr_add adds offset");
+    drop aria_libc_mem_free(base);
+
+    exit 0;
+};

@@ -1,0 +1,69 @@
+/* Test: aria-libc process operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_process" {
+    func:aria_libc_process_getpid  = int64();
+    func:aria_libc_process_getppid = int64();
+    func:aria_libc_process_getuid  = int32();
+    func:aria_libc_process_getgid  = int32();
+    func:aria_libc_process_system  = int32(string:cmd);
+    func:aria_libc_process_getcwd  = string();
+    func:aria_libc_process_SIGTERM = int32();
+    func:aria_libc_process_SIGKILL = int32();
+    func:aria_libc_process_SIGINT  = int32();
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc process tests ===");
+
+    int64:pid = aria_libc_process_getpid();
+    drop check(pid > 0i64, "getpid > 0");
+
+    int64:ppid = aria_libc_process_getppid();
+    drop check(ppid > 0i64, "getppid > 0");
+
+    drop check(pid != ppid, "pid != ppid");
+
+    int32:uid = aria_libc_process_getuid();
+    drop check(uid >= 0i32, "getuid >= 0");
+
+    int32:gid = aria_libc_process_getgid();
+    drop check(gid >= 0i32, "getgid >= 0");
+
+    int32:rc = aria_libc_process_system("true");
+    drop check(rc == 0i32, "system(true)=0");
+
+    int32:rc2 = aria_libc_process_system("false");
+    drop check(rc2 == 1i32, "system(false)=1");
+
+    string:cwd = aria_libc_process_getcwd();
+    int64:cwdlen = aria_libc_string_strlen(cwd);
+    drop check(cwdlen > 0i64, "getcwd non-empty");
+
+    int32:term = aria_libc_process_SIGTERM();
+    drop check(term == 15i32, "SIGTERM = 15");
+
+    int32:kill_sig = aria_libc_process_SIGKILL();
+    drop check(kill_sig == 9i32, "SIGKILL = 9");
+
+    int32:intr = aria_libc_process_SIGINT();
+    drop check(intr == 2i32, "SIGINT = 2");
+
+    exit 0;
+};

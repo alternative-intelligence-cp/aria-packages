@@ -1,0 +1,98 @@
+/* aria-libc :: fs — Directory traversal and path operations
+ * Wraps: opendir, readdir, closedir, realpath, basename, dirname
+ */
+
+extern "aria_libc_fs" {
+    func:aria_libc_fs_opendir    = int32(string:path);
+    func:aria_libc_fs_readdir    = string();
+    func:aria_libc_fs_closedir   = int32();
+    func:aria_libc_fs_dir_open   = int32(string:path);
+    func:aria_libc_fs_dir_read   = string(int32:handle);
+    func:aria_libc_fs_dir_close  = int32(int32:handle);
+    func:aria_libc_fs_entry_type = int32(string:path);
+    func:aria_libc_fs_join_path  = string(string:a, string:b);
+    func:aria_libc_fs_basename   = string(string:path);
+    func:aria_libc_fs_dirname    = string(string:path);
+    func:aria_libc_fs_extension  = string(string:path);
+    func:aria_libc_fs_realpath   = string(string:path);
+    func:aria_libc_fs_list_dir   = string(string:path);
+}
+
+/* ── Simple Directory API (single global handle) ─────────────────── */
+
+pub func:fs_opendir = int32(string:path) {
+    int32:r = aria_libc_fs_opendir(path);
+    pass r;
+}
+
+pub func:fs_readdir = string() {
+    string:name = aria_libc_fs_readdir();
+    pass name;
+}
+
+pub func:fs_closedir = int32() {
+    int32:r = aria_libc_fs_closedir();
+    pass r;
+}
+
+/* ── Multi-handle Directory API ──────────────────────────────────── */
+
+pub func:dir_open = int32(string:path) {
+    int32:h = aria_libc_fs_dir_open(path);
+    pass h;
+}
+
+pub func:dir_read = string(int32:handle) {
+    string:name = aria_libc_fs_dir_read(handle);
+    pass name;
+}
+
+pub func:dir_close = int32(int32:handle) {
+    int32:r = aria_libc_fs_dir_close(handle);
+    pass r;
+}
+
+/* ── Entry Info ──────────────────────────────────────────────────── */
+
+pub func:fs_entry_type = int32(string:path) {
+    /* Returns: 0=unknown, 1=file, 2=dir, 3=symlink */
+    int32:t = aria_libc_fs_entry_type(path);
+    pass t;
+}
+
+/* ── Path Operations ─────────────────────────────────────────────── */
+
+pub func:path_join = string(string:a, string:b) {
+    string:p = aria_libc_fs_join_path(a, b);
+    pass p;
+}
+
+pub func:path_basename = string(string:path) {
+    string:b = aria_libc_fs_basename(path);
+    pass b;
+}
+
+pub func:path_dirname = string(string:path) {
+    string:d = aria_libc_fs_dirname(path);
+    pass d;
+}
+
+pub func:path_extension = string(string:path) {
+    string:e = aria_libc_fs_extension(path);
+    pass e;
+}
+
+pub func:path_resolve = string(string:path) {
+    string:r = aria_libc_fs_realpath(path);
+    pass r;
+}
+
+/* ── Convenience ─────────────────────────────────────────────────── */
+
+pub func:fs_list = string(string:path) {
+    /* Returns newline-separated list of entries (no . or ..) */
+    string:listing = aria_libc_fs_list_dir(path);
+    pass listing;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

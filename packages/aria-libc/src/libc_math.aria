@@ -1,0 +1,274 @@
+/* aria-libc :: math — Math functions
+ * Wraps: sin, cos, sqrt, pow, log, exp, floor, ceil, fmod, etc.
+ */
+
+extern "aria_libc_math" {
+    func:aria_libc_math_sin     = flt64(flt64:x);
+    func:aria_libc_math_cos     = flt64(flt64:x);
+    func:aria_libc_math_tan     = flt64(flt64:x);
+    func:aria_libc_math_asin    = flt64(flt64:x);
+    func:aria_libc_math_acos    = flt64(flt64:x);
+    func:aria_libc_math_atan    = flt64(flt64:x);
+    func:aria_libc_math_atan2   = flt64(flt64:y, flt64:x);
+
+    func:aria_libc_math_sinh    = flt64(flt64:x);
+    func:aria_libc_math_cosh    = flt64(flt64:x);
+    func:aria_libc_math_tanh    = flt64(flt64:x);
+
+    func:aria_libc_math_exp     = flt64(flt64:x);
+    func:aria_libc_math_exp2    = flt64(flt64:x);
+    func:aria_libc_math_log     = flt64(flt64:x);
+    func:aria_libc_math_log2    = flt64(flt64:x);
+    func:aria_libc_math_log10   = flt64(flt64:x);
+
+    func:aria_libc_math_pow     = flt64(flt64:base, flt64:exp_val);
+    func:aria_libc_math_sqrt    = flt64(flt64:x);
+    func:aria_libc_math_cbrt    = flt64(flt64:x);
+    func:aria_libc_math_hypot   = flt64(flt64:x, flt64:y);
+
+    func:aria_libc_math_floor   = flt64(flt64:x);
+    func:aria_libc_math_ceil    = flt64(flt64:x);
+    func:aria_libc_math_round   = flt64(flt64:x);
+    func:aria_libc_math_trunc   = flt64(flt64:x);
+    func:aria_libc_math_fmod    = flt64(flt64:x, flt64:y);
+
+    func:aria_libc_math_fabs    = flt64(flt64:x);
+    func:aria_libc_math_copysign = flt64(flt64:mag, flt64:sgn);
+    func:aria_libc_math_fma     = flt64(flt64:a, flt64:b, flt64:c);
+
+    func:aria_libc_math_fmin    = flt64(flt64:a, flt64:b);
+    func:aria_libc_math_fmax    = flt64(flt64:a, flt64:b);
+    func:aria_libc_math_min_i64 = int64(int64:a, int64:b);
+    func:aria_libc_math_max_i64 = int64(int64:a, int64:b);
+    func:aria_libc_math_abs_i64 = int64(int64:x);
+
+    func:aria_libc_math_isnan    = int32(flt64:x);
+    func:aria_libc_math_isinf    = int32(flt64:x);
+    func:aria_libc_math_isfinite = int32(flt64:x);
+
+    func:aria_libc_math_pi      = flt64();
+    func:aria_libc_math_e       = flt64();
+    func:aria_libc_math_inf     = flt64();
+    func:aria_libc_math_nan     = flt64();
+    func:aria_libc_math_epsilon = flt64();
+}
+
+/* ── Trigonometric ───────────────────────────────────────────────── */
+
+pub func:math_sin = flt64(flt64:x) {
+    flt64:r = aria_libc_math_sin(x);
+    pass r;
+}
+
+pub func:math_cos = flt64(flt64:x) {
+    flt64:r = aria_libc_math_cos(x);
+    pass r;
+}
+
+pub func:math_tan = flt64(flt64:x) {
+    flt64:r = aria_libc_math_tan(x);
+    pass r;
+}
+
+pub func:math_asin = flt64(flt64:x) {
+    flt64:r = aria_libc_math_asin(x);
+    pass r;
+}
+
+pub func:math_acos = flt64(flt64:x) {
+    flt64:r = aria_libc_math_acos(x);
+    pass r;
+}
+
+pub func:math_atan = flt64(flt64:x) {
+    flt64:r = aria_libc_math_atan(x);
+    pass r;
+}
+
+pub func:math_atan2 = flt64(flt64:y, flt64:x) {
+    flt64:r = aria_libc_math_atan2(y, x);
+    pass r;
+}
+
+/* ── Hyperbolic ──────────────────────────────────────────────────── */
+
+pub func:math_sinh = flt64(flt64:x) {
+    flt64:r = aria_libc_math_sinh(x);
+    pass r;
+}
+
+pub func:math_cosh = flt64(flt64:x) {
+    flt64:r = aria_libc_math_cosh(x);
+    pass r;
+}
+
+pub func:math_tanh = flt64(flt64:x) {
+    flt64:r = aria_libc_math_tanh(x);
+    pass r;
+}
+
+/* ── Exponential / Logarithmic ───────────────────────────────────── */
+
+pub func:math_exp = flt64(flt64:x) {
+    flt64:r = aria_libc_math_exp(x);
+    pass r;
+}
+
+pub func:math_exp2 = flt64(flt64:x) {
+    flt64:r = aria_libc_math_exp2(x);
+    pass r;
+}
+
+pub func:math_log = flt64(flt64:x) {
+    flt64:r = aria_libc_math_log(x);
+    pass r;
+}
+
+pub func:math_log2 = flt64(flt64:x) {
+    flt64:r = aria_libc_math_log2(x);
+    pass r;
+}
+
+pub func:math_log10 = flt64(flt64:x) {
+    flt64:r = aria_libc_math_log10(x);
+    pass r;
+}
+
+/* ── Power / Root ────────────────────────────────────────────────── */
+
+pub func:math_pow = flt64(flt64:base, flt64:exp_val) {
+    flt64:r = aria_libc_math_pow(base, exp_val);
+    pass r;
+}
+
+pub func:math_sqrt = flt64(flt64:x) {
+    flt64:r = aria_libc_math_sqrt(x);
+    pass r;
+}
+
+pub func:math_cbrt = flt64(flt64:x) {
+    flt64:r = aria_libc_math_cbrt(x);
+    pass r;
+}
+
+pub func:math_hypot = flt64(flt64:x, flt64:y) {
+    flt64:r = aria_libc_math_hypot(x, y);
+    pass r;
+}
+
+/* ── Rounding ────────────────────────────────────────────────────── */
+
+pub func:math_floor = flt64(flt64:x) {
+    flt64:r = aria_libc_math_floor(x);
+    pass r;
+}
+
+pub func:math_ceil = flt64(flt64:x) {
+    flt64:r = aria_libc_math_ceil(x);
+    pass r;
+}
+
+pub func:math_round = flt64(flt64:x) {
+    flt64:r = aria_libc_math_round(x);
+    pass r;
+}
+
+pub func:math_trunc = flt64(flt64:x) {
+    flt64:r = aria_libc_math_trunc(x);
+    pass r;
+}
+
+pub func:math_fmod = flt64(flt64:x, flt64:y) {
+    flt64:r = aria_libc_math_fmod(x, y);
+    pass r;
+}
+
+/* ── Absolute / Sign ─────────────────────────────────────────────── */
+
+pub func:math_abs = flt64(flt64:x) {
+    flt64:r = aria_libc_math_fabs(x);
+    pass r;
+}
+
+pub func:math_copysign = flt64(flt64:mag, flt64:sgn) {
+    flt64:r = aria_libc_math_copysign(mag, sgn);
+    pass r;
+}
+
+pub func:math_fma = flt64(flt64:a, flt64:b, flt64:c) {
+    flt64:r = aria_libc_math_fma(a, b, c);
+    pass r;
+}
+
+/* ── Min / Max ───────────────────────────────────────────────────── */
+
+pub func:math_fmin = flt64(flt64:a, flt64:b) {
+    flt64:r = aria_libc_math_fmin(a, b);
+    pass r;
+}
+
+pub func:math_fmax = flt64(flt64:a, flt64:b) {
+    flt64:r = aria_libc_math_fmax(a, b);
+    pass r;
+}
+
+pub func:math_min = int64(int64:a, int64:b) {
+    int64:r = aria_libc_math_min_i64(a, b);
+    pass r;
+}
+
+pub func:math_max = int64(int64:a, int64:b) {
+    int64:r = aria_libc_math_max_i64(a, b);
+    pass r;
+}
+
+pub func:math_abs_int = int64(int64:x) {
+    int64:r = aria_libc_math_abs_i64(x);
+    pass r;
+}
+
+/* ── Classification ──────────────────────────────────────────────── */
+
+pub func:math_is_nan = int32(flt64:x) {
+    int32:r = aria_libc_math_isnan(x);
+    pass r;
+}
+
+pub func:math_is_inf = int32(flt64:x) {
+    int32:r = aria_libc_math_isinf(x);
+    pass r;
+}
+
+pub func:math_is_finite = int32(flt64:x) {
+    int32:r = aria_libc_math_isfinite(x);
+    pass r;
+}
+
+/* ── Constants ───────────────────────────────────────────────────── */
+
+pub func:math_PI = flt64() {
+    flt64:v = aria_libc_math_pi();
+    pass v;
+}
+
+pub func:math_E = flt64() {
+    flt64:v = aria_libc_math_e();
+    pass v;
+}
+
+pub func:math_INF = flt64() {
+    flt64:v = aria_libc_math_inf();
+    pass v;
+}
+
+pub func:math_NAN = flt64() {
+    flt64:v = aria_libc_math_nan();
+    pass v;
+}
+
+pub func:math_EPSILON = flt64() {
+    flt64:v = aria_libc_math_epsilon();
+    pass v;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

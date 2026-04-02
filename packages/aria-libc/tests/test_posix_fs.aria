@@ -1,0 +1,114 @@
+/* Test: aria-libc posix + fs operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_posix" {
+    func:aria_libc_posix_file_exists  = int32(string:path);
+    func:aria_libc_posix_file_size    = int64(string:path);
+    func:aria_libc_posix_is_directory = int32(string:path);
+    func:aria_libc_posix_is_file      = int32(string:path);
+    func:aria_libc_posix_mkdir        = int32(string:path, int32:mode);
+    func:aria_libc_posix_rmdir        = int32(string:path);
+    func:aria_libc_posix_unlink       = int32(string:path);
+    func:aria_libc_posix_rename       = int32(string:old_path, string:new_path);
+    func:aria_libc_posix_strerror     = string(int32:err);
+}
+
+extern "aria_libc_fs" {
+    func:aria_libc_fs_join_path  = string(string:a, string:b);
+    func:aria_libc_fs_basename   = string(string:path);
+    func:aria_libc_fs_dirname    = string(string:path);
+    func:aria_libc_fs_extension  = string(string:path);
+    func:aria_libc_fs_entry_type = int32(string:path);
+    func:aria_libc_fs_list_dir   = string(string:path);
+}
+
+extern "aria_libc_io" {
+    func:aria_libc_io_write_file = int32(string:path, string:content);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp  = int32(string:a, string:b);
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc posix+fs tests ===");
+
+    string:joined = aria_libc_fs_join_path("/home", "user");
+    int32:j_ok = aria_libc_string_strcmp(joined, "/home/user");
+    drop check(j_ok == 0i32, "join_path /home + user");
+
+    string:bn = aria_libc_fs_basename("/home/user/file.txt");
+    int32:bn_ok = aria_libc_string_strcmp(bn, "file.txt");
+    drop check(bn_ok == 0i32, "basename");
+
+    string:dn = aria_libc_fs_dirname("/home/user/file.txt");
+    int32:dn_ok = aria_libc_string_strcmp(dn, "/home/user");
+    drop check(dn_ok == 0i32, "dirname");
+
+    string:ext = aria_libc_fs_extension("file.txt");
+    int32:ext_ok = aria_libc_string_strcmp(ext, ".txt");
+    drop check(ext_ok == 0i32, "extension .txt");
+
+    int32:tmp_exists = aria_libc_posix_file_exists("/tmp");
+    drop check(tmp_exists == 1i32, "/tmp exists");
+
+    int32:no_exists = aria_libc_posix_file_exists("/nonexistent_path_xyz");
+    drop check(no_exists == 0i32, "nonexistent path");
+
+    int32:is_dir = aria_libc_posix_is_directory("/tmp");
+    drop check(is_dir == 1i32, "/tmp is directory");
+
+    int32:et = aria_libc_fs_entry_type("/tmp");
+    drop check(et == 2i32, "entry_type /tmp = 2 dir");
+
+    string:testdir = "/tmp/aria_libc_test_dir";
+    int32:mk = aria_libc_posix_mkdir(testdir, 493i32);
+    drop check(mk == 0i32, "mkdir creates dir");
+
+    int32:exists_dir = aria_libc_posix_is_directory(testdir);
+    drop check(exists_dir == 1i32, "created dir exists");
+
+    int32:rm = aria_libc_posix_rmdir(testdir);
+    drop check(rm == 0i32, "rmdir removes dir");
+
+    string:testfile = "/tmp/aria_libc_test_posix.txt";
+    drop aria_libc_io_write_file(testfile, "test content here");
+
+    int64:sz = aria_libc_posix_file_size(testfile);
+    drop check(sz > 0i64, "file_size > 0");
+
+    int32:is_f = aria_libc_posix_is_file(testfile);
+    drop check(is_f == 1i32, "is_file = 1");
+
+    string:renamed = "/tmp/aria_libc_test_posix_renamed.txt";
+    int32:rn = aria_libc_posix_rename(testfile, renamed);
+    drop check(rn == 0i32, "rename returns 0");
+
+    int32:old_gone = aria_libc_posix_file_exists(testfile);
+    drop check(old_gone == 0i32, "old file gone after rename");
+
+    drop aria_libc_posix_unlink(renamed);
+
+    string:listing = aria_libc_fs_list_dir("/tmp");
+    int64:llen = aria_libc_string_strlen(listing);
+    drop check(llen > 0i64, "list_dir /tmp non-empty");
+
+    string:err = aria_libc_posix_strerror(2i32);
+    int64:elen = aria_libc_string_strlen(err);
+    drop check(elen > 0i64, "strerror(2) non-empty");
+
+    exit 0;
+};

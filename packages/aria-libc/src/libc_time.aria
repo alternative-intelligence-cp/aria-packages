@@ -1,0 +1,124 @@
+/* aria-libc :: time — Time, clock, and sleep operations
+ * Wraps: time, clock, strftime, gmtime, mktime, nanosleep
+ */
+
+extern "aria_libc_time" {
+    func:aria_libc_time_now          = int64();
+    func:aria_libc_time_clock        = int64();
+    func:aria_libc_time_clocks_per_sec = int64();
+    func:aria_libc_time_difftime     = flt64(int64:t1, int64:t0);
+    func:aria_libc_time_monotonic_ns = int64();
+    func:aria_libc_time_monotonic_ms = int64();
+    func:aria_libc_time_year         = int32(int64:epoch);
+    func:aria_libc_time_month        = int32(int64:epoch);
+    func:aria_libc_time_day          = int32(int64:epoch);
+    func:aria_libc_time_hour         = int32(int64:epoch);
+    func:aria_libc_time_minute       = int32(int64:epoch);
+    func:aria_libc_time_second       = int32(int64:epoch);
+    func:aria_libc_time_weekday      = int32(int64:epoch);
+    func:aria_libc_time_yearday      = int32(int64:epoch);
+    func:aria_libc_time_make_utc     = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second);
+    func:aria_libc_time_format       = string(int64:epoch, string:fmt);
+    func:aria_libc_time_iso8601      = string(int64:epoch);
+    func:aria_libc_time_sleep_ms     = void(int32:ms);
+    func:aria_libc_time_sleep_s      = void(int32:sec);
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:time_now = int64() {
+    int64:t = aria_libc_time_now();
+    pass t;
+}
+
+pub func:time_clock = int64() {
+    int64:c = aria_libc_time_clock();
+    pass c;
+}
+
+pub func:time_clocks_per_sec = int64() {
+    int64:c = aria_libc_time_clocks_per_sec();
+    pass c;
+}
+
+pub func:time_diff = flt64(int64:t1, int64:t0) {
+    flt64:d = aria_libc_time_difftime(t1, t0);
+    pass d;
+}
+
+pub func:time_monotonic_ns = int64() {
+    int64:ns = aria_libc_time_monotonic_ns();
+    pass ns;
+}
+
+pub func:time_monotonic_ms = int64() {
+    int64:ms = aria_libc_time_monotonic_ms();
+    pass ms;
+}
+
+pub func:time_year = int32(int64:epoch) {
+    int32:v = aria_libc_time_year(epoch);
+    pass v;
+}
+
+pub func:time_month = int32(int64:epoch) {
+    int32:v = aria_libc_time_month(epoch);
+    pass v;
+}
+
+pub func:time_day = int32(int64:epoch) {
+    int32:v = aria_libc_time_day(epoch);
+    pass v;
+}
+
+pub func:time_hour = int32(int64:epoch) {
+    int32:v = aria_libc_time_hour(epoch);
+    pass v;
+}
+
+pub func:time_minute = int32(int64:epoch) {
+    int32:v = aria_libc_time_minute(epoch);
+    pass v;
+}
+
+pub func:time_second = int32(int64:epoch) {
+    int32:v = aria_libc_time_second(epoch);
+    pass v;
+}
+
+pub func:time_weekday = int32(int64:epoch) {
+    int32:v = aria_libc_time_weekday(epoch);
+    pass v;
+}
+
+pub func:time_yearday = int32(int64:epoch) {
+    int32:v = aria_libc_time_yearday(epoch);
+    pass v;
+}
+
+pub func:time_make_utc = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second) {
+    int64:t = aria_libc_time_make_utc(year, month, day, hour, minute, second);
+    pass t;
+}
+
+pub func:time_format = string(int64:epoch, string:fmt) {
+    string:s = aria_libc_time_format(epoch, fmt);
+    pass s;
+}
+
+pub func:time_iso8601 = string(int64:epoch) {
+    string:s = aria_libc_time_iso8601(epoch);
+    pass s;
+}
+
+pub func:time_sleep_ms = NIL(int32:ms) {
+    drop aria_libc_time_sleep_ms(ms);
+    pass NIL;
+}
+
+pub func:time_sleep = NIL(int32:sec) {
+    drop aria_libc_time_sleep_s(sec);
+    pass NIL;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

@@ -1,0 +1,58 @@
+/* Test: aria-libc net operations (localhost loopback) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_net" {
+    func:aria_libc_net_socket_tcp = int64();
+    func:aria_libc_net_socket_udp = int64();
+    func:aria_libc_net_close      = int32(int64:fd);
+    func:aria_libc_net_resolve    = string(string:hostname);
+    func:aria_libc_net_errno      = int32();
+    func:aria_libc_net_strerror   = string(int32:err);
+    func:aria_libc_net_setsockopt_reuse = int32(int64:fd);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp  = int32(string:a, string:b);
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc net tests ===");
+
+    int64:tcp = aria_libc_net_socket_tcp();
+    drop check(tcp > 0i64, "tcp socket fd > 0");
+
+    int32:reuse = aria_libc_net_setsockopt_reuse(tcp);
+    drop check(reuse == 0i32, "setsockopt reuse ok");
+
+    int32:cl = aria_libc_net_close(tcp);
+    drop check(cl == 0i32, "close tcp socket");
+
+    int64:udp = aria_libc_net_socket_udp();
+    drop check(udp > 0i64, "udp socket fd > 0");
+
+    int32:cl2 = aria_libc_net_close(udp);
+    drop check(cl2 == 0i32, "close udp socket");
+
+    string:ip = aria_libc_net_resolve("localhost");
+    int32:ip_ok = aria_libc_string_strcmp(ip, "127.0.0.1");
+    drop check(ip_ok == 0i32, "resolve localhost = 127.0.0.1");
+
+    string:err = aria_libc_net_strerror(111i32);
+    int64:elen = aria_libc_string_strlen(err);
+    drop check(elen > 0i64, "strerror(111) non-empty");
+
+    exit 0;
+};

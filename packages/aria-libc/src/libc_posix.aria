@@ -1,0 +1,168 @@
+/* aria-libc :: posix — Low-level POSIX I/O, stat, file ops
+ * Wraps: open, close, read, write, stat, unlink, mkdir, chmod, symlink
+ */
+
+extern "aria_libc_posix" {
+    func:aria_libc_posix_open        = int64(string:path, int32:flags, int32:mode);
+    func:aria_libc_posix_close       = int32(int64:fd);
+    func:aria_libc_posix_read        = int64(int64:fd, int64:buf, int64:count);
+    func:aria_libc_posix_write       = int64(int64:fd, int64:buf, int64:count);
+    func:aria_libc_posix_write_str   = int64(int64:fd, string:s);
+    func:aria_libc_posix_lseek       = int64(int64:fd, int64:offset, int32:whence);
+    func:aria_libc_posix_dup         = int64(int64:fd);
+    func:aria_libc_posix_dup2        = int32(int64:oldfd, int64:newfd);
+    func:aria_libc_posix_access      = int32(string:path, int32:mode);
+    func:aria_libc_posix_file_exists = int32(string:path);
+    func:aria_libc_posix_file_size   = int64(string:path);
+    func:aria_libc_posix_is_directory = int32(string:path);
+    func:aria_libc_posix_is_file     = int32(string:path);
+    func:aria_libc_posix_file_mtime  = int64(string:path);
+    func:aria_libc_posix_file_mode   = int32(string:path);
+    func:aria_libc_posix_unlink      = int32(string:path);
+    func:aria_libc_posix_rename      = int32(string:old_path, string:new_path);
+    func:aria_libc_posix_mkdir       = int32(string:path, int32:mode);
+    func:aria_libc_posix_rmdir       = int32(string:path);
+    func:aria_libc_posix_chmod       = int32(string:path, int32:mode);
+    func:aria_libc_posix_link        = int32(string:old_path, string:new_path);
+    func:aria_libc_posix_symlink     = int32(string:target, string:linkpath);
+    func:aria_libc_posix_readlink    = string(string:path);
+    func:aria_libc_posix_O_RDONLY    = int32();
+    func:aria_libc_posix_O_WRONLY    = int32();
+    func:aria_libc_posix_O_RDWR      = int32();
+    func:aria_libc_posix_O_CREAT     = int32();
+    func:aria_libc_posix_O_TRUNC     = int32();
+    func:aria_libc_posix_O_APPEND    = int32();
+    func:aria_libc_posix_errno       = int32();
+    func:aria_libc_posix_strerror    = string(int32:err);
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:posix_open = int64(string:path, int32:flags, int32:mode) {
+    int64:fd = aria_libc_posix_open(path, flags, mode);
+    pass fd;
+}
+
+pub func:posix_close = int32(int64:fd) {
+    int32:r = aria_libc_posix_close(fd);
+    pass r;
+}
+
+pub func:posix_read = int64(int64:fd, int64:buf, int64:count) {
+    int64:n = aria_libc_posix_read(fd, buf, count);
+    pass n;
+}
+
+pub func:posix_write = int64(int64:fd, int64:buf, int64:count) {
+    int64:n = aria_libc_posix_write(fd, buf, count);
+    pass n;
+}
+
+pub func:posix_write_str = int64(int64:fd, string:s) {
+    int64:n = aria_libc_posix_write_str(fd, s);
+    pass n;
+}
+
+pub func:posix_seek = int64(int64:fd, int64:offset, int32:whence) {
+    int64:pos = aria_libc_posix_lseek(fd, offset, whence);
+    pass pos;
+}
+
+pub func:posix_dup = int64(int64:fd) {
+    int64:newfd = aria_libc_posix_dup(fd);
+    pass newfd;
+}
+
+pub func:posix_dup2 = int32(int64:oldfd, int64:newfd) {
+    int32:r = aria_libc_posix_dup2(oldfd, newfd);
+    pass r;
+}
+
+pub func:file_exists = int32(string:path) {
+    int32:r = aria_libc_posix_file_exists(path);
+    pass r;
+}
+
+pub func:file_size = int64(string:path) {
+    int64:s = aria_libc_posix_file_size(path);
+    pass s;
+}
+
+pub func:is_dir = int32(string:path) {
+    int32:r = aria_libc_posix_is_directory(path);
+    pass r;
+}
+
+pub func:is_file = int32(string:path) {
+    int32:r = aria_libc_posix_is_file(path);
+    pass r;
+}
+
+pub func:file_mtime = int64(string:path) {
+    int64:t = aria_libc_posix_file_mtime(path);
+    pass t;
+}
+
+pub func:file_mode = int32(string:path) {
+    int32:m = aria_libc_posix_file_mode(path);
+    pass m;
+}
+
+pub func:file_remove = int32(string:path) {
+    int32:r = aria_libc_posix_unlink(path);
+    pass r;
+}
+
+pub func:file_rename = int32(string:old_path, string:new_path) {
+    int32:r = aria_libc_posix_rename(old_path, new_path);
+    pass r;
+}
+
+pub func:dir_create = int32(string:path, int32:mode) {
+    int32:r = aria_libc_posix_mkdir(path, mode);
+    pass r;
+}
+
+pub func:dir_remove = int32(string:path) {
+    int32:r = aria_libc_posix_rmdir(path);
+    pass r;
+}
+
+pub func:file_chmod = int32(string:path, int32:mode) {
+    int32:r = aria_libc_posix_chmod(path, mode);
+    pass r;
+}
+
+pub func:file_link = int32(string:old_path, string:new_path) {
+    int32:r = aria_libc_posix_link(old_path, new_path);
+    pass r;
+}
+
+pub func:file_symlink = int32(string:target, string:linkpath) {
+    int32:r = aria_libc_posix_symlink(target, linkpath);
+    pass r;
+}
+
+pub func:file_readlink = string(string:path) {
+    string:target = aria_libc_posix_readlink(path);
+    pass target;
+}
+
+pub func:O_RDONLY = int32() { int32:v = aria_libc_posix_O_RDONLY(); pass v; }
+pub func:O_WRONLY = int32() { int32:v = aria_libc_posix_O_WRONLY(); pass v; }
+pub func:O_RDWR   = int32() { int32:v = aria_libc_posix_O_RDWR(); pass v; }
+pub func:O_CREAT  = int32() { int32:v = aria_libc_posix_O_CREAT(); pass v; }
+pub func:O_TRUNC  = int32() { int32:v = aria_libc_posix_O_TRUNC(); pass v; }
+pub func:O_APPEND = int32() { int32:v = aria_libc_posix_O_APPEND(); pass v; }
+
+pub func:posix_errno = int32() {
+    int32:e = aria_libc_posix_errno();
+    pass e;
+}
+
+pub func:posix_error = string(int32:err) {
+    string:s = aria_libc_posix_strerror(err);
+    pass s;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

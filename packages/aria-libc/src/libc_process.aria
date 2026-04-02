@@ -1,0 +1,143 @@
+/* aria-libc :: process — Process management and signals
+ * Wraps: fork, exec, waitpid, kill, pipe, system, getcwd, chdir
+ */
+
+extern "aria_libc_process" {
+    func:aria_libc_process_getpid       = int64();
+    func:aria_libc_process_getppid      = int64();
+    func:aria_libc_process_getuid       = int32();
+    func:aria_libc_process_getgid       = int32();
+    func:aria_libc_process_fork         = int64();
+    func:aria_libc_process_execvp       = int32(string:file, string:arg0, string:arg1, string:arg2);
+    func:aria_libc_process_waitpid      = int32(int64:pid);
+    func:aria_libc_process_system       = int32(string:cmd);
+    func:aria_libc_process_kill         = int32(int64:pid, int32:sig);
+    func:aria_libc_process_raise        = int32(int32:sig);
+    func:aria_libc_process_SIGTERM      = int32();
+    func:aria_libc_process_SIGKILL      = int32();
+    func:aria_libc_process_SIGINT       = int32();
+    func:aria_libc_process_SIGHUP       = int32();
+    func:aria_libc_process_SIGUSR1      = int32();
+    func:aria_libc_process_SIGUSR2      = int32();
+    func:aria_libc_process_SIGCHLD      = int32();
+    func:aria_libc_process_pipe         = int32();
+    func:aria_libc_process_pipe_read_fd = int64();
+    func:aria_libc_process_pipe_write_fd = int64();
+    func:aria_libc_process_dup2         = int32(int64:oldfd, int64:newfd);
+    func:aria_libc_process_getcwd       = string();
+    func:aria_libc_process_chdir        = int32(string:path);
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+pub func:proc_pid = int64() {
+    int64:p = aria_libc_process_getpid();
+    pass p;
+}
+
+pub func:proc_ppid = int64() {
+    int64:p = aria_libc_process_getppid();
+    pass p;
+}
+
+pub func:proc_uid = int32() {
+    int32:u = aria_libc_process_getuid();
+    pass u;
+}
+
+pub func:proc_gid = int32() {
+    int32:g = aria_libc_process_getgid();
+    pass g;
+}
+
+pub func:proc_fork = int64() {
+    int64:pid = aria_libc_process_fork();
+    pass pid;
+}
+
+pub func:proc_exec = int32(string:file, string:arg0, string:arg1, string:arg2) {
+    int32:r = aria_libc_process_execvp(file, arg0, arg1, arg2);
+    pass r;
+}
+
+pub func:proc_wait = int32(int64:pid) {
+    int32:status = aria_libc_process_waitpid(pid);
+    pass status;
+}
+
+pub func:proc_run = int32(string:cmd) {
+    int32:r = aria_libc_process_system(cmd);
+    pass r;
+}
+
+pub func:proc_kill = int32(int64:pid, int32:sig) {
+    int32:r = aria_libc_process_kill(pid, sig);
+    pass r;
+}
+
+pub func:proc_signal = int32(int32:sig) {
+    int32:r = aria_libc_process_raise(sig);
+    pass r;
+}
+
+pub func:sig_TERM = int32() {
+    int32:s = aria_libc_process_SIGTERM();
+    pass s;
+}
+
+pub func:sig_KILL = int32() {
+    int32:s = aria_libc_process_SIGKILL();
+    pass s;
+}
+
+pub func:sig_INT = int32() {
+    int32:s = aria_libc_process_SIGINT();
+    pass s;
+}
+
+pub func:sig_HUP = int32() {
+    int32:s = aria_libc_process_SIGHUP();
+    pass s;
+}
+
+pub func:sig_USR1 = int32() {
+    int32:s = aria_libc_process_SIGUSR1();
+    pass s;
+}
+
+pub func:sig_USR2 = int32() {
+    int32:s = aria_libc_process_SIGUSR2();
+    pass s;
+}
+
+pub func:proc_pipe = int32() {
+    int32:r = aria_libc_process_pipe();
+    pass r;
+}
+
+pub func:proc_pipe_read_fd = int64() {
+    int64:fd = aria_libc_process_pipe_read_fd();
+    pass fd;
+}
+
+pub func:proc_pipe_write_fd = int64() {
+    int64:fd = aria_libc_process_pipe_write_fd();
+    pass fd;
+}
+
+pub func:proc_dup2 = int32(int64:oldfd, int64:newfd) {
+    int32:r = aria_libc_process_dup2(oldfd, newfd);
+    pass r;
+}
+
+pub func:proc_cwd = string() {
+    string:c = aria_libc_process_getcwd();
+    pass c;
+}
+
+pub func:proc_chdir = int32(string:path) {
+    int32:r = aria_libc_process_chdir(path);
+    pass r;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

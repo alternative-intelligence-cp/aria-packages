@@ -1,0 +1,87 @@
+/* Test: aria-libc I/O operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_io" {
+    func:aria_libc_io_write_file = int32(string:path, string:content);
+    func:aria_libc_io_read_file  = string(string:path);
+    func:aria_libc_io_fopen     = int64(string:path, string:mode);
+    func:aria_libc_io_fclose    = int32(int64:handle);
+    func:aria_libc_io_fputs     = int32(string:s, int64:handle);
+    func:aria_libc_io_fgets     = string(int64:handle);
+    func:aria_libc_io_feof      = int32(int64:handle);
+    func:aria_libc_io_fflush    = int32(int64:handle);
+    func:aria_libc_io_fseek     = int32(int64:handle, int64:offset, int32:whence);
+    func:aria_libc_io_ftell     = int64(int64:handle);
+    func:aria_libc_io_seek_set  = int32();
+    func:aria_libc_io_stdout    = int64();
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int32(string:a, string:b);
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+extern "aria_libc_posix" {
+    func:aria_libc_posix_unlink = int32(string:path);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc io tests ===");
+
+    string:testfile = "/tmp/aria_libc_test_io.txt";
+
+    int32:wr = aria_libc_io_write_file(testfile, "hello from aria-libc");
+    drop check(wr == 0i32, "write_file returns 0");
+
+    string:content = aria_libc_io_read_file(testfile);
+    int32:match = aria_libc_string_strcmp(content, "hello from aria-libc");
+    drop check(match == 0i32, "read_file matches written content");
+
+    int64:fh = aria_libc_io_fopen(testfile, "w");
+    drop check(fh > 0i64, "fopen returns handle");
+
+    int32:wrs = aria_libc_io_fputs("line one\nline two\n", fh);
+    drop check(wrs >= 0i32, "fputs writes ok");
+
+    int32:cl = aria_libc_io_fclose(fh);
+    drop check(cl == 0i32, "fclose returns 0");
+
+    int64:rh = aria_libc_io_fopen(testfile, "r");
+    drop check(rh > 0i64, "fopen read handle");
+
+    string:line1 = aria_libc_io_fgets(rh);
+    int64:l1len = aria_libc_string_strlen(line1);
+    drop check(l1len > 0i64, "fgets reads line nonzero len");
+
+    int64:pos = aria_libc_io_ftell(rh);
+    drop check(pos > 0i64, "ftell returns position > 0");
+
+    int32:seek_set = aria_libc_io_seek_set();
+    int32:sk = aria_libc_io_fseek(rh, 0i64, seek_set);
+    drop check(sk == 0i32, "fseek to beginning");
+
+    int64:pos2 = aria_libc_io_ftell(rh);
+    drop check(pos2 == 0i64, "ftell after seek = 0");
+
+    int32:cl2 = aria_libc_io_fclose(rh);
+    drop check(cl2 == 0i32, "fclose read handle");
+
+    int64:stdout_h = aria_libc_io_stdout();
+    drop check(stdout_h > 0i64, "stdout handle nonzero");
+
+    drop aria_libc_posix_unlink(testfile);
+
+    exit 0;
+};

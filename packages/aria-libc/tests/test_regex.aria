@@ -1,0 +1,92 @@
+/* Test: aria-libc regex operations */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_regex" {
+    func:aria_libc_regex_compile       = int32(string:pattern, int32:flags);
+    func:aria_libc_regex_free          = void(int32:handle);
+    func:aria_libc_regex_match         = int32(int32:handle, string:text);
+    func:aria_libc_regex_search        = int32(int32:handle, string:text);
+    func:aria_libc_regex_captures      = int32(int32:handle, string:text);
+    func:aria_libc_regex_capture       = string(int32:idx, string:text);
+    func:aria_libc_regex_capture_start = int32(int32:idx);
+    func:aria_libc_regex_capture_end   = int32(int32:idx);
+    func:aria_libc_regex_replace       = string(int32:handle, string:text, string:replacement);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int32(string:a, string:b);
+}
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) {
+        print("  [PASS] ");
+        println(msg);
+    }
+    if (cond == false) {
+        print("  [FAIL] ");
+        println(msg);
+    }
+};
+
+func:main = int32() {
+    println("=== aria-libc regex tests ===");
+
+    int32:re = aria_libc_regex_compile("[0-9]+", 0i32);
+    drop check(re >= 0i32, "compile returns handle >= 0");
+
+    int32:m1 = aria_libc_regex_match(re, "hello 123 world");
+    drop check(m1 == 1i32, "match finds digits");
+
+    int32:m2 = aria_libc_regex_match(re, "no digits here");
+    drop check(m2 == 0i32, "no match returns 0");
+
+    int32:pos = aria_libc_regex_search(re, "hello 123 world");
+    drop check(pos == 6i32, "search finds at offset 6");
+
+    int32:ncap = aria_libc_regex_captures(re, "abc 456 def");
+    drop check(ncap >= 1i32, "captures returns >= 1");
+
+    string:cap = aria_libc_regex_capture(0i32, "abc 456 def");
+    int32:cap_ok = aria_libc_string_strcmp(cap, "456");
+    drop check(cap_ok == 0i32, "capture 0 = 456");
+
+    int32:cs = aria_libc_regex_capture_start(0i32);
+    drop check(cs == 4i32, "capture_start(0) = 4");
+
+    int32:ce = aria_libc_regex_capture_end(0i32);
+    drop check(ce == 7i32, "capture_end(0) = 7");
+
+    drop aria_libc_regex_free(re);
+
+    int32:re2 = aria_libc_regex_compile("([a-z]+)@([a-z]+)", 0i32);
+    drop check(re2 >= 0i32, "compile email pattern");
+
+    int32:ncap2 = aria_libc_regex_captures(re2, "send to user@host please");
+    drop check(ncap2 >= 3i32, "email captures >= 3");
+
+    string:full = aria_libc_regex_capture(0i32, "send to user@host please");
+    int32:full_ok = aria_libc_string_strcmp(full, "user@host");
+    drop check(full_ok == 0i32, "capture 0 = full match");
+
+    string:user = aria_libc_regex_capture(1i32, "send to user@host please");
+    int32:user_ok = aria_libc_string_strcmp(user, "user");
+    drop check(user_ok == 0i32, "capture 1 = user");
+
+    string:host = aria_libc_regex_capture(2i32, "send to user@host please");
+    int32:host_ok = aria_libc_string_strcmp(host, "host");
+    drop check(host_ok == 0i32, "capture 2 = host");
+
+    string:replaced = aria_libc_regex_replace(re2, "contact user@host now", "REDACTED");
+    int32:rep_ok = aria_libc_string_strcmp(replaced, "contact REDACTED now");
+    drop check(rep_ok == 0i32, "replace first occurrence");
+
+    drop aria_libc_regex_free(re2);
+
+    int32:re3 = aria_libc_regex_compile("hello", 1i32);
+    int32:m3 = aria_libc_regex_match(re3, "HELLO WORLD");
+    drop check(m3 == 1i32, "case-insensitive match");
+    drop aria_libc_regex_free(re3);
+
+    exit 0;
+};

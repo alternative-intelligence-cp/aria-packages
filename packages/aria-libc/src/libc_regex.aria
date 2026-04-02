@@ -1,0 +1,78 @@
+/* aria-libc :: regex — POSIX extended regular expressions
+ * Wraps: regcomp, regexec, regfree, capture groups
+ */
+
+extern "aria_libc_regex" {
+    func:aria_libc_regex_compile       = int32(string:pattern, int32:flags);
+    func:aria_libc_regex_free          = void(int32:handle);
+    func:aria_libc_regex_match         = int32(int32:handle, string:text);
+    func:aria_libc_regex_search        = int32(int32:handle, string:text);
+    func:aria_libc_regex_captures      = int32(int32:handle, string:text);
+    func:aria_libc_regex_capture       = string(int32:idx, string:text);
+    func:aria_libc_regex_capture_start = int32(int32:idx);
+    func:aria_libc_regex_capture_end   = int32(int32:idx);
+    func:aria_libc_regex_replace       = string(int32:handle, string:text, string:replacement);
+    func:aria_libc_regex_last_error    = string();
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+/* Flags: 0=default, 1=case-insensitive, 2=multiline, 3=both */
+
+pub func:regex_compile = int32(string:pattern, int32:flags) {
+    int32:h = aria_libc_regex_compile(pattern, flags);
+    pass h;
+}
+
+pub func:regex_compile_simple = int32(string:pattern) {
+    int32:h = aria_libc_regex_compile(pattern, 0);
+    pass h;
+}
+
+pub func:regex_release = NIL(int32:handle) {
+    drop aria_libc_regex_free(handle);
+    pass NIL;
+}
+
+pub func:regex_is_match = int32(int32:handle, string:text) {
+    int32:r = aria_libc_regex_match(handle, text);
+    pass r;
+}
+
+pub func:regex_find = int32(int32:handle, string:text) {
+    /* Returns index of first match, or -1 */
+    int32:pos = aria_libc_regex_search(handle, text);
+    pass pos;
+}
+
+pub func:regex_capture_count = int32(int32:handle, string:text) {
+    int32:n = aria_libc_regex_captures(handle, text);
+    pass n;
+}
+
+pub func:regex_capture_at = string(int32:idx, string:text) {
+    string:cap = aria_libc_regex_capture(idx, text);
+    pass cap;
+}
+
+pub func:regex_capture_start_at = int32(int32:idx) {
+    int32:s = aria_libc_regex_capture_start(idx);
+    pass s;
+}
+
+pub func:regex_capture_end_at = int32(int32:idx) {
+    int32:e = aria_libc_regex_capture_end(idx);
+    pass e;
+}
+
+pub func:regex_replace_first = string(int32:handle, string:text, string:replacement) {
+    string:r = aria_libc_regex_replace(handle, text, replacement);
+    pass r;
+}
+
+pub func:regex_error = string() {
+    string:e = aria_libc_regex_last_error();
+    pass e;
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };
