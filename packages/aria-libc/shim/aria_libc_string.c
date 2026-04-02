@@ -157,3 +157,28 @@ double aria_libc_string_atof(const char *s) {
     if (!s) return 0.0;
     return atof(s);
 }
+
+/* ── Byte-level String Access (for stdlib/string.aria port) ──────── */
+
+int32_t aria_libc_string_byte_at(const char *s, int64_t idx) {
+    if (!s || idx < 0) return -1;
+    int64_t len = (int64_t)strlen(s);
+    if (idx >= len) return -1;
+    return (int32_t)(unsigned char)s[idx];
+}
+
+void aria_libc_string_copy_to_buf(int64_t dst_ptr, int64_t dst_off,
+                                   const char *src, int64_t src_off,
+                                   int64_t len) {
+    if (!dst_ptr || !src || len <= 0) return;
+    memcpy((char *)(uintptr_t)(dst_ptr + dst_off), src + src_off, (size_t)len);
+}
+
+const char *aria_libc_string_from_buf(int64_t buf_ptr, int64_t offset,
+                                       int64_t len) {
+    if (!buf_ptr || len <= 0) { g_buf[0] = '\0'; return g_buf; }
+    if ((size_t)len >= sizeof(g_buf)) len = sizeof(g_buf) - 1;
+    memcpy(g_buf, (const char *)(uintptr_t)(buf_ptr + offset), (size_t)len);
+    g_buf[len] = '\0';
+    return g_buf;
+}

@@ -32,6 +32,10 @@ extern "aria_libc_string" {
 
     func:aria_libc_string_atoi     = int64(string:s);
     func:aria_libc_string_atof     = flt64(string:s);
+
+    func:aria_libc_string_byte_at     = int32(string:s, int64:idx);
+    func:aria_libc_string_copy_to_buf = void(int64:dst, int64:dst_off, string:src, int64:src_off, int64:len);
+    func:aria_libc_string_from_buf    = string(int64:buf, int64:offset, int64:len);
 }
 
 /* ── Public API ──────────────────────────────────────────────────── */
@@ -143,6 +147,21 @@ pub func:mem_set = NIL(int64:dst, int32:val, int64:n) {
 
 pub func:mem_compare = int32(int64:a, int64:b, int64:n) {
     int32:r = aria_libc_string_memcmp(a, b, n);
+    pass r;
+}
+
+pub func:str_byte_at = int32(string:s, int64:idx) {
+    int32:r = aria_libc_string_byte_at(s, idx);
+    pass r;
+}
+
+pub func:str_copy_to_buf = NIL(int64:dst, int64:dst_off, string:src, int64:src_off, int64:len) {
+    drop aria_libc_string_copy_to_buf(dst, dst_off, src, src_off, len);
+    pass NIL;
+}
+
+pub func:str_from_buf = string(int64:buf, int64:offset, int64:len) {
+    string:r = aria_libc_string_from_buf(buf, offset, len);
     pass r;
 }
 
