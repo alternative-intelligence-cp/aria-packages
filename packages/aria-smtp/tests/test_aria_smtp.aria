@@ -1,0 +1,115 @@
+// test_aria_smtp.aria — 12-test suite for aria-smtp (v0.12.2)
+use "../src/aria_smtp.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_create_greet = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+    if (h > 0i64) { println("[PASS] T01 smtp_create"); pc += 1i32; }
+    if (h <= 0i64) { println("[FAIL] T01"); }
+
+    string:c2 = raw smtp_cmd_ehlo(h, "mail.example.com");
+    int32:t2 = 0i32;
+    if (string_contains(c2, "EHLO mail.example.com")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 cmd_ehlo"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    string:c3 = raw smtp_cmd_mail_from(h, "alice@example.com");
+    int32:t3 = 0i32;
+    if (string_contains(c3, "MAIL FROM:<alice@example.com>")) { t3 = 1i32; }
+    if (t3 == 1i32) { println("[PASS] T03 cmd_mail_from"); pc += 1i32; }
+    if (t3 == 0i32) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_envelope = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    string:c4 = raw smtp_cmd_rcpt_to(h, "bob@example.com");
+    int32:t4 = 0i32;
+    if (string_contains(c4, "RCPT TO:<bob@example.com>")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 cmd_rcpt_to"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:c5 = raw smtp_cmd_data(h);
+    int32:t5 = 0i32;
+    if (string_contains(c5, "DATA")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 cmd_data"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    string:c6 = raw smtp_cmd_quit(h);
+    int32:t6 = 0i32;
+    if (string_contains(c6, "QUIT")) { t6 = 1i32; }
+    if (t6 == 1i32) { println("[PASS] T06 cmd_quit"); pc += 1i32; }
+    if (t6 == 0i32) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_misc_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    string:c7 = raw smtp_cmd_rset(h);
+    int32:t7 = 0i32;
+    if (string_contains(c7, "RSET")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 cmd_rset"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    string:c8 = raw smtp_cmd_noop(h);
+    int32:t8 = 0i32;
+    if (string_contains(c8, "NOOP")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 cmd_noop"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:msg9 = raw smtp_build_message(h, "alice@example.com", "bob@example.com", "Hello", "Hi Bob!");
+    int32:t9 = 0i32;
+    if (string_contains(msg9, "Subject: Hello")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 build_message subject"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_parse_reply = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    int32:_r1 = raw smtp_parse_reply(h, "250 OK");
+    string:code10 = raw smtp_reply_code(h);
+    int32:t10 = 0i32;
+    if (string_contains(code10, "250")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 reply_code=250"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    string:msg11 = raw smtp_reply_msg(h);
+    int32:t11 = 0i32;
+    if (string_contains(msg11, "OK")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 reply_msg=OK"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r2 = raw smtp_parse_reply(h, "550 Mailbox not found");
+    string:code12 = raw smtp_reply_code(h);
+    int32:t12 = 0i32;
+    if (string_contains(code12, "550")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 reply_code=550"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_create_greet();
+    int32:p2 = raw test_envelope();
+    int32:p3 = raw test_misc_cmds();
+    int32:p4 = raw test_parse_reply();
+    println("DONE");
+    exit(0i32);
+};

@@ -1,0 +1,116 @@
+// test_aria_ftp.aria — 12-test suite for aria-ftp (v0.12.2)
+use "../src/aria_ftp.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_create_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+    if (h > 0i64) { println("[PASS] T01 ftp_create"); pc += 1i32; }
+    if (h <= 0i64) { println("[FAIL] T01"); }
+
+    string:c2 = raw ftp_cmd_user(h, "alice");
+    int32:t2 = 0i32;
+    if (string_contains(c2, "USER alice")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 cmd_user"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    string:c3 = raw ftp_cmd_pass(h, "secret");
+    int32:t3 = 0i32;
+    if (string_contains(c3, "PASS secret")) { t3 = 1i32; }
+    if (t3 == 1i32) { println("[PASS] T03 cmd_pass"); pc += 1i32; }
+    if (t3 == 0i32) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_nav_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    string:c4 = raw ftp_cmd_cwd(h, "/pub");
+    int32:t4 = 0i32;
+    if (string_contains(c4, "CWD /pub")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 cmd_cwd"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:c5 = raw ftp_cmd_list(h);
+    int32:t5 = 0i32;
+    if (string_contains(c5, "LIST")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 cmd_list"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    string:c6 = raw ftp_cmd_retr(h, "readme.txt");
+    int32:t6 = 0i32;
+    if (string_contains(c6, "RETR readme.txt")) { t6 = 1i32; }
+    if (t6 == 1i32) { println("[PASS] T06 cmd_retr"); pc += 1i32; }
+    if (t6 == 0i32) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_transfer_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    string:c7 = raw ftp_cmd_stor(h, "upload.dat");
+    int32:t7 = 0i32;
+    if (string_contains(c7, "STOR upload.dat")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 cmd_stor"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    string:c8 = raw ftp_cmd_type(h, "I");
+    int32:t8 = 0i32;
+    if (string_contains(c8, "TYPE I")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 cmd_type"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:c9 = raw ftp_cmd_quit(h);
+    int32:t9 = 0i32;
+    if (string_contains(c9, "QUIT")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 cmd_quit"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_parse_reply = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    int32:_r1 = raw ftp_parse_reply(h, "220 Welcome to FTP");
+    string:code10 = raw ftp_reply_code(h);
+    int32:t10 = 0i32;
+    if (string_contains(code10, "220")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 reply_code=220"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    string:msg11 = raw ftp_reply_msg(h);
+    int32:t11 = 0i32;
+    if (string_contains(msg11, "Welcome to FTP")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 reply_msg=Welcome"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r2 = raw ftp_parse_reply(h, "550 No such file");
+    string:code12 = raw ftp_reply_code(h);
+    string:cls12 = raw ftp_reply_class(h);
+    int32:t12 = 0i32;
+    if (string_contains(code12, "550")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 reply_code=550"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_create_cmds();
+    int32:p2 = raw test_nav_cmds();
+    int32:p3 = raw test_transfer_cmds();
+    int32:p4 = raw test_parse_reply();
+    println("DONE");
+    exit(0i32);
+};

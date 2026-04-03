@@ -1,7 +1,7 @@
 [package]
-name = "aria-websocket"
+name = "aria-ftp"
 version = "0.12.2"
-description = "WebSocket protocol layer — handshake builder, state tracking, frame type identification"
+description = "FTP protocol command builder and reply parser"
 license = "MIT"
 
 [build]
