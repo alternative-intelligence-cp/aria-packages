@@ -60,13 +60,46 @@ int32_t aria_libc_process_raise(int32_t sig) {
 }
 
 /* Signal constants */
-int32_t aria_libc_process_SIGTERM(void) { return SIGTERM; }
-int32_t aria_libc_process_SIGKILL(void) { return SIGKILL; }
-int32_t aria_libc_process_SIGINT(void)  { return SIGINT; }
-int32_t aria_libc_process_SIGHUP(void)  { return SIGHUP; }
-int32_t aria_libc_process_SIGUSR1(void) { return SIGUSR1; }
-int32_t aria_libc_process_SIGUSR2(void) { return SIGUSR2; }
-int32_t aria_libc_process_SIGCHLD(void) { return SIGCHLD; }
+int32_t aria_libc_process_SIGTERM(void)  { return SIGTERM; }
+int32_t aria_libc_process_SIGKILL(void)  { return SIGKILL; }
+int32_t aria_libc_process_SIGINT(void)   { return SIGINT; }
+int32_t aria_libc_process_SIGHUP(void)   { return SIGHUP; }
+int32_t aria_libc_process_SIGUSR1(void)  { return SIGUSR1; }
+int32_t aria_libc_process_SIGUSR2(void)  { return SIGUSR2; }
+int32_t aria_libc_process_SIGCHLD(void)  { return SIGCHLD; }
+int32_t aria_libc_process_SIGQUIT(void)  { return SIGQUIT; }
+
+/* ── Signal Handler Registration ─────────────────────────────────── */
+
+static volatile sig_atomic_t g_signal_flags[64];
+
+static void aria_signal_handler(int sig) {
+    if (sig >= 0 && sig < 64) g_signal_flags[sig] = 1;
+}
+
+int32_t aria_libc_process_signal_register(int32_t sig) {
+    if (sig < 0 || sig >= 64) return -1;
+    g_signal_flags[sig] = 0;
+    if (signal(sig, aria_signal_handler) == SIG_ERR) return -1;
+    return 0;
+}
+
+int32_t aria_libc_process_signal_pending(int32_t sig) {
+    if (sig < 0 || sig >= 64) return 0;
+    int32_t val = (int32_t)g_signal_flags[sig];
+    g_signal_flags[sig] = 0;  /* consume */
+    return val;
+}
+
+int32_t aria_libc_process_signal_ignore(int32_t sig) {
+    if (signal(sig, SIG_IGN) == SIG_ERR) return -1;
+    return 0;
+}
+
+int32_t aria_libc_process_signal_restore(int32_t sig) {
+    if (signal(sig, SIG_DFL) == SIG_ERR) return -1;
+    return 0;
+}
 
 /* ── Pipe ────────────────────────────────────────────────────────── */
 
@@ -78,6 +111,21 @@ int32_t aria_libc_process_pipe(void) {
 
 int64_t aria_libc_process_pipe_read_fd(void)  { return (int64_t)g_pipe_fds[0]; }
 int64_t aria_libc_process_pipe_write_fd(void) { return (int64_t)g_pipe_fds[1]; }
+
+int32_t aria_libc_process_pipe_write_i64(int64_t fd, int64_t val) {
+    ssize_t n = write((int)fd, &val, sizeof(val));
+    return (n == sizeof(val)) ? 0 : -1;
+}
+
+int64_t aria_libc_process_pipe_read_i64(int64_t fd) {
+    int64_t val = 0;
+    read((int)fd, &val, sizeof(val));
+    return val;
+}
+
+int32_t aria_libc_process_pipe_close(int64_t fd) {
+    return (int32_t)close((int)fd);
+}
 
 /* ── Dup ─────────────────────────────────────────────────────────── */
 

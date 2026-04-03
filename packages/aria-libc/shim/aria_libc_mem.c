@@ -164,3 +164,20 @@ int64_t aria_libc_mem_size_of_i32(void) { return (int64_t)sizeof(int32_t); }
 int64_t aria_libc_mem_size_of_i64(void) { return (int64_t)sizeof(int64_t); }
 int64_t aria_libc_mem_size_of_f64(void) { return (int64_t)sizeof(double); }
 int64_t aria_libc_mem_size_of_ptr(void) { return (int64_t)sizeof(void *); }
+
+/* ── String / Buffer Helpers (for binary serialization) ──────────── */
+
+const char *aria_libc_mem_make_string(int64_t src_ptr, int64_t offset, int64_t len) {
+    if (len <= 0) return "";
+    char *buf = (char *)malloc((size_t)(len + 1));
+    if (!buf) return "";
+    memcpy(buf, (const char *)((uintptr_t)src_ptr + (uintptr_t)offset), (size_t)len);
+    buf[len] = '\0';
+    return buf;
+}
+
+void aria_libc_mem_copy_string(int64_t dst_ptr, int64_t offset,
+                                const char *src, int64_t len) {
+    if (!src || len <= 0) return;
+    memcpy((char *)((uintptr_t)dst_ptr + (uintptr_t)offset), src, (size_t)len);
+}

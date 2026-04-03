@@ -76,3 +76,30 @@ double aria_libc_math_e(void)       { return M_E; }
 double aria_libc_math_inf(void)     { return INFINITY; }
 double aria_libc_math_nan(void)     { return NAN; }
 double aria_libc_math_epsilon(void) { return DBL_EPSILON; }
+
+/* ── Bit Casting (for binary serialization) ──────────────────────── */
+
+int64_t aria_libc_math_flt64_bits(double val) {
+    int64_t bits;
+    __builtin_memcpy(&bits, &val, sizeof(bits));
+    return bits;
+}
+
+double aria_libc_math_flt64_from_bits(int64_t bits) {
+    double val;
+    __builtin_memcpy(&val, &bits, sizeof(val));
+    return val;
+}
+
+int32_t aria_libc_math_flt32_bits(double val) {
+    float f = (float)val;
+    int32_t bits;
+    __builtin_memcpy(&bits, &f, sizeof(bits));
+    return bits;
+}
+
+double aria_libc_math_flt32_from_bits(int32_t bits) {
+    float f;
+    __builtin_memcpy(&f, &bits, sizeof(f));
+    return (double)f;
+}
