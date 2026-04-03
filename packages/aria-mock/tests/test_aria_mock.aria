@@ -1,0 +1,80 @@
+// test_aria_mock.aria — 12-test suite for aria-mock (v0.11.2)
+use "../src/aria_mock.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int64:base = raw Mock.create();
+
+    // T01: initial call count is 0
+    int64:c1 = raw Mock.call_count(base, 0i64);
+    if (c1 == 0i64) { println("[PASS] T01 init count=0"); pass_count += 1i32; }
+    if (c1 != 0i64) { println("[FAIL] T01"); }
+
+    // T02: call increments count
+    int32:r2 = raw Mock.call(base, 0i64);
+    int64:c2 = raw Mock.call_count(base, 0i64);
+    if (c2 == 1i64) { println("[PASS] T02 count=1"); pass_count += 1i32; }
+    if (c2 != 1i64) { println("[FAIL] T02"); }
+
+    // T03: multiple calls
+    int32:r3a = raw Mock.call(base, 0i64);
+    int32:r3b = raw Mock.call(base, 0i64);
+    int64:c3 = raw Mock.call_count(base, 0i64);
+    if (c3 == 3i64) { println("[PASS] T03 count=3"); pass_count += 1i32; }
+    if (c3 != 3i64) { println("[FAIL] T03"); }
+
+    // T04: set and get value
+    int32:r4 = raw Mock.set_value(base, 1i64, 42i64);
+    int64:v4 = raw Mock.get_value(base, 1i64);
+    if (v4 == 42i64) { println("[PASS] T04 val=42"); pass_count += 1i32; }
+    if (v4 != 42i64) { println("[FAIL] T04"); }
+
+    // T05: verify passes
+    int32:v5 = raw Mock.verify(base, 0i64, 3i64);
+    if (v5 == 1i32) { println("[PASS] T05 verify ok"); pass_count += 1i32; }
+    if (v5 != 1i32) { println("[FAIL] T05"); }
+
+    // T06: verify fails
+    int32:v6 = raw Mock.verify(base, 0i64, 999i64);
+    if (v6 == 0i32) { println("[PASS] T06 verify fail"); pass_count += 1i32; }
+    if (v6 != 0i32) { println("[FAIL] T06"); }
+
+    // T07: independent slots
+    int32:r7 = raw Mock.call(base, 5i64);
+    int64:c7a = raw Mock.call_count(base, 5i64);
+    int64:c7b = raw Mock.call_count(base, 0i64);
+    if (c7a == 1i64) { if (c7b == 3i64) { println("[PASS] T07 independent"); pass_count += 1i32; } }
+
+    // T08: reset one slot
+    int32:r8 = raw Mock.reset(base, 0i64);
+    int64:c8 = raw Mock.call_count(base, 0i64);
+    if (c8 == 0i64) { println("[PASS] T08 reset one"); pass_count += 1i32; }
+    if (c8 != 0i64) { println("[FAIL] T08"); }
+
+    // T09: slot 5 unaffected by reset of slot 0
+    int64:c9 = raw Mock.call_count(base, 5i64);
+    if (c9 == 1i64) { println("[PASS] T09 other intact"); pass_count += 1i32; }
+    if (c9 != 1i64) { println("[FAIL] T09"); }
+
+    // T10: reset_all
+    int32:r10 = raw Mock.reset_all(base);
+    int64:c10 = raw Mock.call_count(base, 5i64);
+    if (c10 == 0i64) { println("[PASS] T10 reset_all"); pass_count += 1i32; }
+    if (c10 != 0i64) { println("[FAIL] T10"); }
+
+    // T11: max_slots
+    int32:ms = raw Mock.max_slots();
+    if (ms == 64i32) { println("[PASS] T11 max=64"); pass_count += 1i32; }
+    if (ms != 64i32) { println("[FAIL] T11"); }
+
+    // T12: value reset after reset_all
+    int64:v12 = raw Mock.get_value(base, 1i64);
+    if (v12 == 0i64) { println("[PASS] T12 val reset"); pass_count += 1i32; }
+    if (v12 != 0i64) { println("[FAIL] T12"); }
+
+    int32:rd = raw Mock.destroy(base);
+    println("DONE");
+    exit(0i32);
+};

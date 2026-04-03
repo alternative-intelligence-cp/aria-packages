@@ -1,0 +1,15 @@
+[package]
+name = "aria-mock"
+version = "0.11.2"
+description = "Lightweight mock/stub framework for testing — Aria + aria-libc_mem"
+license = "MIT"
+repository = "https://github.com/alternative-intelligence-cp/aria-packages"
+categories = ["testing", "mock"]
+
+[dependencies]
+aria-libc = "0.10.0"
+
+[build]
+type = "library"
+entry = "src/aria_mock.aria"
+link_libraries = ["aria_libc_mem"]

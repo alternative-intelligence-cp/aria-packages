@@ -1,4 +1,7 @@
-// aria_cli.aria — Rich CLI output library for Aria
+// aria_cli.aria — Rich CLI output library for Aria (v0.11.2)
+//
+// Keeps C shim for ANSI escape byte generation (ESC not expressible in Aria strings).
+// Import with: use "aria_cli.aria".*;
 
 extern "aria_cli_shim" {
     func:aria_cli_red          = string(string:text);
@@ -23,23 +26,31 @@ extern "aria_cli_shim" {
     func:aria_cli_strip        = string(string:text);
 }
 
-pub func:red = string(string:text) { pass(aria_cli_red(text)); };
-pub func:green = string(string:text) { pass(aria_cli_green(text)); };
-pub func:yellow = string(string:text) { pass(aria_cli_yellow(text)); };
-pub func:blue = string(string:text) { pass(aria_cli_blue(text)); };
-pub func:magenta = string(string:text) { pass(aria_cli_magenta(text)); };
-pub func:cyan = string(string:text) { pass(aria_cli_cyan(text)); };
-pub func:white = string(string:text) { pass(aria_cli_white(text)); };
-pub func:gray = string(string:text) { pass(aria_cli_gray(text)); };
-pub func:bold = string(string:text) { pass(aria_cli_bold(text)); };
-pub func:dim = string(string:text) { pass(aria_cli_dim(text)); };
-pub func:italic = string(string:text) { pass(aria_cli_italic(text)); };
-pub func:underline = string(string:text) { pass(aria_cli_underline(text)); };
-pub func:strikethrough = string(string:text) { pass(aria_cli_strikethrough(text)); };
-pub func:bright_red = string(string:text) { pass(aria_cli_bright_red(text)); };
-pub func:bright_green = string(string:text) { pass(aria_cli_bright_green(text)); };
-pub func:bright_blue = string(string:text) { pass(aria_cli_bright_blue(text)); };
-pub func:progress = string(int32:current, int32:total, int32:width) { pass(aria_cli_progress(current, total, width)); };
-pub func:hr = string(int32:width, string:ch) { pass(aria_cli_hr(width, ch)); };
-pub func:banner = string(string:text, int32:width) { pass(aria_cli_banner(text, width)); };
-pub func:strip = string(string:text) { pass(aria_cli_strip(text)); };
+extern func:string_length = int64(string:s);
+
+// ── Type wrapper ───────────────────────────────────────────────────────────────
+
+Type:Cli = {
+
+    func:red = string(string:text) { pass aria_cli_red(text); };
+    func:green = string(string:text) { pass aria_cli_green(text); };
+    func:yellow = string(string:text) { pass aria_cli_yellow(text); };
+    func:blue = string(string:text) { pass aria_cli_blue(text); };
+    func:magenta = string(string:text) { pass aria_cli_magenta(text); };
+    func:cyan = string(string:text) { pass aria_cli_cyan(text); };
+    func:white = string(string:text) { pass aria_cli_white(text); };
+    func:gray = string(string:text) { pass aria_cli_gray(text); };
+    func:bold = string(string:text) { pass aria_cli_bold(text); };
+    func:dim = string(string:text) { pass aria_cli_dim(text); };
+    func:italic = string(string:text) { pass aria_cli_italic(text); };
+    func:underline = string(string:text) { pass aria_cli_underline(text); };
+    func:strikethrough = string(string:text) { pass aria_cli_strikethrough(text); };
+    func:bright_red = string(string:text) { pass aria_cli_bright_red(text); };
+    func:bright_green = string(string:text) { pass aria_cli_bright_green(text); };
+    func:bright_blue = string(string:text) { pass aria_cli_bright_blue(text); };
+    func:progress = string(int32:current, int32:total, int32:width) { pass aria_cli_progress(current, total, width); };
+    func:hr = string(int32:width, string:ch) { pass aria_cli_hr(width, ch); };
+    func:banner = string(string:text, int32:width) { pass aria_cli_banner(text, width); };
+    func:strip = string(string:text) { pass aria_cli_strip(text); };
+    func:count = int32() { pass 20i32; };
+};

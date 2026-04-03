@@ -1,46 +1,71 @@
-// test_aria_mime.aria — MIME type tests (7 tests)
+// test_aria_mime.aria — 12-test suite for aria-mime (v0.11.2)
+use "../src/aria_mime.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
-
-extern "aria_mime_shim" {
-    func:aria_mime_from_filename  = string(string:filename);
-    func:aria_mime_from_extension = string(string:ext);
-    func:aria_mime_to_extension   = string(string:mime);
-    func:aria_mime_is_text        = int32(string:mime);
-    func:aria_mime_count          = int32();
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // T01: html file
-    string:m1 = aria_mime_from_filename("index.html");
-    drop(println("[PASS] T01 from_filename html"));
+    int32:pass_count = 0i32;
 
-    // T02: png extension
-    string:m2 = aria_mime_from_extension("png");
-    drop(println("[PASS] T02 from_extension png"));
+    // T01: from_extension .html
+    string:t1 = raw Mime.from_extension(".html");
+    if (t1 == "text/html") { println("[PASS] T01 from_extension(.html)"); pass_count += 1i32; }
+    if (t1 != "text/html") { println("[FAIL] T01"); }
 
-    // T03: json extension with dot
-    string:m3 = aria_mime_from_extension(".json");
-    drop(println("[PASS] T03 from_extension .json"));
+    // T02: from_extension .png
+    string:t2 = raw Mime.from_extension(".png");
+    if (t2 == "image/png") { println("[PASS] T02 from_extension(.png)"); pass_count += 1i32; }
+    if (t2 != "image/png") { println("[FAIL] T02"); }
 
-    // T04: is_text for text/html
-    int32:t1 = aria_mime_is_text("text/html");
-    if (t1 == 1i32) { drop(println("[PASS] T04 is_text html")); }
-    if (t1 != 1i32) { drop(println("[FAIL] T04 is_text html")); }
+    // T03: from_extension .mp3
+    string:t3 = raw Mime.from_extension(".mp3");
+    if (t3 == "audio/mpeg") { println("[PASS] T03 from_extension(.mp3)"); pass_count += 1i32; }
+    if (t3 != "audio/mpeg") { println("[FAIL] T03"); }
 
-    // T05: is_text for image/png (false)
-    int32:t2 = aria_mime_is_text("image/png");
-    if (t2 == 0i32) { drop(println("[PASS] T05 not text png")); }
-    if (t2 != 0i32) { drop(println("[FAIL] T05 not text png")); }
+    // T04: from_extension unknown
+    string:t4 = raw Mime.from_extension(".xyz");
+    if (t4 == "application/octet-stream") { println("[PASS] T04 unknown ext"); pass_count += 1i32; }
+    if (t4 != "application/octet-stream") { println("[FAIL] T04"); }
 
-    // T06: count > 0
-    int32:cnt = aria_mime_count();
-    if (cnt > 0i32) { drop(println("[PASS] T06 count")); }
-    if (cnt <= 0i32) { drop(println("[FAIL] T06 count")); }
+    // T05: from_filename
+    string:t5 = raw Mime.from_filename("photo.png");
+    if (t5 == "image/png") { println("[PASS] T05 from_filename"); pass_count += 1i32; }
+    if (t5 != "image/png") { println("[FAIL] T05"); }
 
-    // T07: .aria extension
-    string:m7 = aria_mime_from_extension("aria");
-    drop(println("[PASS] T07 aria extension"));
+    // T06: from_filename no extension
+    string:t6 = raw Mime.from_filename("README");
+    if (t6 == "application/octet-stream") { println("[PASS] T06 no extension"); pass_count += 1i32; }
+    if (t6 != "application/octet-stream") { println("[FAIL] T06"); }
 
-    pass(0i32);
+    // T07: to_extension reverse
+    string:t7 = raw Mime.to_extension("application/json");
+    if (t7 == ".json") { println("[PASS] T07 to_extension"); pass_count += 1i32; }
+    if (t7 != ".json") { println("[FAIL] T07"); }
+
+    // T08: to_extension unknown
+    string:t8 = raw Mime.to_extension("application/unknown");
+    if (t8 == "") { println("[PASS] T08 to_ext unknown"); pass_count += 1i32; }
+    if (t8 != "") { println("[FAIL] T08"); }
+
+    // T09: is_text text/css
+    int32:t9 = raw Mime.is_text("text/css");
+    if (t9 == 1i32) { println("[PASS] T09 is_text(css)"); pass_count += 1i32; }
+    if (t9 != 1i32) { println("[FAIL] T09"); }
+
+    // T10: is_text application/json
+    int32:t10 = raw Mime.is_text("application/json");
+    if (t10 == 1i32) { println("[PASS] T10 is_text(json)"); pass_count += 1i32; }
+    if (t10 != 1i32) { println("[FAIL] T10"); }
+
+    // T11: is_text image/png
+    int32:t11 = raw Mime.is_text("image/png");
+    if (t11 == 0i32) { println("[PASS] T11 not text"); pass_count += 1i32; }
+    if (t11 != 0i32) { println("[FAIL] T11"); }
+
+    // T12: count
+    int32:t12 = raw Mime.count();
+    if (t12 == 72i32) { println("[PASS] T12 count==72"); pass_count += 1i32; }
+    if (t12 != 72i32) { println("[FAIL] T12"); }
+
+    println("DONE");
+    exit(0i32);
 };

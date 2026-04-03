@@ -1,14 +1,16 @@
 [package]
 name = "aria-console"
-version = "0.2.0"
+version = "0.11.2"
 authors = ["Aria Language Project"]
 license = "MIT"
-description = "Virtual 8-bit console address map and frame scheduler — 16-bit memory-mapped address space, pure Aria"
+description = "Virtual 8-bit console address map and frame scheduler — Aria + aria-libc_mem"
 keywords = ["console", "virtual", "memory-map", "frame-scheduler"]
 categories = ["graphics"]
 
 [dependencies]
+aria-libc = "0.10.0"
 
 [build]
 type = "library"
 entry = "src/aria_console.aria"
+link_libraries = ["aria_libc_mem"]

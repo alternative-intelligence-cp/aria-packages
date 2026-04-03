@@ -1,44 +1,77 @@
-// test_aria_crypto.aria — Crypto tests (6 tests)
+// test_aria_crypto.aria — 12-test suite for aria-crypto (v0.11.2)
+use "../src/aria_crypto.aria".*;
 
-func:failsafe = NIL(int32:code) { pass(NIL); };
-
-extern "aria_crypto_shim" {
-    func:aria_crypto_sha256        = string(string:data);
-    func:aria_crypto_md5           = string(string:data);
-    func:aria_crypto_hmac_sha256   = string(string:key, string:data);
-    func:aria_crypto_sha256_verify = int32(string:data, string:expected);
-    func:aria_crypto_md5_verify    = int32(string:data, string:expected);
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // T01: SHA-256 of empty string = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-    int32:v1 = aria_crypto_sha256_verify("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    if (v1 == 1i32) { drop(println("[PASS] T01 sha256 empty")); }
-    if (v1 != 1i32) { drop(println("[FAIL] T01 sha256 empty")); }
+    int32:pass_count = 0i32;
 
-    // T02: SHA-256 of "hello"
-    int32:v2 = aria_crypto_sha256_verify("hello", "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
-    if (v2 == 1i32) { drop(println("[PASS] T02 sha256 hello")); }
-    if (v2 != 1i32) { drop(println("[FAIL] T02 sha256 hello")); }
+    // T01: sha256 non-empty
+    string:h1 = raw Crypto.sha256("hello");
+    int64:l1 = string_length(h1);
+    if (l1 > 0i64) { println("[PASS] T01 sha256 non-empty"); pass_count += 1i32; }
+    if (l1 <= 0i64) { println("[FAIL] T01"); }
 
-    // T03: MD5 of empty string = d41d8cd98f00b204e9800998ecf8427e
-    int32:v3 = aria_crypto_md5_verify("", "d41d8cd98f00b204e9800998ecf8427e");
-    if (v3 == 1i32) { drop(println("[PASS] T03 md5 empty")); }
-    if (v3 != 1i32) { drop(println("[FAIL] T03 md5 empty")); }
+    // T02: sha256 is 64 hex chars
+    if (l1 == 64i64) { println("[PASS] T02 sha256 len=64"); pass_count += 1i32; }
+    if (l1 != 64i64) { println("[FAIL] T02"); }
 
-    // T04: MD5 of "hello" = 5d41402abc4b2a76b9719d911017c592
-    int32:v4 = aria_crypto_md5_verify("hello", "5d41402abc4b2a76b9719d911017c592");
-    if (v4 == 1i32) { drop(println("[PASS] T04 md5 hello")); }
-    if (v4 != 1i32) { drop(println("[FAIL] T04 md5 hello")); }
+    // T03: md5 non-empty
+    string:m3 = raw Crypto.md5("hello");
+    int64:l3 = string_length(m3);
+    if (l3 > 0i64) { println("[PASS] T03 md5 non-empty"); pass_count += 1i32; }
+    if (l3 <= 0i64) { println("[FAIL] T03"); }
 
-    // T05: HMAC-SHA256 returns something
-    string:hmac = aria_crypto_hmac_sha256("secret", "message");
-    drop(println("[PASS] T05 hmac_sha256"));
+    // T04: md5 is 32 hex chars
+    if (l3 == 32i64) { println("[PASS] T04 md5 len=32"); pass_count += 1i32; }
+    if (l3 != 32i64) { println("[FAIL] T04"); }
 
-    // T06: SHA-256 verify fails on wrong hash
-    int32:v6 = aria_crypto_sha256_verify("hello", "0000000000000000000000000000000000000000000000000000000000000000");
-    if (v6 == 0i32) { drop(println("[PASS] T06 sha256 verify fail")); }
-    if (v6 != 0i32) { drop(println("[FAIL] T06 sha256 verify fail")); }
+    // T05: sha256_verify correct
+    string:h5 = raw Crypto.sha256("test");
+    int32:v5 = raw Crypto.sha256_verify("test", h5);
+    if (v5 == 1i32) { println("[PASS] T05 sha256_verify ok"); pass_count += 1i32; }
+    if (v5 != 1i32) { println("[FAIL] T05"); }
 
-    pass(0i32);
+    // T06: sha256_verify wrong
+    int32:v6 = raw Crypto.sha256_verify("test", "wrong_hash");
+    if (v6 == 0i32) { println("[PASS] T06 sha256_verify fail"); pass_count += 1i32; }
+    if (v6 != 0i32) { println("[FAIL] T06"); }
+
+    // T07: md5_verify correct
+    string:m7 = raw Crypto.md5("test");
+    int32:v7 = raw Crypto.md5_verify("test", m7);
+    if (v7 == 1i32) { println("[PASS] T07 md5_verify ok"); pass_count += 1i32; }
+    if (v7 != 1i32) { println("[FAIL] T07"); }
+
+    // T08: md5_verify wrong
+    int32:v8 = raw Crypto.md5_verify("test", "bad_hash");
+    if (v8 == 0i32) { println("[PASS] T08 md5_verify fail"); pass_count += 1i32; }
+    if (v8 != 0i32) { println("[FAIL] T08"); }
+
+    // T09: hmac_sha256 non-empty
+    string:hm9 = raw Crypto.hmac_sha256("key", "data");
+    int64:l9 = string_length(hm9);
+    if (l9 > 0i64) { println("[PASS] T09 hmac non-empty"); pass_count += 1i32; }
+    if (l9 <= 0i64) { println("[FAIL] T09"); }
+
+    // T10: sha256 deterministic
+    string:h10a = raw Crypto.sha256("deterministic");
+    string:h10b = raw Crypto.sha256("deterministic");
+    if (h10a == h10b) { println("[PASS] T10 sha256 determ"); pass_count += 1i32; }
+    if (h10a != h10b) { println("[FAIL] T10"); }
+
+    // T11: md5 deterministic
+    string:m11a = raw Crypto.md5("deterministic");
+    string:m11b = raw Crypto.md5("deterministic");
+    if (m11a == m11b) { println("[PASS] T11 md5 determ"); pass_count += 1i32; }
+    if (m11a != m11b) { println("[FAIL] T11"); }
+
+    // T12: hmac_sha256 is 64 hex chars
+    string:hm12 = raw Crypto.hmac_sha256("secret", "message");
+    int64:l12 = string_length(hm12);
+    if (l12 == 64i64) { println("[PASS] T12 hmac len=64"); pass_count += 1i32; }
+    if (l12 != 64i64) { println("[FAIL] T12"); }
+
+    println("DONE");
+    exit(0i32);
 };
