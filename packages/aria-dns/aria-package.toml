@@ -1,7 +1,7 @@
 [package]
-name = "aria-socket"
+name = "aria-dns"
 version = "0.12.0"
-description = "TCP and UDP socket abstractions for Aria — backed by aria-libc_net"
+description = "DNS resolution for Aria — hostname to IP address lookup via aria-libc_net"
 license = "MIT"
 categories = ["networking"]
 

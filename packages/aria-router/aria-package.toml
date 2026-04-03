@@ -1,0 +1,11 @@
+[package]
+name = "aria-router"
+version = "0.12.0"
+description = "Express-style HTTP router for Aria — route matching, path params, middleware"
+license = "MIT"
+categories = ["networking", "routing"]
+
+[dependencies]
+aria-libc = "*"
+aria-server = "*"
+link_libraries = ["aria_libc_router"]

@@ -1,0 +1,144 @@
+// aria_router.aria — Express-style HTTP router for Aria (v0.12.0)
+//
+// Built on aria-libc router shim.
+// Import with: use "aria_router.aria".*;
+//
+// Routes map (method, pattern) → handler_id (int64).
+// Pattern syntax: exact "/about", params "/users/:id", wildcard "/static/*"
+//
+// v0.12.0: Rebuilt on aria-libc.
+
+extern "aria_libc_router" {
+    func:aria_libc_router_add         = int64(string:method, string:pattern, int64:handler_id);
+    func:aria_libc_router_match       = int64(string:method, string:path);
+    func:aria_libc_router_param       = string(string:name);
+    func:aria_libc_router_param_count = int64();
+    func:aria_libc_router_param_name  = string(int64:idx);
+    func:aria_libc_router_param_value = string(int64:idx);
+    func:aria_libc_router_use_mw     = int64(int64:middleware_id);
+    func:aria_libc_router_mw_count   = int64();
+    func:aria_libc_router_mw_id      = int64(int64:idx);
+    func:aria_libc_router_route_count = int64();
+    func:aria_libc_router_matched     = int64();
+    func:aria_libc_router_reset_all   = int64();
+    func:aria_libc_router_error       = string();
+}
+
+// ── Route registration ──────────────────────────────────────────────────────
+
+pub func:route_add = int64(string:method, string:pattern, int64:handler_id) {
+    pass aria_libc_router_add(method, pattern, handler_id);
+};
+
+pub func:route_get = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("GET", pattern, handler_id);
+};
+
+pub func:route_post = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("POST", pattern, handler_id);
+};
+
+pub func:route_put = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("PUT", pattern, handler_id);
+};
+
+pub func:route_del = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("DELETE", pattern, handler_id);
+};
+
+pub func:route_patch = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("PATCH", pattern, handler_id);
+};
+
+pub func:route_any = int64(string:pattern, int64:handler_id) {
+    pass aria_libc_router_add("", pattern, handler_id);
+};
+
+// ── Route matching ──────────────────────────────────────────────────────────
+
+pub func:route_match = int64(string:method, string:path) {
+    pass aria_libc_router_match(method, path);
+};
+
+pub func:route_matched = int64() {
+    pass aria_libc_router_matched();
+};
+
+// ── Parameter access ────────────────────────────────────────────────────────
+
+pub func:route_param = string(string:name) {
+    pass aria_libc_router_param(name);
+};
+
+pub func:route_param_count = int64() {
+    pass aria_libc_router_param_count();
+};
+
+pub func:route_param_name = string(int64:idx) {
+    pass aria_libc_router_param_name(idx);
+};
+
+pub func:route_param_val = string(int64:idx) {
+    pass aria_libc_router_param_value(idx);
+};
+
+// ── Middleware ───────────────────────────────────────────────────────────────
+
+pub func:route_use_mw = int64(int64:middleware_id) {
+    pass aria_libc_router_use_mw(middleware_id);
+};
+
+pub func:route_mw_count = int64() {
+    pass aria_libc_router_mw_count();
+};
+
+pub func:route_mw_id = int64(int64:idx) {
+    pass aria_libc_router_mw_id(idx);
+};
+
+// ── State ───────────────────────────────────────────────────────────────────
+
+pub func:route_count = int64() {
+    pass aria_libc_router_route_count();
+};
+
+pub func:route_reset = int64() {
+    pass aria_libc_router_reset_all();
+};
+
+pub func:route_error = string() {
+    pass aria_libc_router_error();
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Router = {
+    // registration
+    func:add_route  = int64(string:method, string:pat, int64:hid) { pass raw route_add(method, pat, hid); };
+    func:on_get     = int64(string:pat, int64:hid) { pass raw route_get(pat, hid); };
+    func:on_post    = int64(string:pat, int64:hid) { pass raw route_post(pat, hid); };
+    func:on_put     = int64(string:pat, int64:hid) { pass raw route_put(pat, hid); };
+    func:on_del     = int64(string:pat, int64:hid) { pass raw route_del(pat, hid); };
+    func:on_patch   = int64(string:pat, int64:hid) { pass raw route_patch(pat, hid); };
+    func:on_any     = int64(string:pat, int64:hid) { pass raw route_any(pat, hid); };
+
+    // matching
+    func:dispatch     = int64(string:method, string:path) { pass raw route_match(method, path); };
+    func:last_matched = int64() { pass raw route_matched(); };
+
+    // params
+    func:param       = string(string:name) { pass raw route_param(name); };
+    func:param_count = int64() { pass raw route_param_count(); };
+    func:param_name  = string(int64:i) { pass raw route_param_name(i); };
+    func:param_val   = string(int64:i) { pass raw route_param_val(i); };
+
+    // middleware
+    func:use_mw   = int64(int64:mid) { pass raw route_use_mw(mid); };
+    func:mw_count = int64() { pass raw route_mw_count(); };
+    func:mw_id    = int64(int64:i) { pass raw route_mw_id(i); };
+
+    // state
+    func:count     = int64() { pass raw route_count(); };
+    func:reset_all = int64() { pass raw route_reset(); };
+    func:last_err  = string() { pass raw route_error(); };
+};

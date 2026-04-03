@@ -1,0 +1,76 @@
+// test_aria_dns.aria — 12-test suite for aria-dns (v0.12.0)
+use "../src/aria_dns.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+
+    // T01: resolve localhost
+    string:ip1 = raw Dns.resolve("localhost");
+    if (ip1 == "127.0.0.1") { println("[PASS] T01 resolve localhost"); pass_count += 1i32; }
+    if (ip1 != "127.0.0.1") { println("[FAIL] T01"); }
+
+    // T02: resolve_all localhost
+    string:all2 = raw Dns.resolve_all("localhost");
+    if (all2 == "127.0.0.1") { println("[PASS] T02 resolve_all localhost"); pass_count += 1i32; }
+    if (all2 != "127.0.0.1") { println("[FAIL] T02"); }
+
+    // T03: is_ipv4 valid
+    int64:v3 = raw Dns.is_ipv4("192.168.1.1");
+    if (v3 == 1i64) { println("[PASS] T03 is_ipv4 valid"); pass_count += 1i32; }
+    if (v3 != 1i64) { println("[FAIL] T03"); }
+
+    // T04: is_ipv4 invalid
+    int64:v4 = raw Dns.is_ipv4("not.an.ip");
+    if (v4 == 0i64) { println("[PASS] T04 is_ipv4 invalid"); pass_count += 1i32; }
+    if (v4 != 0i64) { println("[FAIL] T04"); }
+
+    // T05: is_hostname for hostname
+    int64:h5 = raw Dns.is_hostname("example.com");
+    if (h5 == 1i64) { println("[PASS] T05 is_hostname true"); pass_count += 1i32; }
+    if (h5 != 1i64) { println("[FAIL] T05"); }
+
+    // T06: is_hostname for IP address (should return 0)
+    int64:h6 = raw Dns.is_hostname("10.0.0.1");
+    if (h6 == 0i64) { println("[PASS] T06 is_hostname false for IP"); pass_count += 1i32; }
+    if (h6 != 0i64) { println("[FAIL] T06"); }
+
+    // T07: can_resolve localhost
+    int64:cr7 = raw Dns.can_resolve("localhost");
+    if (cr7 == 1i64) { println("[PASS] T07 can_resolve localhost"); pass_count += 1i32; }
+    if (cr7 != 1i64) { println("[FAIL] T07"); }
+
+    // T08: can_resolve invalid host
+    int64:cr8 = raw Dns.can_resolve("this.host.does.not.exist.invalid");
+    if (cr8 == 0i64) { println("[PASS] T08 can_resolve invalid=0"); pass_count += 1i32; }
+    if (cr8 != 0i64) { println("[FAIL] T08"); }
+
+    // T09: resolve_or with valid host
+    string:ro9 = raw Dns.resolve_or("localhost", "0.0.0.0");
+    if (ro9 == "127.0.0.1") { println("[PASS] T09 resolve_or valid"); pass_count += 1i32; }
+    if (ro9 != "127.0.0.1") { println("[FAIL] T09"); }
+
+    // T10: resolve_or with invalid host uses fallback
+    string:ro10 = raw Dns.resolve_or("this.host.does.not.exist.invalid", "0.0.0.0");
+    if (ro10 == "0.0.0.0") { println("[PASS] T10 resolve_or fallback"); pass_count += 1i32; }
+    if (ro10 != "0.0.0.0") { println("[FAIL] T10"); }
+
+    // T11: reverse lookup 127.0.0.1
+    string:rev11 = raw Dns.reverse("127.0.0.1");
+    // Reverse may return "localhost" or the machine's hostname — just check non-empty
+    if (rev11 != "") { println("[PASS] T11 reverse non-empty"); pass_count += 1i32; }
+    if (rev11 == "") { println("[FAIL] T11"); }
+
+    // T12: is_ipv4 edge cases
+    int64:v12a = raw Dns.is_ipv4("0.0.0.0");
+    int64:v12b = raw Dns.is_ipv4("255.255.255.255");
+    if (v12a == 1i64) {
+        if (v12b == 1i64) { println("[PASS] T12 is_ipv4 edge"); pass_count += 1i32; }
+        if (v12b != 1i64) { println("[FAIL] T12"); }
+    }
+    if (v12a != 1i64) { println("[FAIL] T12"); }
+
+    println("DONE");
+    exit(0i32);
+};

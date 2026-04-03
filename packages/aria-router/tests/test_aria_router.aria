@@ -1,0 +1,93 @@
+// test_aria_router.aria — 12-test suite for aria-router (v0.12.0)
+use "../src/aria_router.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+
+    // T01: add GET route
+    int64:a1 = raw route_get("/hello", 1i64);
+    if (a1 == 1i64) { println("[PASS] T01 add GET route"); pass_count += 1i32; }
+    if (a1 != 1i64) { println("[FAIL] T01"); }
+
+    // T02: add POST route
+    int64:a2 = raw route_post("/submit", 2i64);
+    if (a2 == 1i64) { println("[PASS] T02 add POST route"); pass_count += 1i32; }
+    if (a2 != 1i64) { println("[FAIL] T02"); }
+
+    // T03: route count
+    int64:rc3 = raw route_count();
+    if (rc3 == 2i64) { println("[PASS] T03 route count=2"); pass_count += 1i32; }
+    if (rc3 != 2i64) { println("[FAIL] T03"); }
+
+    // T04: exact match GET /hello
+    int64:m4 = raw route_match("GET", "/hello");
+    if (m4 == 1i64) { println("[PASS] T04 match GET /hello=1"); pass_count += 1i32; }
+    if (m4 != 1i64) { println("[FAIL] T04"); }
+
+    // T05: match POST /submit
+    int64:m5 = raw route_match("POST", "/submit");
+    if (m5 == 2i64) { println("[PASS] T05 match POST /submit=2"); pass_count += 1i32; }
+    if (m5 != 2i64) { println("[FAIL] T05"); }
+
+    // T06: no match returns -1
+    int64:m6 = raw route_match("GET", "/missing");
+    if (m6 == -1i64) { println("[PASS] T06 no match=-1"); pass_count += 1i32; }
+    if (m6 != -1i64) { println("[FAIL] T06"); }
+
+    // T07: method mismatch
+    int64:m7 = raw route_match("DELETE", "/hello");
+    if (m7 == -1i64) { println("[PASS] T07 method mismatch=-1"); pass_count += 1i32; }
+    if (m7 != -1i64) { println("[FAIL] T07"); }
+
+    // T08: path parameter extraction
+    int64:a8 = raw route_get("/users/:id", 10i64);
+    int64:m8 = raw route_match("GET", "/users/42");
+    if (m8 == 10i64) {
+        string:p8 = raw route_param("id");
+        if (p8 == "42") { println("[PASS] T08 param :id=42"); pass_count += 1i32; }
+        if (p8 != "42") { println("[FAIL] T08 param value"); }
+    }
+    if (m8 != 10i64) { println("[FAIL] T08 match"); }
+
+    // T09: multi-param extraction
+    int64:a9 = raw route_get("/posts/:pid/comments/:cid", 20i64);
+    int64:m9 = raw route_match("GET", "/posts/7/comments/99");
+    if (m9 == 20i64) {
+        string:pp9 = raw route_param("pid");
+        string:pc9 = raw route_param("cid");
+        if (pp9 == "7") {
+            if (pc9 == "99") { println("[PASS] T09 multi params"); pass_count += 1i32; }
+            if (pc9 != "99") { println("[FAIL] T09 cid"); }
+        }
+        if (pp9 != "7") { println("[FAIL] T09 pid"); }
+    }
+    if (m9 != 20i64) { println("[FAIL] T09 match"); }
+
+    // T10: wildcard route
+    int64:a10 = raw route_get("/static/*", 30i64);
+    int64:m10 = raw route_match("GET", "/static/css/main.css");
+    if (m10 == 30i64) { println("[PASS] T10 wildcard match"); pass_count += 1i32; }
+    if (m10 != 30i64) { println("[FAIL] T10"); }
+
+    // T11: middleware registration
+    int64:mw1 = raw route_use_mw(100i64);
+    int64:mw2 = raw route_use_mw(101i64);
+    int64:mwc = raw route_mw_count();
+    if (mwc == 2i64) { println("[PASS] T11 middleware count=2"); pass_count += 1i32; }
+    if (mwc != 2i64) { println("[FAIL] T11"); }
+
+    // T12: reset clears everything
+    int64:r12 = raw route_reset();
+    int64:rc12 = raw route_count();
+    int64:mc12 = raw route_mw_count();
+    if (rc12 == 0i64) {
+        if (mc12 == 0i64) { println("[PASS] T12 reset clears all"); pass_count += 1i32; }
+        if (mc12 != 0i64) { println("[FAIL] T12 mw not cleared"); }
+    }
+    if (rc12 != 0i64) { println("[FAIL] T12 routes not cleared"); }
+
+    println("DONE");
+    exit(0i32);
+};

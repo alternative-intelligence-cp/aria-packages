@@ -1,0 +1,76 @@
+// test_aria_socket_v2.aria — 12-test suite for aria-socket v0.12.0
+use "../src/aria_socket_v2.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+
+    // T01: create TCP socket
+    int64:tcp1 = raw Socket.tcp_create();
+    if (tcp1 >= 0i64) { println("[PASS] T01 tcp_create"); pass_count += 1i32; }
+    if (tcp1 < 0i64) { println("[FAIL] T01"); }
+
+    // T02: create UDP socket
+    int64:udp1 = raw Socket.udp_create();
+    if (udp1 >= 0i64) { println("[PASS] T02 udp_create"); pass_count += 1i32; }
+    if (udp1 < 0i64) { println("[FAIL] T02"); }
+
+    // T03: UDP bind
+    int64:ub = raw Socket.udp_bind(udp1, "127.0.0.1", 19901i64);
+    if (ub == 1i64) { println("[PASS] T03 udp_bind"); pass_count += 1i32; }
+    if (ub != 1i64) { println("[FAIL] T03"); }
+
+    // T04: UDP sendto self
+    int64:sent = raw Socket.udp_sendto(udp1, "hello net", 9i64, "127.0.0.1", 19901i64);
+    if (sent == 9i64) { println("[PASS] T04 udp_sendto=9"); pass_count += 1i32; }
+    if (sent != 9i64) { println("[FAIL] T04"); }
+
+    // T05: poll_read after send (data ready)
+    int64:pr = raw Socket.poll_read(udp1, 100i64);
+    if (pr == 1i64) { println("[PASS] T05 poll_read=1"); pass_count += 1i32; }
+    if (pr != 1i64) { println("[FAIL] T05"); }
+
+    // T06: UDP recvfrom
+    string:msg6 = raw Socket.udp_recvfrom(udp1);
+    if (msg6 == "hello net") { println("[PASS] T06 udp_recvfrom"); pass_count += 1i32; }
+    if (msg6 != "hello net") { println("[FAIL] T06"); }
+
+    // T07: poll_read timeout (no data)
+    int64:pr2 = raw Socket.poll_read(udp1, 50i64);
+    if (pr2 == 0i64) { println("[PASS] T07 poll_read=0 timeout"); pass_count += 1i32; }
+    if (pr2 != 0i64) { println("[FAIL] T07"); }
+
+    // T08: TCP listen
+    int64:srv = raw Socket.tcp_listen("127.0.0.1", 19902i64, 5i64);
+    if (srv >= 0i64) { println("[PASS] T08 tcp_listen"); pass_count += 1i32; }
+    if (srv < 0i64) { println("[FAIL] T08"); }
+
+    // T09: TCP connect
+    int64:cli = raw Socket.tcp_connect("127.0.0.1", 19902i64);
+    if (cli >= 0i64) { println("[PASS] T09 tcp_connect"); pass_count += 1i32; }
+    if (cli < 0i64) { println("[FAIL] T09"); }
+
+    // T10: TCP accept
+    int64:acc = raw Socket.tcp_accept(srv);
+    if (acc >= 0i64) { println("[PASS] T10 tcp_accept"); pass_count += 1i32; }
+    if (acc < 0i64) { println("[FAIL] T10"); }
+
+    // T11: TCP send_str + recv
+    int64:ss = raw Socket.send_str(cli, "hello tcp");
+    string:got11 = raw Socket.recv_data(acc, 1024i64);
+    if (got11 == "hello tcp") { println("[PASS] T11 tcp send/recv"); pass_count += 1i32; }
+    if (got11 != "hello tcp") { println("[FAIL] T11"); }
+
+    // T12: close sockets
+    int64:c1 = raw Socket.close_fd(tcp1);
+    int64:c2 = raw Socket.close_fd(udp1);
+    int64:c3 = raw Socket.close_fd(srv);
+    int64:c4 = raw Socket.close_fd(cli);
+    int64:c5 = raw Socket.close_fd(acc);
+    println("[PASS] T12 close_fd");
+    pass_count += 1i32;
+
+    println("DONE");
+    exit(0i32);
+};
