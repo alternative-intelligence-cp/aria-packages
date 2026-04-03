@@ -1,0 +1,71 @@
+/* Test: aria-hex port (pure Aria rewrite) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_hex.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-hex port tests ===");
+    int32:passed = 0i32;
+
+    // hex_encode
+    string:h1 = raw hex_encode("Hello");
+    drop check(string_equals(h1, "48656c6c6f"), "encode(Hello)=48656c6c6f");
+    passed = passed + 1i32;
+
+    // hex_encode_upper
+    string:h2 = raw hex_encode_upper("Hello");
+    drop check(string_equals(h2, "48656C6C6F"), "encode_upper(Hello)=48656C6C6F");
+    passed = passed + 1i32;
+
+    // hex_decode
+    string:d1 = raw hex_decode("48656c6c6f");
+    drop check(string_equals(d1, "Hello"), "decode(48656c6c6f)=Hello");
+    passed = passed + 1i32;
+
+    // roundtrip
+    string:orig = "Aria v0.9.2";
+    string:enc = raw hex_encode(orig);
+    string:dec = raw hex_decode(enc);
+    drop check(string_equals(dec, orig), "roundtrip(Aria v0.9.2)");
+    passed = passed + 1i32;
+
+    // hex_is_valid
+    int32:v1 = raw hex_is_valid("48656c6c6f");
+    drop check(v1 == 1i32, "is_valid(48656c6c6f)=1");
+    passed = passed + 1i32;
+
+    int32:v2 = raw hex_is_valid("AABBCC");
+    drop check(v2 == 1i32, "is_valid(AABBCC)=1");
+    passed = passed + 1i32;
+
+    // odd length = invalid
+    int32:v3 = raw hex_is_valid("ABC");
+    drop check(v3 == 0i32, "is_valid(ABC)=0 (odd)");
+    passed = passed + 1i32;
+
+    // invalid chars
+    int32:v4 = raw hex_is_valid("ZZZZ");
+    drop check(v4 == 0i32, "is_valid(ZZZZ)=0 (bad chars)");
+    passed = passed + 1i32;
+
+    // empty encode
+    string:e1 = raw hex_encode("");
+    drop check(string_equals(e1, ""), "encode('')=''");
+    passed = passed + 1i32;
+
+    // encode single byte
+    string:s1 = raw hex_encode("A");
+    drop check(string_equals(s1, "41"), "encode(A)=41");
+    passed = passed + 1i32;
+
+    print("aria-hex: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/10 passed");
+    exit 0;
+};

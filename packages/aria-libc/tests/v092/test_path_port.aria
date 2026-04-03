@@ -1,0 +1,77 @@
+/* Test: aria-path port (aria-libc_fs backed + pure Aria) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_path.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-path port tests ===");
+    int32:passed = 0i32;
+
+    // path_join
+    string:j = raw path_join("/home", "user");
+    drop check(string_equals(j, "/home/user"), "join(/home, user)");
+    passed = passed + 1i32;
+
+    // path_join3
+    string:j3 = raw path_join3("/home", "user", "docs");
+    drop check(string_equals(j3, "/home/user/docs"), "join3(/home, user, docs)");
+    passed = passed + 1i32;
+
+    // path_basename
+    string:bn = raw path_basename("/home/user/file.txt");
+    drop check(string_equals(bn, "file.txt"), "basename(/home/user/file.txt)");
+    passed = passed + 1i32;
+
+    // path_dirname
+    string:dn = raw path_dirname("/home/user/file.txt");
+    drop check(string_equals(dn, "/home/user"), "dirname(/home/user/file.txt)");
+    passed = passed + 1i32;
+
+    // path_extension
+    string:ext = raw path_extension("/home/user/file.txt");
+    drop check(string_equals(ext, ".txt"), "extension(.txt)");
+    passed = passed + 1i32;
+
+    // path_stem (pure Aria)
+    string:stem = raw path_stem("/home/user/file.txt");
+    drop check(string_equals(stem, "file"), "stem(file.txt)=file");
+    passed = passed + 1i32;
+
+    // path_is_absolute (pure Aria)
+    int64:abs1 = raw path_is_absolute("/etc/passwd");
+    drop check(abs1 == 1i64, "is_absolute(/etc/passwd)");
+    passed = passed + 1i32;
+
+    int64:abs2 = raw path_is_absolute("relative/path");
+    drop check(abs2 == 0i64, "!is_absolute(relative/path)");
+    passed = passed + 1i32;
+
+    // path_is_relative (pure Aria)
+    int64:rel1 = raw path_is_relative("docs/file.txt");
+    drop check(rel1 == 1i64, "is_relative(docs/file.txt)");
+    passed = passed + 1i32;
+
+    int64:rel2 = raw path_is_relative("/absolute");
+    drop check(rel2 == 0i64, "!is_relative(/absolute)");
+    passed = passed + 1i32;
+
+    // path_has_extension (pure Aria)
+    int64:he1 = raw path_has_extension("/home/file.rs");
+    drop check(he1 == 1i64, "has_extension(file.rs)");
+    passed = passed + 1i32;
+
+    int64:he2 = raw path_has_extension("/home/Makefile");
+    drop check(he2 == 0i64, "!has_extension(Makefile)");
+    passed = passed + 1i32;
+
+    print("aria-path: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/12 passed");
+    exit 0;
+};

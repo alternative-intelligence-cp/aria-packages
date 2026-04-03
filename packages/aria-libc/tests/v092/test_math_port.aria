@@ -1,0 +1,108 @@
+/* Test: aria-math v0.2.0 port (aria-libc_math backed) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_math.aria".*;
+
+extern "aria_libc_math" {
+    func:aria_libc_math_fabs = flt64(flt64:x);
+}
+
+func:approx = bool(flt64:a, flt64:b, flt64:tol) {
+    flt64:diff = aria_libc_math_fabs(a - b);
+    if (diff < tol) { pass true; }
+    pass false;
+};
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-math v0.2.0 port tests ===");
+    int32:passed = 0i32;
+
+    // Trig
+    flt64:s = raw math_sin(0.0);
+    drop check(raw approx(s, 0.0, 0.0001), "sin(0)=0");
+    passed = passed + 1i32;
+
+    flt64:c = raw math_cos(0.0);
+    drop check(raw approx(c, 1.0, 0.0001), "cos(0)=1");
+    passed = passed + 1i32;
+
+    flt64:t = raw math_tan(0.0);
+    drop check(raw approx(t, 0.0, 0.0001), "tan(0)=0");
+    passed = passed + 1i32;
+
+    // Inverse trig
+    flt64:as1 = raw math_asin(1.0);
+    drop check(raw approx(as1, 1.5707963, 0.0001), "asin(1)=pi/2");
+    passed = passed + 1i32;
+
+    flt64:ac1 = raw math_acos(0.0);
+    drop check(raw approx(ac1, 1.5707963, 0.0001), "acos(0)=pi/2");
+    passed = passed + 1i32;
+
+    flt64:at1 = raw math_atan(1.0);
+    drop check(raw approx(at1, 0.7853981, 0.0001), "atan(1)=pi/4");
+    passed = passed + 1i32;
+
+    flt64:at2 = raw math_atan2(1.0, 1.0);
+    drop check(raw approx(at2, 0.7853981, 0.0001), "atan2(1,1)=pi/4");
+    passed = passed + 1i32;
+
+    // Exponential
+    flt64:sq = raw math_sqrt(9.0);
+    drop check(raw approx(sq, 3.0, 0.0001), "sqrt(9)=3");
+    passed = passed + 1i32;
+
+    flt64:pw = raw math_pow(2.0, 8.0);
+    drop check(raw approx(pw, 256.0, 0.0001), "pow(2,8)=256");
+    passed = passed + 1i32;
+
+    flt64:ex = raw math_exp(0.0);
+    drop check(raw approx(ex, 1.0, 0.0001), "exp(0)=1");
+    passed = passed + 1i32;
+
+    // Logarithm
+    flt64:lg = raw math_log(1.0);
+    drop check(raw approx(lg, 0.0, 0.0001), "log(1)=0");
+    passed = passed + 1i32;
+
+    flt64:l2 = raw math_log2(8.0);
+    drop check(raw approx(l2, 3.0, 0.0001), "log2(8)=3");
+    passed = passed + 1i32;
+
+    flt64:l10 = raw math_log10(100.0);
+    drop check(raw approx(l10, 2.0, 0.0001), "log10(100)=2");
+    passed = passed + 1i32;
+
+    // Rounding
+    flt64:fl = raw math_floor(3.7);
+    drop check(raw approx(fl, 3.0, 0.0001), "floor(3.7)=3");
+    passed = passed + 1i32;
+
+    flt64:cl = raw math_ceil(3.2);
+    drop check(raw approx(cl, 4.0, 0.0001), "ceil(3.2)=4");
+    passed = passed + 1i32;
+
+    flt64:rn = raw math_round(3.5);
+    drop check(raw approx(rn, 4.0, 0.0001), "round(3.5)=4");
+    passed = passed + 1i32;
+
+    // Misc
+    flt64:ab = raw math_abs(0.0 - 5.5);
+    drop check(raw approx(ab, 5.5, 0.0001), "abs(-5.5)=5.5");
+    passed = passed + 1i32;
+
+    flt64:fm = raw math_fmod(10.0, 3.0);
+    drop check(raw approx(fm, 1.0, 0.0001), "fmod(10,3)=1");
+    passed = passed + 1i32;
+
+    print("aria-math: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/18 passed");
+    exit 0;
+};

@@ -1,57 +1,80 @@
 // aria_path.aria — Path string manipulation for Aria
-// All operations implemented in C shim to avoid string_substring bug
+// Backed by aria-libc_fs for core ops, pure Aria for derived ops.
+// Requires: libaria_libc_fs.so (from aria-libc package)
 
-extern func:aria_path_shim_join = string(string:a, string:b);
-extern func:aria_path_shim_basename = string(string:p);
-extern func:aria_path_shim_dirname = string(string:p);
-extern func:aria_path_shim_extension = string(string:p);
-extern func:aria_path_shim_stem = string(string:p);
-extern func:aria_path_shim_is_absolute = int64(string:p);
-extern func:aria_path_shim_is_relative = int64(string:p);
-extern func:aria_path_shim_has_extension = int64(string:p);
+extern "aria_libc_fs" {
+    func:aria_libc_fs_join_path = string(string:a, string:b);
+    func:aria_libc_fs_basename  = string(string:path);
+    func:aria_libc_fs_dirname   = string(string:path);
+    func:aria_libc_fs_extension = string(string:path);
+}
 
 pub func:path_join = string(string:a, string:b) {
-    string:r = aria_path_shim_join(a, b);
+    string:r = aria_libc_fs_join_path(a, b);
     pass r;
 };
 
 pub func:path_join3 = string(string:a, string:b, string:c) {
-    string:ab = aria_path_shim_join(a, b);
-    string:r = aria_path_shim_join(ab, c);
+    string:ab = aria_libc_fs_join_path(a, b);
+    string:r = aria_libc_fs_join_path(ab, c);
     pass r;
 };
 
 pub func:path_basename = string(string:p) {
-    string:r = aria_path_shim_basename(p);
+    string:r = aria_libc_fs_basename(p);
     pass r;
 };
 
 pub func:path_dirname = string(string:p) {
-    string:r = aria_path_shim_dirname(p);
+    string:r = aria_libc_fs_dirname(p);
     pass r;
 };
 
 pub func:path_extension = string(string:p) {
-    string:r = aria_path_shim_extension(p);
+    string:r = aria_libc_fs_extension(p);
     pass r;
 };
 
+// stem: basename without extension (pure Aria)
 pub func:path_stem = string(string:p) {
-    string:r = aria_path_shim_stem(p);
-    pass r;
+    string:base = aria_libc_fs_basename(p);
+    int64:len = string_length(base);
+    int64:i = len - 1i64;
+    int64:dot_pos = 0i64 - 1i64;
+    while (i > 0i64) {
+        string:ch = string_substring(base, i, i + 1i64);
+        if (string_equals(ch, ".")) {
+            dot_pos = i;
+            i = 0i64;
+        }
+        i = i - 1i64;
+    }
+    if (dot_pos > 0i64) {
+        pass string_substring(base, 0i64, dot_pos);
+    }
+    pass base;
 };
 
+// is_absolute: starts with '/' (pure Aria)
 pub func:path_is_absolute = int64(string:p) {
-    int64:r = aria_path_shim_is_absolute(p);
-    pass r;
+    int64:len = string_length(p);
+    if (len == 0i64) { pass 0i64; }
+    string:first = string_substring(p, 0i64, 1i64);
+    if (string_equals(first, "/")) { pass 1i64; }
+    pass 0i64;
 };
 
+// is_relative: not absolute (pure Aria)
 pub func:path_is_relative = int64(string:p) {
-    int64:r = aria_path_shim_is_relative(p);
-    pass r;
+    int64:abs = raw path_is_absolute(p);
+    if (abs == 1i64) { pass 0i64; }
+    pass 1i64;
 };
 
+// has_extension: basename contains '.' after first char (pure Aria)
 pub func:path_has_extension = int64(string:p) {
-    int64:r = aria_path_shim_has_extension(p);
-    pass r;
+    string:ext = aria_libc_fs_extension(p);
+    int64:ext_len = string_length(ext);
+    if (ext_len > 0i64) { pass 1i64; }
+    pass 0i64;
 };

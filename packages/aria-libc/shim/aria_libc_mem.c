@@ -134,6 +134,26 @@ int32_t aria_libc_mem_setenv(const char *name, const char *value) {
     return setenv(name, value, 1);
 }
 
+int32_t aria_libc_mem_unsetenv(const char *name) {
+    if (!name) return -1;
+    return unsetenv(name);
+}
+
+int32_t aria_libc_mem_has_env(const char *name) {
+    if (!name) return 0;
+    return getenv(name) != NULL ? 1 : 0;
+}
+
+extern char **environ;
+
+int32_t aria_libc_mem_environ_count(void) {
+    int32_t count = 0;
+    if (environ) {
+        for (char **e = environ; *e; e++) count++;
+    }
+    return count;
+}
+
 /* ── Pointer Arithmetic Helpers ──────────────────────────────────── */
 
 int64_t aria_libc_mem_ptr_add(int64_t ptr, int64_t offset) {

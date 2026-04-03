@@ -1,25 +1,29 @@
 // aria_env.aria — Environment variable library for Aria
+// Backed by aria-libc_mem (getenv/setenv/unsetenv).
+// Requires: libaria_libc_mem.so (from aria-libc package)
 
-extern "aria_env_shim" {
-    func:aria_env_get    = string(string:name);
-    func:aria_env_set    = int32(string:name, string:value);
-    func:aria_env_unset  = int32(string:name);
-    func:aria_env_has    = int32(string:name);
-    func:aria_env_get_or = string(string:name, string:default_val);
-    func:aria_env_count  = int32();
-    func:aria_env_home   = string();
-    func:aria_env_path   = string();
-    func:aria_env_user   = string();
-    func:aria_env_shell  = string();
+extern "aria_libc_mem" {
+    func:aria_libc_mem_getenv        = string(string:name);
+    func:aria_libc_mem_setenv        = int32(string:name, string:value);
+    func:aria_libc_mem_unsetenv      = int32(string:name);
+    func:aria_libc_mem_has_env       = int32(string:name);
+    func:aria_libc_mem_environ_count = int32();
 }
 
-pub func:get = string(string:name) { pass aria_env_get(name); };
-pub func:set = int32(string:name, string:value) { pass aria_env_set(name, value); };
-pub func:unset = int32(string:name) { pass aria_env_unset(name); };
-pub func:has = int32(string:name) { pass aria_env_has(name); };
-pub func:get_or = string(string:name, string:default_val) { pass aria_env_get_or(name, default_val); };
-pub func:count = int32() { pass aria_env_count(); };
-pub func:home = string() { pass aria_env_home(); };
-pub func:path = string() { pass aria_env_path(); };
-pub func:user = string() { pass aria_env_user(); };
-pub func:shell = string() { pass aria_env_shell(); };
+pub func:get = string(string:name) { pass aria_libc_mem_getenv(name); };
+pub func:set = int32(string:name, string:value) { pass aria_libc_mem_setenv(name, value); };
+pub func:unset = int32(string:name) { pass aria_libc_mem_unsetenv(name); };
+pub func:has = int32(string:name) { pass aria_libc_mem_has_env(name); };
+
+pub func:get_or = string(string:name, string:default_val) {
+    string:val = aria_libc_mem_getenv(name);
+    int32:exists = aria_libc_mem_has_env(name);
+    if (exists == 0i32) { pass default_val; }
+    pass val;
+};
+
+pub func:count = int32() { pass aria_libc_mem_environ_count(); };
+pub func:home = string() { pass aria_libc_mem_getenv("HOME"); };
+pub func:path = string() { pass aria_libc_mem_getenv("PATH"); };
+pub func:user = string() { pass aria_libc_mem_getenv("USER"); };
+pub func:shell = string() { pass aria_libc_mem_getenv("SHELL"); };

@@ -1,63 +1,197 @@
 // aria_sort.aria — Sorting utilities for int64 arrays
 //
-// Handle-based array with quicksort, insertion sort, is_sorted.
-// Uses C shim for array storage and sort algorithms.
+// Pure Aria implementation using aria-libc_mem for dynamic array storage.
+// Requires: libaria_libc_mem.so (from aria-libc package)
+//
+// Array handle layout (3 int64 slots = 24 bytes):
+//   handle+0: data pointer (int64 array)
+//   handle+8: length (current element count)
+//   handle+16: capacity (allocated element count)
 
-extern func:aria_sort_shim_create = int64();
-extern func:aria_sort_shim_free = void(int64:arr);
-extern func:aria_sort_shim_push = void(int64:arr, int64:val);
-extern func:aria_sort_shim_get = int64(int64:arr, int64:idx);
-extern func:aria_sort_shim_length = int64(int64:arr);
-extern func:aria_sort_shim_quicksort = void(int64:arr);
-extern func:aria_sort_shim_insertion_sort = void(int64:arr);
-extern func:aria_sort_shim_is_sorted = int64(int64:arr);
-extern func:aria_sort_shim_reverse = void(int64:arr);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:size);
+    func:aria_libc_mem_realloc   = int64(int64:ptr, int64:size);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+}
 
-// ── Create / Destroy ────────────────────────────────────────────────
+// ── Internal: array element access ──────────────────────────────
 
-pub func:sort_array_new = int64() {
-    pass aria_sort_shim_create();
+func:_arr_get_data = int64(int64:arr) {
+    pass aria_libc_mem_read_i64(arr, 0i64);
 };
 
-pub func:sort_array_free = NIL(int64:arr) {
-    aria_sort_shim_free(arr);
+func:_arr_get_len = int64(int64:arr) {
+    pass aria_libc_mem_read_i64(arr, 8i64);
+};
+
+func:_arr_get_cap = int64(int64:arr) {
+    pass aria_libc_mem_read_i64(arr, 16i64);
+};
+
+func:_arr_set_len = NIL(int64:arr, int64:len) {
+    drop aria_libc_mem_write_i64(arr, 8i64, len);
     pass NIL;
 };
 
-// ── Array Operations ────────────────────────────────────────────────
+func:_elem_get = int64(int64:data, int64:idx) {
+    int64:offset = idx * 8i64;
+    pass aria_libc_mem_read_i64(data, offset);
+};
+
+func:_elem_set = NIL(int64:data, int64:idx, int64:val) {
+    int64:offset = idx * 8i64;
+    drop aria_libc_mem_write_i64(data, offset, val);
+    pass NIL;
+};
+
+func:_elem_swap = NIL(int64:data, int64:i, int64:j) {
+    int64:a = raw _elem_get(data, i);
+    int64:b = raw _elem_get(data, j);
+    drop _elem_set(data, i, b);
+    drop _elem_set(data, j, a);
+    pass NIL;
+};
+
+// ── Create / Destroy ────────────────────────────────────────────
+
+pub func:sort_array_new = int64() {
+    int64:arr = aria_libc_mem_malloc(24i64);
+    int64:init_cap = 16i64;
+    int64:data = aria_libc_mem_malloc(init_cap * 8i64);
+    drop aria_libc_mem_write_i64(arr, 0i64, data);
+    drop aria_libc_mem_write_i64(arr, 8i64, 0i64);
+    drop aria_libc_mem_write_i64(arr, 16i64, init_cap);
+    pass arr;
+};
+
+pub func:sort_array_free = NIL(int64:arr) {
+    int64:data = raw _arr_get_data(arr);
+    drop aria_libc_mem_free(data);
+    drop aria_libc_mem_free(arr);
+    pass NIL;
+};
+
+// ── Array Operations ────────────────────────────────────────────
 
 pub func:sort_push = NIL(int64:arr, int64:val) {
-    aria_sort_shim_push(arr, val);
+    int64:len = raw _arr_get_len(arr);
+    int64:cap = raw _arr_get_cap(arr);
+    if (len >= cap) {
+        int64:new_cap = cap * 2i64;
+        int64:data = raw _arr_get_data(arr);
+        int64:new_data = aria_libc_mem_realloc(data, new_cap * 8i64);
+        drop aria_libc_mem_write_i64(arr, 0i64, new_data);
+        drop aria_libc_mem_write_i64(arr, 16i64, new_cap);
+    }
+    int64:data = raw _arr_get_data(arr);
+    drop _elem_set(data, len, val);
+    drop _arr_set_len(arr, len + 1i64);
     pass NIL;
 };
 
 pub func:sort_get = int64(int64:arr, int64:idx) {
-    pass aria_sort_shim_get(arr, idx);
+    int64:data = raw _arr_get_data(arr);
+    pass raw _elem_get(data, idx);
 };
 
 pub func:sort_length = int64(int64:arr) {
-    pass aria_sort_shim_length(arr);
+    pass raw _arr_get_len(arr);
 };
 
-// ── Sort Algorithms ─────────────────────────────────────────────────
+// ── Quicksort ───────────────────────────────────────────────────
+
+func:_qs_partition = int64(int64:data, int64:lo, int64:hi) {
+    int64:pivot = raw _elem_get(data, hi);
+    int64:i = lo - 1i64;
+    int64:j = lo;
+    while (j < hi) {
+        int64:val = raw _elem_get(data, j);
+        if (val <= pivot) {
+            i = i + 1i64;
+            drop _elem_swap(data, i, j);
+        }
+        j = j + 1i64;
+    }
+    i = i + 1i64;
+    drop _elem_swap(data, i, hi);
+    pass i;
+};
+
+func:_qs_recurse = NIL(int64:data, int64:lo, int64:hi) {
+    if (lo < hi) {
+        int64:p = raw _qs_partition(data, lo, hi);
+        drop _qs_recurse(data, lo, p - 1i64);
+        drop _qs_recurse(data, p + 1i64, hi);
+    }
+    pass NIL;
+};
 
 pub func:sort_quicksort = NIL(int64:arr) {
-    aria_sort_shim_quicksort(arr);
+    int64:len = raw _arr_get_len(arr);
+    if (len > 1i64) {
+        int64:data = raw _arr_get_data(arr);
+        drop _qs_recurse(data, 0i64, len - 1i64);
+    }
     pass NIL;
 };
+
+// ── Insertion Sort ──────────────────────────────────────────────
 
 pub func:sort_insertion = NIL(int64:arr) {
-    aria_sort_shim_insertion_sort(arr);
+    int64:len = raw _arr_get_len(arr);
+    int64:data = raw _arr_get_data(arr);
+    int64:i = 1i64;
+    while (i < len) {
+        int64:key = raw _elem_get(data, i);
+        int64:j = i - 1i64;
+        bool:shifting = true;
+        while (shifting) {
+            if (j < 0i64) {
+                shifting = false;
+            } else {
+                int64:jval = raw _elem_get(data, j);
+                if (jval > key) {
+                    drop _elem_set(data, j + 1i64, jval);
+                    j = j - 1i64;
+                } else {
+                    shifting = false;
+                }
+            }
+        }
+        drop _elem_set(data, j + 1i64, key);
+        i = i + 1i64;
+    }
     pass NIL;
 };
 
-// ── Queries ─────────────────────────────────────────────────────────
+// ── Queries ─────────────────────────────────────────────────────
 
 pub func:sort_is_sorted = int64(int64:arr) {
-    pass aria_sort_shim_is_sorted(arr);
+    int64:len = raw _arr_get_len(arr);
+    if (len <= 1i64) { pass 1i64; }
+    int64:data = raw _arr_get_data(arr);
+    int64:i = 1i64;
+    while (i < len) {
+        int64:prev = raw _elem_get(data, i - 1i64);
+        int64:curr = raw _elem_get(data, i);
+        if (prev > curr) { pass 0i64; }
+        i = i + 1i64;
+    }
+    pass 1i64;
 };
 
 pub func:sort_reverse = NIL(int64:arr) {
-    aria_sort_shim_reverse(arr);
+    int64:len = raw _arr_get_len(arr);
+    if (len <= 1i64) { pass NIL; }
+    int64:data = raw _arr_get_data(arr);
+    int64:lo = 0i64;
+    int64:hi = len - 1i64;
+    while (lo < hi) {
+        drop _elem_swap(data, lo, hi);
+        lo = lo + 1i64;
+        hi = hi - 1i64;
+    }
     pass NIL;
 };

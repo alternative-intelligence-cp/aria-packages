@@ -26,6 +26,9 @@ extern "aria_libc_mem" {
     func:aria_libc_mem_abort        = void();
     func:aria_libc_mem_getenv       = string(string:name);
     func:aria_libc_mem_setenv       = int32(string:name, string:value);
+    func:aria_libc_mem_unsetenv     = int32(string:name);
+    func:aria_libc_mem_has_env      = int32(string:name);
+    func:aria_libc_mem_environ_count = int32();
     func:aria_libc_mem_ptr_add      = int64(int64:ptr, int64:offset);
     func:aria_libc_mem_size_of_i32  = int64();
     func:aria_libc_mem_size_of_i64  = int64();
@@ -137,6 +140,21 @@ pub func:env_get = string(string:name) {
 
 pub func:env_set = int32(string:name, string:value) {
     int32:r = aria_libc_mem_setenv(name, value);
+    pass r;
+}
+
+pub func:env_unset = int32(string:name) {
+    int32:r = aria_libc_mem_unsetenv(name);
+    pass r;
+}
+
+pub func:env_has = int32(string:name) {
+    int32:r = aria_libc_mem_has_env(name);
+    pass r;
+}
+
+pub func:env_count = int32() {
+    int32:r = aria_libc_mem_environ_count();
     pass r;
 }
 

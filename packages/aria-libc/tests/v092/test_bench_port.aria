@@ -1,0 +1,68 @@
+/* Test: aria-bench port (aria-libc_time backed) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_bench.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-bench port tests ===");
+    int32:passed = 0i32;
+
+    // bench_now returns positive nanoseconds
+    int64:t1 = raw bench_now();
+    drop check(t1 > 0i64, "bench_now > 0");
+    passed = passed + 1i32;
+
+    // two calls should be monotonically increasing
+    int64:t2 = raw bench_now();
+    drop check(t2 >= t1, "bench_now monotonic");
+    passed = passed + 1i32;
+
+    // bench_elapsed should return small positive value
+    int64:start = raw bench_now();
+    int64:dummy = 0i64;
+    loop(0, 1000, 1) { dummy = dummy + $; }
+    int64:elapsed = raw bench_elapsed(start);
+    drop check(elapsed >= 0i64, "bench_elapsed >= 0");
+    passed = passed + 1i32;
+
+    // bench_elapsed_us
+    int64:start2 = raw bench_now();
+    int64:dummy2 = 0i64;
+    loop(0, 10000, 1) { dummy2 = dummy2 + $; }
+    int64:us = raw bench_elapsed_us(start2);
+    drop check(us >= 0i64, "bench_elapsed_us >= 0");
+    passed = passed + 1i32;
+
+    // bench_ns_to_us
+    int64:ns_val = 5000i64;
+    int64:us_val = raw bench_ns_to_us(ns_val);
+    drop check(us_val == 5i64, "ns_to_us(5000)=5");
+    passed = passed + 1i32;
+
+    // bench_ns_to_ms
+    int64:ns_val2 = 5000000i64;
+    int64:ms_val = raw bench_ns_to_ms(ns_val2);
+    drop check(ms_val == 5i64, "ns_to_ms(5000000)=5");
+    passed = passed + 1i32;
+
+    // bench_avg_ns
+    int64:avg = raw bench_avg_ns(10000i64, 10i64);
+    drop check(avg == 1000i64, "avg_ns(10000,10)=1000");
+    passed = passed + 1i32;
+
+    // bench_ops_per_sec
+    int64:ops = raw bench_ops_per_sec(1000000000i64, 100i64);
+    drop check(ops == 100i64, "ops_per_sec(1e9,100)=100");
+    passed = passed + 1i32;
+
+    print("aria-bench: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/8 passed");
+    exit 0;
+};

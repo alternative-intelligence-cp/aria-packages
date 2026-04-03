@@ -1,35 +1,37 @@
 // aria_bench.aria — Benchmarking framework for Aria
 //
 // High-resolution monotonic timing for performance measurement.
-// Requires: libaria_bench_shim.so
+// Requires: libaria_libc_time.so (from aria-libc package)
 
-extern "aria_bench_shim" {
-    func:aria_bench_now_ns = int64();
-    func:aria_bench_elapsed_ns = int64(int64:start_ns);
+extern "aria_libc_time" {
+    func:aria_libc_time_monotonic_ns = int64();
 }
 
 // ── Timing Primitives ───────────────────────────────────────────────
 
 pub func:bench_now = int64() {
-    int64:t = aria_bench_now_ns();
+    int64:t = aria_libc_time_monotonic_ns();
     pass t;
 };
 
 pub func:bench_elapsed = int64(int64:start_ns) {
-    int64:e = aria_bench_elapsed_ns(start_ns);
+    int64:now = aria_libc_time_monotonic_ns();
+    int64:e = now - start_ns;
     pass e;
 };
 
 // ── Unit Conversions (from nanoseconds) ─────────────────────────────
 
 pub func:bench_elapsed_us = int64(int64:start_ns) {
-    int64:e = aria_bench_elapsed_ns(start_ns);
+    int64:now = aria_libc_time_monotonic_ns();
+    int64:e = now - start_ns;
     int64:us = e / 1000i64;
     pass us;
 };
 
 pub func:bench_elapsed_ms = int64(int64:start_ns) {
-    int64:e = aria_bench_elapsed_ns(start_ns);
+    int64:now = aria_libc_time_monotonic_ns();
+    int64:e = now - start_ns;
     int64:ms = e / 1000000i64;
     pass ms;
 };

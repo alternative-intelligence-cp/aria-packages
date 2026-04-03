@@ -1,0 +1,80 @@
+/* Test: aria-regex port (aria-libc_regex handle-based API) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_regex.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-regex port tests ===");
+    int32:passed = 0i32;
+
+    // Compile a pattern
+    int32:re = raw regex_new("[0-9]+");
+    drop check(re >= 0i32, "regex_new success");
+    passed = passed + 1i32;
+
+    // regex_search: returns start offset of match (>=0), -1 if not found
+    int32:found = raw regex_search(re, "abc 123 def");
+    drop check(found == 4i32, "search offset=4");
+    passed = passed + 1i32;
+
+    // regex_search on no-match returns -1
+    int32:nf = raw regex_search(re, "no digits here");
+    drop check(nf < 0i32, "search no-match=-1");
+    passed = passed + 1i32;
+
+    // regex_match: partial match (POSIX), returns 1 if pattern found anywhere
+    int32:m1 = raw regex_match(re, "123");
+    drop check(m1 == 1i32, "match(123)=1");
+    passed = passed + 1i32;
+
+    int32:m2 = raw regex_match(re, "abc 123");
+    drop check(m2 == 1i32, "match(abc 123)=1 (partial)");
+    passed = passed + 1i32;
+
+    int32:m3 = raw regex_match(re, "no digits");
+    drop check(m3 == 0i32, "match(no digits)=0");
+    passed = passed + 1i32;
+
+    // Free first regex
+    drop regex_free(re);
+    passed = passed + 1i32;
+
+    // Capture groups
+    int32:re2 = raw regex_new("([a-z]+) ([0-9]+)");
+    int32:gc = raw regex_group_count(re2, "hello 42");
+    drop check(gc >= 1i32, "group_count >= 1");
+    passed = passed + 1i32;
+
+    // Group 0 = full match
+    string:g0 = raw regex_group(0i32, "hello 42");
+    drop check(string_equals(g0, "hello 42"), "group(0)=hello 42");
+    passed = passed + 1i32;
+
+    // Replace
+    int32:re3 = raw regex_new("[0-9]+");
+    string:repl = raw regex_replace(re3, "count: 42 items", "XX");
+    drop check(string_contains(repl, "XX"), "replace contains XX");
+    passed = passed + 1i32;
+
+    // Case insensitive - search returns offset (0 for start of string)
+    int32:re4 = raw regex_new_icase("hello");
+    int32:ci = raw regex_search(re4, "HELLO world");
+    drop check(ci >= 0i32, "icase search HELLO offset>=0");
+    passed = passed + 1i32;
+
+    // Cleanup
+    drop regex_free(re2);
+    drop regex_free(re3);
+    drop regex_free(re4);
+
+    print("aria-regex: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/11 passed");
+    exit 0;
+};

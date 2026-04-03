@@ -1,0 +1,127 @@
+/* Test: aria-sort port (pure Aria + aria-libc_mem) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_sort.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-sort port tests ===");
+    int32:passed = 0i32;
+
+    // Create array and push elements
+    int64:arr = raw sort_array_new();
+    drop sort_push(arr, 5i64);
+    drop sort_push(arr, 3i64);
+    drop sort_push(arr, 8i64);
+    drop sort_push(arr, 1i64);
+    drop sort_push(arr, 9i64);
+    drop sort_push(arr, 2i64);
+    drop sort_push(arr, 7i64);
+    drop sort_push(arr, 4i64);
+    drop sort_push(arr, 6i64);
+    drop sort_push(arr, 10i64);
+
+    // Length check
+    int64:len = raw sort_length(arr);
+    drop check(len == 10i64, "length=10");
+    passed = passed + 1i32;
+
+    // Get check
+    int64:v0 = raw sort_get(arr, 0i64);
+    drop check(v0 == 5i64, "get(0)=5");
+    passed = passed + 1i32;
+
+    // Not sorted yet
+    int64:sorted_before = raw sort_is_sorted(arr);
+    drop check(sorted_before == 0i64, "not sorted before");
+    passed = passed + 1i32;
+
+    // Quicksort
+    drop sort_quicksort(arr);
+    int64:sorted_after = raw sort_is_sorted(arr);
+    drop check(sorted_after == 1i64, "sorted after quicksort");
+    passed = passed + 1i32;
+
+    // Verify order: 1,2,3,...,10
+    int64:first = raw sort_get(arr, 0i64);
+    drop check(first == 1i64, "first=1");
+    passed = passed + 1i32;
+
+    int64:last = raw sort_get(arr, 9i64);
+    drop check(last == 10i64, "last=10");
+    passed = passed + 1i32;
+
+    // Reverse
+    drop sort_reverse(arr);
+    int64:rev_first = raw sort_get(arr, 0i64);
+    drop check(rev_first == 10i64, "reversed first=10");
+    passed = passed + 1i32;
+
+    int64:rev_last = raw sort_get(arr, 9i64);
+    drop check(rev_last == 1i64, "reversed last=1");
+    passed = passed + 1i32;
+
+    // After reverse, not ascending sorted
+    int64:sorted_rev = raw sort_is_sorted(arr);
+    drop check(sorted_rev == 0i64, "reversed not sorted asc");
+    passed = passed + 1i32;
+
+    // Free first array
+    drop sort_array_free(arr);
+    passed = passed + 1i32;
+
+    // Test insertion sort with new array
+    int64:arr2 = raw sort_array_new();
+    drop sort_push(arr2, 42i64);
+    drop sort_push(arr2, 7i64);
+    drop sort_push(arr2, 99i64);
+    drop sort_push(arr2, 1i64);
+    drop sort_push(arr2, 23i64);
+
+    drop sort_insertion(arr2);
+    int64:ins_sorted = raw sort_is_sorted(arr2);
+    drop check(ins_sorted == 1i64, "insertion sort works");
+    passed = passed + 1i32;
+
+    int64:ins_first = raw sort_get(arr2, 0i64);
+    drop check(ins_first == 1i64, "insertion first=1");
+    passed = passed + 1i32;
+
+    int64:ins_last = raw sort_get(arr2, 4i64);
+    drop check(ins_last == 99i64, "insertion last=99");
+    passed = passed + 1i32;
+
+    drop sort_array_free(arr2);
+
+    // Test empty array
+    int64:arr3 = raw sort_array_new();
+    int64:empty_len = raw sort_length(arr3);
+    drop check(empty_len == 0i64, "empty length=0");
+    passed = passed + 1i32;
+
+    int64:empty_sorted = raw sort_is_sorted(arr3);
+    drop check(empty_sorted == 1i64, "empty is sorted");
+    passed = passed + 1i32;
+
+    drop sort_array_free(arr3);
+
+    // Test single element
+    int64:arr4 = raw sort_array_new();
+    drop sort_push(arr4, 42i64);
+    drop sort_quicksort(arr4);
+    int64:single_sorted = raw sort_is_sorted(arr4);
+    drop check(single_sorted == 1i64, "single element sorted");
+    passed = passed + 1i32;
+
+    drop sort_array_free(arr4);
+
+    print("aria-sort: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/16 passed");
+    exit 0;
+};

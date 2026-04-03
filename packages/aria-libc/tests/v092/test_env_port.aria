@@ -1,0 +1,74 @@
+/* Test: aria-env port (aria-libc_mem backed) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_env.aria".*;
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-env port tests ===");
+    int32:passed = 0i32;
+
+    // set + get
+    int32:rc = raw set("ARIA_TEST_V092", "hello_world");
+    drop check(rc == 0i32, "set ARIA_TEST_V092");
+    passed = passed + 1i32;
+
+    string:val = raw get("ARIA_TEST_V092");
+    drop check(string_equals(val, "hello_world"), "get ARIA_TEST_V092=hello_world");
+    passed = passed + 1i32;
+
+    // has
+    int32:h = raw has("ARIA_TEST_V092");
+    drop check(h == 1i32, "has ARIA_TEST_V092=1");
+    passed = passed + 1i32;
+
+    // unset
+    int32:ur = raw unset("ARIA_TEST_V092");
+    drop check(ur == 0i32, "unset ARIA_TEST_V092");
+    passed = passed + 1i32;
+
+    int32:h2 = raw has("ARIA_TEST_V092");
+    drop check(h2 == 0i32, "has after unset=0");
+    passed = passed + 1i32;
+
+    // get_or (existing key)
+    int32:sr = raw set("ARIA_TEST_EXISTS", "found");
+    string:go1 = raw get_or("ARIA_TEST_EXISTS", "default");
+    drop check(string_equals(go1, "found"), "get_or existing=found");
+    passed = passed + 1i32;
+
+    // get_or (missing key)
+    string:go2 = raw get_or("ARIA_TEST_NONEXISTENT_XYZ", "fallback");
+    drop check(string_equals(go2, "fallback"), "get_or missing=fallback");
+    passed = passed + 1i32;
+
+    // count (should be > 0 since we have env vars)
+    int32:cnt = raw count();
+    drop check(cnt > 0i32, "count > 0");
+    passed = passed + 1i32;
+
+    // home (should not be empty)
+    string:hm = raw home();
+    int64:hlen = string_length(hm);
+    drop check(hlen > 0i64, "home not empty");
+    passed = passed + 1i32;
+
+    // user (should not be empty)
+    string:usr = raw user();
+    int64:ulen = string_length(usr);
+    drop check(ulen > 0i64, "user not empty");
+    passed = passed + 1i32;
+
+    // cleanup
+    drop unset("ARIA_TEST_EXISTS");
+
+    print("aria-env: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/10 passed");
+    exit 0;
+};
