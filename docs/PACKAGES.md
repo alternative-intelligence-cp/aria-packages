@@ -23,6 +23,38 @@ These packages were rewritten from C FFI shims to pure Aria, using aria-libc for
 | `aria-sort` | 0.2.0 | 4 | Sorting: quicksort, insertion_sort, is_sorted, reverse |
 | `aria-regex` | 0.2.0 | 7 | Regex: match, match_all, replace, split, count, is_valid, escape |
 
+### Ported to Pure Aria (v0.10.1)
+
+| Package | Version | Functions | Description |
+|---------|---------|-----------|-------------|
+| `aria-bigdecimal` | 0.3.2 | 11 | Arbitrary precision decimals: create, add, subtract, multiply, compare |
+| `aria-decision-t` | 0.2.0 | 30 | Decision tree data structure: graph operations, triggers, snapshots |
+| `aria-mock` | 0.3.2 | 11 | Test mocking: create mock functions, track calls, set return values |
+| `aria-rate-limit` | 0.2.9 | 10 | Rate limiting: token bucket, check, remaining, retry-after |
+| `aria-resource-mem` | 0.2.0 | 15 | Memory resource management: read/write limits, TTL, expiry |
+| `aria-static` | 0.2.9 | 4 | Static file serving: set root, resolve URL paths |
+| `aria-test` | 0.1.0 | 18 | Test framework: assertions, suites, pass/fail/skip counting |
+| `aria-tetris` | 0.2.8 | — | Terminal Tetris game (executable) |
+| `aria-url` | 0.2.6 | 8 | URL parsing: scheme, host, port, path, query, fragment, encode |
+| `aria-xml` | 0.2.6 | 8 | XML parsing: parse, get text/attr, count/has tag, XPath-like lookup |
+| `aria-yaml` | 0.2.6 | 14 | YAML parsing: parse, typed getters, set, has_key, error |
+| `aria-looping` | 0.2.10 | 21 | Looping transformer (ML): adaptive-depth inference |
+
+### Migrated to aria-libc (v0.10.2)
+
+| Package | Version | Functions | Description |
+|---------|---------|-----------|-------------|
+| `aria-args` | 0.2.0 | 13 | CLI argument parsing: has, get, at, count, make |
+| `aria-base64` | 0.1.0 | 4 | Base64 encoding: encode, decode, URL-safe encode |
+| `aria-csv` | 0.2.2 | 10 | CSV parsing: parse, get cells, write/build CSV |
+| `aria-datetime` | 0.2.2 | 27 | Date/time: epoch, components, format, make, diff, add |
+| `aria-ini` | 0.3.0 | 7 | INI file parsing: parse, sections, keys, get, has_key |
+| `aria-json` | 0.2.0 | 5 | JSON tokenizer: tokenize, next_tok, seq_matches |
+| `aria-log` | 0.2.2 | 15 | Logging: levels, init, set level, output targets, timestamps |
+| `aria-semver` | 0.2.6 | 4 | Semantic versioning: parse, get major/minor/patch |
+| `aria-str` | 0.2.0 | 9 | Extended strings: char_at, slice, before/after, between, replace |
+| `aria-template` | 0.2.6 | 3 | String templates: set variable, get, render {{key}} |
+
 ### Data Structures
 | Package | Description |
 |---------|-------------|
@@ -135,3 +167,24 @@ These packages were rewritten from C FFI shims to pure Aria, using aria-libc for
 - [aria-hex](packages/aria-hex.md) — Hex encoding/decoding
 - [aria-sort](packages/aria-sort.md) — Sorting algorithms
 - [aria-regex](packages/aria-regex.md) — Regular expressions
+- [aria-bigdecimal](packages/aria-bigdecimal.md) — Arbitrary precision decimals
+- [aria-decision-t](packages/aria-decision-t.md) — Decision tree
+- [aria-mock](packages/aria-mock.md) — Test mocking
+- [aria-rate-limit](packages/aria-rate-limit.md) — Rate limiting
+- [aria-resource-mem](packages/aria-resource-mem.md) — Memory resource management
+- [aria-static](packages/aria-static.md) — Static file serving
+- [aria-test](packages/aria-test.md) — Test framework
+- [aria-url](packages/aria-url.md) — URL parsing
+- [aria-xml](packages/aria-xml.md) — XML parsing
+- [aria-yaml](packages/aria-yaml.md) — YAML parsing
+- [aria-looping](packages/aria-looping.md) — Looping transformer (ML)
+- [aria-args](packages/aria-args.md) — CLI argument parsing
+- [aria-base64](packages/aria-base64.md) — Base64 encoding
+- [aria-csv](packages/aria-csv.md) — CSV parsing
+- [aria-datetime](packages/aria-datetime.md) — Date/time
+- [aria-ini](packages/aria-ini.md) — INI file parsing
+- [aria-json](packages/aria-json.md) — JSON tokenizer
+- [aria-log](packages/aria-log.md) — Logging
+- [aria-semver](packages/aria-semver.md) — Semantic versioning
+- [aria-str](packages/aria-str.md) — Extended strings
+- [aria-template](packages/aria-template.md) — String templates

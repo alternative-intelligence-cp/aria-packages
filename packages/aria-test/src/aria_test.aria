@@ -1,0 +1,301 @@
+// aria_test.aria — Lightweight test framework for Aria (pure Aria, uses aria-libc)
+//
+// State layout (global slot 0, 32 bytes):
+//   offset 0:  passed count (int64)
+//   offset 8:  failed count (int64)
+//   offset 16: skipped count (int64)
+//   offset 24: verbose flag (int64, 1=verbose, 0=summary-only)
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_free       = void(int64:ptr);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:idx);
+    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int32(string:a, string:b);
+    func:aria_libc_string_strlen = int64(string:s);
+}
+
+extern "aria_libc_io" {
+    func:aria_libc_io_stdout     = int64();
+    func:aria_libc_io_fprintf_d  = int32(int64:handle, string:fmt, int64:arg);
+    func:aria_libc_io_fprintf_s  = int32(int64:handle, string:fmt, string:arg);
+}
+
+// ── internal helpers ────────────────────────────────────────────────
+
+func:_inc_passed = NIL() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:v = aria_libc_mem_read_i64(st, 0i64);
+    aria_libc_mem_write_i64(st, 0i64, v + 1i64);
+    pass NIL;
+};
+
+func:_inc_failed = NIL() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:v = aria_libc_mem_read_i64(st, 8i64);
+    aria_libc_mem_write_i64(st, 8i64, v + 1i64);
+    pass NIL;
+};
+
+func:_inc_skipped = NIL() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:v = aria_libc_mem_read_i64(st, 16i64);
+    aria_libc_mem_write_i64(st, 16i64, v + 1i64);
+    pass NIL;
+};
+
+func:_is_verbose = int64() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    pass aria_libc_mem_read_i64(st, 24i64);
+};
+
+func:_pass_test = NIL(string:name) {
+    drop _inc_passed();
+    int64:v = raw _is_verbose();
+    if (v == 1i64) {
+        print("[PASS] ");
+        println(name);
+    }
+    pass NIL;
+};
+
+func:_fail_test = NIL(string:name, string:detail) {
+    drop _inc_failed();
+    print("[FAIL] ");
+    print(name);
+    print(" — ");
+    println(detail);
+    pass NIL;
+};
+
+// ── lifecycle ───────────────────────────────────────────────────────
+
+pub func:test_begin = NIL(string:suite) {
+    int64:st = aria_libc_mem_malloc(32i64);
+    aria_libc_mem_write_i64(st, 0i64, 0i64);
+    aria_libc_mem_write_i64(st, 8i64, 0i64);
+    aria_libc_mem_write_i64(st, 16i64, 0i64);
+    aria_libc_mem_write_i64(st, 24i64, 1i64);
+    aria_libc_mem_set_global(0i32, st);
+    println("");
+    println("══════════════════════════════════════");
+    print("  ");
+    println(suite);
+    println("══════════════════════════════════════");
+    println("");
+    pass NIL;
+};
+
+pub func:test_set_verbose = NIL(int32:v) {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:vv = 0i64;
+    if (v == 1i32) { vv = 1i64; }
+    aria_libc_mem_write_i64(st, 24i64, vv);
+    pass NIL;
+};
+
+pub func:test_end = int32() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:passed  = aria_libc_mem_read_i64(st, 0i64);
+    int64:failed  = aria_libc_mem_read_i64(st, 8i64);
+    int64:skipped = aria_libc_mem_read_i64(st, 16i64);
+    int64:total   = passed + failed + skipped;
+    int64:out = aria_libc_io_stdout();
+    println("");
+    println("──────────────────────────────────────");
+    _ = aria_libc_io_fprintf_d(out, "  Passed:  %ld\n", passed);
+    _ = aria_libc_io_fprintf_d(out, "  Failed:  %ld\n", failed);
+    _ = aria_libc_io_fprintf_d(out, "  Skipped: %ld\n", skipped);
+    _ = aria_libc_io_fprintf_d(out, "  Total:   %ld\n", total);
+    println("──────────────────────────────────────");
+    if (failed == 0i64) {
+        println("  ✓ ALL TESTS PASSED");
+    }
+    if (failed > 0i64) {
+        print("  ✗ ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", failed);
+        println(" TEST(S) FAILED");
+    }
+    println("──────────────────────────────────────");
+    println("");
+    aria_libc_mem_free(st);
+    aria_libc_mem_set_global(0i32, 0i64);
+    if (failed > 0i64) { pass 1i32; }
+    pass 0i32;
+};
+
+// ── stats ───────────────────────────────────────────────────────────
+
+pub func:test_passed_count = int64() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    pass aria_libc_mem_read_i64(st, 0i64);
+};
+
+pub func:test_failed_count = int64() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    pass aria_libc_mem_read_i64(st, 8i64);
+};
+
+pub func:test_skipped_count = int64() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    pass aria_libc_mem_read_i64(st, 16i64);
+};
+
+pub func:test_total_count = int64() {
+    int64:st = aria_libc_mem_get_global(0i32);
+    int64:p = aria_libc_mem_read_i64(st, 0i64);
+    int64:f = aria_libc_mem_read_i64(st, 8i64);
+    int64:s = aria_libc_mem_read_i64(st, 16i64);
+    pass p + f + s;
+};
+
+// ── assertions ──────────────────────────────────────────────────────
+
+pub func:test_skip = NIL(string:name) {
+    drop _inc_skipped();
+    int64:v = raw _is_verbose();
+    if (v == 1i64) {
+        print("[SKIP] ");
+        println(name);
+    }
+    pass NIL;
+};
+
+pub func:test_assert = NIL(string:name, int32:cond) {
+    if (cond != 0i32) {
+        drop _pass_test(name);
+    }
+    if (cond == 0i32) {
+        drop _fail_test(name, "condition was false");
+    }
+    pass NIL;
+};
+
+pub func:test_assert_eq_i32 = NIL(string:name, int32:actual, int32:expected) {
+    if (actual == expected) {
+        drop _pass_test(name);
+    }
+    if (actual != expected) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        print(" — expected ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", @cast<int64>(expected));
+        print(", got ");
+        _ = aria_libc_io_fprintf_d(out, "%ld\n", @cast<int64>(actual));
+    }
+    pass NIL;
+};
+
+pub func:test_assert_eq_i64 = NIL(string:name, int64:actual, int64:expected) {
+    if (actual == expected) {
+        drop _pass_test(name);
+    }
+    if (actual != expected) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        print(" — expected ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", expected);
+        print(", got ");
+        _ = aria_libc_io_fprintf_d(out, "%ld\n", actual);
+    }
+    pass NIL;
+};
+
+pub func:test_assert_eq_str = NIL(string:name, string:actual, string:expected) {
+    int32:cmp = aria_libc_string_strcmp(actual, expected);
+    if (cmp == 0i32) {
+        drop _pass_test(name);
+    }
+    if (cmp != 0i32) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        _ = aria_libc_io_fprintf_s(out, " — expected \"%s\"", expected);
+        _ = aria_libc_io_fprintf_s(out, ", got \"%s\"\n", actual);
+    }
+    pass NIL;
+};
+
+pub func:test_assert_near_f64 = NIL(string:name, flt64:actual, flt64:expected, flt64:epsilon) {
+    flt64:diff = actual - expected;
+    if (diff < 0.0f64) { diff = 0.0f64 - diff; }
+    if (diff <= epsilon) {
+        drop _pass_test(name);
+    }
+    if (diff > epsilon) {
+        drop _fail_test(name, "float values not within epsilon");
+    }
+    pass NIL;
+};
+
+pub func:test_assert_not_empty = NIL(string:name, string:value) {
+    int64:len = aria_libc_string_strlen(value);
+    if (len > 0i64) {
+        drop _pass_test(name);
+    }
+    if (len == 0i64) {
+        drop _fail_test(name, "string was empty or null");
+    }
+    pass NIL;
+};
+
+pub func:test_assert_gt_i32 = NIL(string:name, int32:actual, int32:threshold) {
+    if (actual > threshold) {
+        drop _pass_test(name);
+    }
+    if (actual <= threshold) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        print(" — expected > ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", @cast<int64>(threshold));
+        print(", got ");
+        _ = aria_libc_io_fprintf_d(out, "%ld\n", @cast<int64>(actual));
+    }
+    pass NIL;
+};
+
+pub func:test_assert_gt_i64 = NIL(string:name, int64:actual, int64:threshold) {
+    if (actual > threshold) {
+        drop _pass_test(name);
+    }
+    if (actual <= threshold) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        print(" — expected > ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", threshold);
+        print(", got ");
+        _ = aria_libc_io_fprintf_d(out, "%ld\n", actual);
+    }
+    pass NIL;
+};
+
+pub func:test_assert_ne_i32 = NIL(string:name, int32:actual, int32:unexpected) {
+    if (actual != unexpected) {
+        drop _pass_test(name);
+    }
+    if (actual == unexpected) {
+        int64:out = aria_libc_io_stdout();
+        drop _inc_failed();
+        print("[FAIL] ");
+        print(name);
+        print(" — expected != ");
+        _ = aria_libc_io_fprintf_d(out, "%ld", @cast<int64>(unexpected));
+        print(", got ");
+        _ = aria_libc_io_fprintf_d(out, "%ld\n", @cast<int64>(actual));
+    }
+    pass NIL;
+};

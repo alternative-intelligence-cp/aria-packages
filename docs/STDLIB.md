@@ -10,17 +10,23 @@ The Aria standard library is organized into modules that extend the compiler's b
 | `io` | v0.9.1 | aria-libc | File streaming I/O via FileStream type |
 | `string` | v0.9.1 | aria-libc | String manipulation: replace, split, join, reverse, parse |
 | `mem` | v0.9.1 | aria-libc | Memory allocation: malloc, free, calloc, realloc, byte/word access |
+| `binary` | v0.10.0 | aria-libc | Binary data serialization: read/write int8-64, flt32/64, strings, bools |
+| `pipe` | v0.10.0 | aria-libc | Inter-process pipes: create, read/write int64, close |
+| `process` | v0.10.0 | aria-libc | Process management: getpid, getppid, system, getenv |
+| `signal` | v0.10.0 | aria-libc | Signal handling: register, pending, ignore, restore |
+| `arena` | v0.10.0 | aria-libc | Arena memory allocator: create, alloc, reset, read/write int64 |
+| `pool_alloc` | v0.10.0 | aria-libc | Pool memory allocator: fixed-size block pool with get/put |
+| `net` | v0.10.0 | aria-libc | TCP networking: connect, listen, accept, send, recv |
+| `hexstream` | v0.10.0 | aria-libc | AriaX hex streams (FD 3-5): init, send, read, redirect |
 | `fmt` | v0.9.1 | pure Aria | Formatted output: printf-style with `{0}`, `{1}` placeholders |
+| `complex` | — | pure Aria | Complex number arithmetic |
+| `linalg` | — | pure Aria | Linear algebra (vectors, matrices) |
 | `json` | — | extern | JSON parse/stringify |
-| `net` | — | extern | TCP/UDP sockets |
 | `thread` | — | extern | POSIX threading primitives |
 | `channel` | — | extern | Thread-safe channels |
 | `collections` | — | extern | Vec, HashMap, etc. |
-| `process` | — | extern | Process spawning and management |
 | `actor` | — | extern | Actor model concurrency |
 | `toml` | — | extern | TOML parsing |
-| `complex` | — | pure Aria | Complex number arithmetic |
-| `linalg` | — | pure Aria | Linear algebra (vectors, matrices) |
 
 **Backend key:**
 - `aria-libc` — Uses aria-libc shared library shims (portable, ABI-safe)
@@ -70,3 +76,11 @@ These are available in every Aria program without any `use` statement:
 - [string](stdlib/string.md) — String manipulation
 - [mem](stdlib/mem.md) — Memory allocation
 - [fmt](stdlib/fmt.md) — Formatted output
+- [binary](stdlib/binary.md) — Binary data serialization
+- [pipe](stdlib/pipe.md) — Inter-process pipes
+- [process](stdlib/process.md) — Process management
+- [signal](stdlib/signal.md) — Signal handling
+- [arena](stdlib/arena.md) — Arena memory allocator
+- [pool_alloc](stdlib/pool_alloc.md) — Pool memory allocator
+- [net](stdlib/net.md) — TCP networking
+- [hexstream](stdlib/hexstream.md) — AriaX hex streams
