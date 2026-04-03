@@ -1,0 +1,82 @@
+// test_aria_sort.aria — 12-test suite for aria-sort (v0.11.1)
+use "../src/aria_sort.aria".*;
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+}
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    // Build array: [5, 3, 8, 1, 9, 2, 7, 4, 6, 10]
+    int64:arr = aria_libc_mem_malloc(80i64);
+    aria_libc_mem_write_i64(arr, 0i64,  5i64);
+    aria_libc_mem_write_i64(arr, 8i64,  3i64);
+    aria_libc_mem_write_i64(arr, 16i64, 8i64);
+    aria_libc_mem_write_i64(arr, 24i64, 1i64);
+    aria_libc_mem_write_i64(arr, 32i64, 9i64);
+    aria_libc_mem_write_i64(arr, 40i64, 2i64);
+    aria_libc_mem_write_i64(arr, 48i64, 7i64);
+    aria_libc_mem_write_i64(arr, 56i64, 4i64);
+    aria_libc_mem_write_i64(arr, 64i64, 6i64);
+    aria_libc_mem_write_i64(arr, 72i64, 10i64);
+
+    // T01: not sorted initially
+    int32:s1 = raw Sort.is_sorted(arr, 10i64);
+    if (s1 == 0i32) { println("[PASS] T01 unsorted"); } else { println("[FAIL] T01"); }
+
+    // T02: quicksort
+    drop Sort.quicksort(arr, 10i64);
+    int32:s2 = raw Sort.is_sorted(arr, 10i64);
+    if (s2 == 1i32) { println("[PASS] T02 quicksort"); } else { println("[FAIL] T02"); }
+
+    // T03: first element after sort
+    int64:v0 = aria_libc_mem_read_i64(arr, 0i64);
+    if (v0 == 1i64) { println("[PASS] T03 first=1"); } else { println("[FAIL] T03"); }
+
+    // T04: last element after sort
+    int64:v9 = aria_libc_mem_read_i64(arr, 72i64);
+    if (v9 == 10i64) { println("[PASS] T04 last=10"); } else { println("[FAIL] T04"); }
+
+    // T05: min
+    int64:mn = raw Sort.min(arr, 10i64);
+    if (mn == 1i64) { println("[PASS] T05 min"); } else { println("[FAIL] T05"); }
+
+    // T06: max
+    int64:mx = raw Sort.max(arr, 10i64);
+    if (mx == 10i64) { println("[PASS] T06 max"); } else { println("[FAIL] T06"); }
+
+    // T07: sum
+    int64:sm = raw Sort.sum(arr, 10i64);
+    if (sm == 55i64) { println("[PASS] T07 sum=55"); } else { println("[FAIL] T07"); }
+
+    // T08: binary_search found
+    int64:idx = raw Sort.binary_search(arr, 10i64, 7i64);
+    if (idx == 6i64) { println("[PASS] T08 bsearch found"); } else { println("[FAIL] T08"); }
+
+    // T09: binary_search not found
+    int64:idx2 = raw Sort.binary_search(arr, 10i64, 42i64);
+    if (idx2 == 0i64 - 1i64) { println("[PASS] T09 bsearch miss"); } else { println("[FAIL] T09"); }
+
+    // T10: reverse
+    drop Sort.reverse(arr, 10i64);
+    int64:first = aria_libc_mem_read_i64(arr, 0i64);
+    int64:last = aria_libc_mem_read_i64(arr, 72i64);
+    if (first == 10i64) { println("[PASS] T10 reverse first"); } else { println("[FAIL] T10"); }
+
+    // T11: reverse last
+    if (last == 1i64) { println("[PASS] T11 reverse last"); } else { println("[FAIL] T11"); }
+
+    // T12: insertion_sort
+    drop Sort.reverse(arr, 10i64);
+    aria_libc_mem_write_i64(arr, 0i64, 99i64);
+    drop Sort.insertion_sort(arr, 10i64);
+    int32:s12 = raw Sort.is_sorted(arr, 10i64);
+    if (s12 == 1i32) { println("[PASS] T12 insertion_sort"); } else { println("[FAIL] T12"); }
+
+    aria_libc_mem_free(arr);
+    exit 0i32;
+};

@@ -1,0 +1,91 @@
+// test_aria_diff.aria — 12-test suite for aria-diff (v0.11.1)
+use "../src/aria_diff.aria".*;
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+}
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    // a = [1,2,3,4,5], b = [1,3,5]
+    int64:a = aria_libc_mem_malloc(40i64);
+    aria_libc_mem_write_i64(a, 0i64,  1i64);
+    aria_libc_mem_write_i64(a, 8i64,  2i64);
+    aria_libc_mem_write_i64(a, 16i64, 3i64);
+    aria_libc_mem_write_i64(a, 24i64, 4i64);
+    aria_libc_mem_write_i64(a, 32i64, 5i64);
+    int64:b = aria_libc_mem_malloc(24i64);
+    aria_libc_mem_write_i64(b, 0i64, 1i64);
+    aria_libc_mem_write_i64(b, 8i64, 3i64);
+    aria_libc_mem_write_i64(b, 16i64, 5i64);
+
+    // T01: lcs_length
+    int64:lcs = raw Diff.lcs_length(a, 5i64, b, 3i64);
+    if (lcs == 3i64) { println("[PASS] T01 lcs=3"); } else { println("[FAIL] T01"); }
+
+    // T02: edit_distance
+    int64:ed = raw Diff.edit_distance(a, 5i64, b, 3i64);
+    if (ed == 2i64) { println("[PASS] T02 ed=2"); } else { println("[FAIL] T02"); }
+
+    // T03: are_equal (not equal)
+    int32:eq1 = raw Diff.are_equal(a, 5i64, b, 3i64);
+    if (eq1 == 0i32) { println("[PASS] T03 not equal"); } else { println("[FAIL] T03"); }
+
+    // T04: are_equal (equal)
+    int32:eq2 = raw Diff.are_equal(a, 5i64, a, 5i64);
+    if (eq2 == 1i32) { println("[PASS] T04 equal"); } else { println("[FAIL] T04"); }
+
+    // T05: similarity (equal seqs)
+    int64:sim = raw Diff.similarity(a, 5i64, a, 5i64);
+    if (sim == 100i64) { println("[PASS] T05 sim=100"); } else { println("[FAIL] T05"); }
+
+    // T06: diff returns handle
+    int64:dh = raw Diff.diff(a, 5i64, b, 3i64);
+    int64:dlen = raw Diff.length(dh);
+    if (dlen > 0i64) { println("[PASS] T06 diff len>0"); } else { println("[FAIL] T06"); }
+
+    // T07: delete_count
+    int64:dc = raw Diff.delete_count(dh);
+    if (dc == 2i64) { println("[PASS] T07 del=2"); } else { println("[FAIL] T07"); }
+
+    // T08: insert_count
+    int64:ic = raw Diff.insert_count(dh);
+    if (ic == 0i64) { println("[PASS] T08 ins=0"); } else { println("[FAIL] T08"); }
+
+    // T09: equal_count
+    int64:ec = raw Diff.equal_count(dh);
+    if (ec == 3i64) { println("[PASS] T09 eq=3"); } else { println("[FAIL] T09"); }
+
+    drop Diff.destroy(dh);
+
+    // T10: lcs output
+    int64:out = aria_libc_mem_malloc(40i64);
+    int64:olen = aria_libc_mem_malloc(8i64);
+    drop Diff.lcs(a, 5i64, b, 3i64, out, olen);
+    int64:ol = aria_libc_mem_read_i64(olen, 0i64);
+    if (ol == 3i64) { println("[PASS] T10 lcs out=3"); } else { println("[FAIL] T10"); }
+
+    // T11: lcs values correct
+    int64:lv0 = aria_libc_mem_read_i64(out, 0i64);
+    int64:lv1 = aria_libc_mem_read_i64(out, 8i64);
+    int64:lv2 = aria_libc_mem_read_i64(out, 16i64);
+    if (lv0 == 1i64) {
+        if (lv1 == 3i64) {
+            if (lv2 == 5i64) { println("[PASS] T11 lcs vals"); } else { println("[FAIL] T11"); }
+        } else { println("[FAIL] T11"); }
+    } else { println("[FAIL] T11"); }
+
+    // T12: edit_distance of identical
+    int64:ed2 = raw Diff.edit_distance(a, 5i64, a, 5i64);
+    if (ed2 == 0i64) { println("[PASS] T12 ed=0 same"); } else { println("[FAIL] T12"); }
+
+    aria_libc_mem_free(out);
+    aria_libc_mem_free(olen);
+    aria_libc_mem_free(a);
+    aria_libc_mem_free(b);
+    exit 0i32;
+};

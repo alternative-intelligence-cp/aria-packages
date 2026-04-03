@@ -1,0 +1,66 @@
+// test_aria_map.aria — 12-test suite for aria-map (v0.11.1)
+use "../src/aria_map.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int64:m = raw Map.create();
+
+    // T01: initially empty
+    int64:len0 = raw Map.length(m);
+    if (len0 == 0i64) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
+
+    // T02: set and get
+    drop Map.set(m, "alpha", 1i64);
+    int64:v1 = raw Map.get(m, "alpha");
+    if (v1 == 1i64) { println("[PASS] T02 get alpha"); } else { println("[FAIL] T02"); }
+
+    // T03: second key
+    drop Map.set(m, "beta", 2i64);
+    int64:v2 = raw Map.get(m, "beta");
+    if (v2 == 2i64) { println("[PASS] T03 get beta"); } else { println("[FAIL] T03"); }
+
+    // T04: length = 2
+    int64:len2 = raw Map.length(m);
+    if (len2 == 2i64) { println("[PASS] T04 len=2"); } else { println("[FAIL] T04"); }
+
+    // T05: has existing
+    int32:h1 = raw Map.has(m, "alpha");
+    if (h1 == 1i32) { println("[PASS] T05 has alpha"); } else { println("[FAIL] T05"); }
+
+    // T06: has missing
+    int32:h2 = raw Map.has(m, "gamma");
+    if (h2 == 0i32) { println("[PASS] T06 !has gamma"); } else { println("[FAIL] T06"); }
+
+    // T07: get missing returns -1
+    int64:v3 = raw Map.get(m, "missing");
+    if (v3 == 0i64 - 1i64) { println("[PASS] T07 get miss=-1"); } else { println("[FAIL] T07"); }
+
+    // T08: update existing key
+    drop Map.set(m, "alpha", 99i64);
+    int64:v4 = raw Map.get(m, "alpha");
+    if (v4 == 99i64) { println("[PASS] T08 update"); } else { println("[FAIL] T08"); }
+
+    // T09: length unchanged after update
+    int64:len3 = raw Map.length(m);
+    if (len3 == 2i64) { println("[PASS] T09 len still 2"); } else { println("[FAIL] T09"); }
+
+    // T10: remove
+    drop Map.remove(m, "alpha");
+    int32:h3 = raw Map.has(m, "alpha");
+    if (h3 == 0i32) { println("[PASS] T10 removed"); } else { println("[FAIL] T10"); }
+
+    // T11: length after remove
+    int64:len4 = raw Map.length(m);
+    if (len4 == 1i64) { println("[PASS] T11 len=1"); } else { println("[FAIL] T11"); }
+
+    // T12: clear
+    drop Map.set(m, "x", 10i64);
+    drop Map.set(m, "y", 20i64);
+    drop Map.clear(m);
+    int64:len5 = raw Map.length(m);
+    if (len5 == 0i64) { println("[PASS] T12 clear"); } else { println("[FAIL] T12"); }
+
+    drop Map.destroy(m);
+    exit 0i32;
+};

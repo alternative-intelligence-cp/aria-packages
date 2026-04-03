@@ -1,0 +1,12 @@
+[package]
+name = "aria-pqueue"
+version = "0.11.1"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Priority queue (min-heap) with int64 values and int32 priorities"
+keywords = ["priority-queue", "min-heap", "data-structure"]
+categories = ["data-structures"]
+
+[build]
+type = "library"
+entry = "src/aria_pqueue.aria"

@@ -1,0 +1,12 @@
+[package]
+name = "aria-map"
+version = "0.11.1"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Hash map (string-keyed, int64-valued) using FNV-1a hashing and arena-backed storage"
+keywords = ["map", "hashmap", "dictionary", "data-structure"]
+categories = ["data-structures"]
+
+[build]
+type = "library"
+entry = "src/aria_map.aria"

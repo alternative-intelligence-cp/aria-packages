@@ -1,0 +1,7 @@
+[package]
+name = "aria-matrix"
+version = "0.11.1"
+description = "Dense matrix operations — add, multiply, transpose, determinant, trace"
+entry = "src/aria_matrix.aria"
+type = "pure"
+deps = ["aria-libc_mem"]

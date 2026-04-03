@@ -1,0 +1,62 @@
+// test_aria_pqueue.aria — 12-test suite for aria-pqueue (v0.11.1)
+use "../src/aria_pqueue.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int64:pq = raw PQueue.create(16i32);
+
+    // T01: initially empty
+    int32:e1 = raw PQueue.is_empty(pq);
+    if (e1 == 1i32) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
+
+    // T02: size = 0
+    int64:sz0 = raw PQueue.size(pq);
+    if (sz0 == 0i64) { println("[PASS] T02 size=0"); } else { println("[FAIL] T02"); }
+
+    // T03: insert and size
+    drop PQueue.insert(pq, 100i64, 5i32);
+    drop PQueue.insert(pq, 200i64, 1i32);
+    drop PQueue.insert(pq, 300i64, 3i32);
+    int64:sz3 = raw PQueue.size(pq);
+    if (sz3 == 3i64) { println("[PASS] T03 size=3"); } else { println("[FAIL] T03"); }
+
+    // T04: peek returns min-priority
+    int64:pk = raw PQueue.peek(pq);
+    if (pk == 200i64) { println("[PASS] T04 peek=200"); } else { println("[FAIL] T04"); }
+
+    // T05: peek_priority returns min
+    int32:pp = raw PQueue.peek_priority(pq);
+    if (pp == 1i32) { println("[PASS] T05 peek_pri=1"); } else { println("[FAIL] T05"); }
+
+    // T06: extract returns min value
+    int64:ex1 = raw PQueue.extract(pq);
+    if (ex1 == 200i64) { println("[PASS] T06 extract=200"); } else { println("[FAIL] T06"); }
+
+    // T07: after extract, next min
+    int64:ex2 = raw PQueue.extract(pq);
+    if (ex2 == 300i64) { println("[PASS] T07 extract=300"); } else { println("[FAIL] T07"); }
+
+    // T08: size after 2 extracts
+    int64:sz1 = raw PQueue.size(pq);
+    if (sz1 == 1i64) { println("[PASS] T08 size=1"); } else { println("[FAIL] T08"); }
+
+    // T09: not empty
+    int32:e2 = raw PQueue.is_empty(pq);
+    if (e2 == 0i32) { println("[PASS] T09 not empty"); } else { println("[FAIL] T09"); }
+
+    // T10: extract last
+    int64:ex3 = raw PQueue.extract(pq);
+    if (ex3 == 100i64) { println("[PASS] T10 extract=100"); } else { println("[FAIL] T10"); }
+
+    // T11: empty after all extracts
+    int32:e3 = raw PQueue.is_empty(pq);
+    if (e3 == 1i32) { println("[PASS] T11 empty"); } else { println("[FAIL] T11"); }
+
+    // T12: capacity
+    int64:cp = raw PQueue.capacity(pq);
+    if (cp == 16i64) { println("[PASS] T12 cap=16"); } else { println("[FAIL] T12"); }
+
+    drop PQueue.destroy(pq);
+    exit 0i32;
+};

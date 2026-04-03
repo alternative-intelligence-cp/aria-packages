@@ -1,0 +1,76 @@
+// test_aria_stats.aria — 12-test suite for aria-stats (v0.11.1)
+use "../src/aria_stats.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int64:s = raw Stats.create(16i64);
+    drop Stats.push(s, 10.0);
+    drop Stats.push(s, 20.0);
+    drop Stats.push(s, 30.0);
+    drop Stats.push(s, 40.0);
+    drop Stats.push(s, 50.0);
+
+    // T01: count
+    int64:n = raw Stats.count(s);
+    if (n == 5i64) { println("[PASS] T01 count=5"); } else { println("[FAIL] T01"); }
+
+    // T02: sum
+    flt64:sm = raw Stats.sum(s);
+    if (sm == 150.0) { println("[PASS] T02 sum=150"); } else { println("[FAIL] T02"); }
+
+    // T03: mean
+    flt64:m = raw Stats.mean(s);
+    if (m == 30.0) { println("[PASS] T03 mean=30"); } else { println("[FAIL] T03"); }
+
+    // T04: min
+    flt64:mn = raw Stats.min(s);
+    if (mn == 10.0) { println("[PASS] T04 min=10"); } else { println("[FAIL] T04"); }
+
+    // T05: max
+    flt64:mx = raw Stats.max(s);
+    if (mx == 50.0) { println("[PASS] T05 max=50"); } else { println("[FAIL] T05"); }
+
+    // T06: range
+    flt64:rg = raw Stats.range(s);
+    if (rg == 40.0) { println("[PASS] T06 range=40"); } else { println("[FAIL] T06"); }
+
+    // T07: median (odd count)
+    flt64:med = raw Stats.median(s);
+    if (med == 30.0) { println("[PASS] T07 median=30"); } else { println("[FAIL] T07"); }
+
+    // T08: variance (200)
+    flt64:v = raw Stats.variance(s);
+    if (v == 200.0) { println("[PASS] T08 var=200"); } else { println("[FAIL] T08"); }
+
+    // T09: get element
+    flt64:g2 = raw Stats.get(s, 2i64);
+    if (g2 == 30.0) { println("[PASS] T09 get[2]=30"); } else { println("[FAIL] T09"); }
+
+    // T10: mode
+    drop Stats.push(s, 30.0);
+    flt64:mo = raw Stats.mode(s);
+    if (mo == 30.0) { println("[PASS] T10 mode=30"); } else { println("[FAIL] T10"); }
+
+    // T11: clear and count
+    drop Stats.clear(s);
+    int64:n2 = raw Stats.count(s);
+    if (n2 == 0i64) { println("[PASS] T11 clear"); } else { println("[FAIL] T11"); }
+
+    // T12: correlation (perfect positive)
+    int64:s1 = raw Stats.create(8i64);
+    int64:s2 = raw Stats.create(8i64);
+    drop Stats.push(s1, 1.0);
+    drop Stats.push(s1, 2.0);
+    drop Stats.push(s1, 3.0);
+    drop Stats.push(s2, 2.0);
+    drop Stats.push(s2, 4.0);
+    drop Stats.push(s2, 6.0);
+    flt64:cor = raw Stats.correlation(s1, s2);
+    if (cor == 1.0) { println("[PASS] T12 corr=1"); } else { println("[FAIL] T12"); }
+
+    drop Stats.destroy(s1);
+    drop Stats.destroy(s2);
+    drop Stats.destroy(s);
+    exit 0i32;
+};

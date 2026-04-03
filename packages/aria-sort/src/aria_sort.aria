@@ -1,0 +1,177 @@
+// aria_sort.aria — Sorting Algorithms (v0.11.1)
+//
+// Pure Aria sorting for int64 arrays (pointer + length).
+// Import with: use "aria_sort.aria".*;
+//
+// All sort functions operate on a raw int64 array given as (ptr, len).
+// The array is sorted in-place in ascending order.
+//
+// v0.11.1: New pure Aria package.
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+}
+
+// ── swap helper ─────────────────────────────────────────────────────────────
+func:sort_swap = int32(int64:arr, int64:a, int64:b) {
+    int64:va = aria_libc_mem_read_i64(arr, a * 8i64);
+    int64:vb = aria_libc_mem_read_i64(arr, b * 8i64);
+    aria_libc_mem_write_i64(arr, a * 8i64, vb);
+    aria_libc_mem_write_i64(arr, b * 8i64, va);
+    pass 0i32;
+};
+
+// ── insertion sort (for small arrays) ───────────────────────────────────────
+func:sort_insertion_range = int32(int64:arr, int64:lo, int64:hi) {
+    int64:i = lo + 1i64;
+    loop(lo + 1i64, hi + 1i64, 1i64) {
+        int64:key = aria_libc_mem_read_i64(arr, i * 8i64);
+        int64:j = i - 1i64;
+        int64:done = 0i64;
+        loop(0i64, i - lo, 1i64) {
+            if (done == 0i64) {
+                if (j < lo) {
+                    done = 1i64;
+                } else {
+                    int64:vj = aria_libc_mem_read_i64(arr, j * 8i64);
+                    if (vj <= key) {
+                        done = 1i64;
+                    } else {
+                        aria_libc_mem_write_i64(arr, (j + 1i64) * 8i64, vj);
+                        j -= 1i64;
+                    }
+                }
+            }
+        }
+        aria_libc_mem_write_i64(arr, (j + 1i64) * 8i64, key);
+        i += 1i64;
+    }
+    pass 0i32;
+};
+
+// ── quicksort partition (Lomuto) ────────────────────────────────────────────
+func:sort_partition = int64(int64:arr, int64:lo, int64:hi) {
+    int64:pivot = aria_libc_mem_read_i64(arr, hi * 8i64);
+    int64:i = lo - 1i64;
+    int64:j = lo;
+    loop(lo, hi, 1i64) {
+        int64:vj = aria_libc_mem_read_i64(arr, j * 8i64);
+        if (vj <= pivot) {
+            i += 1i64;
+            drop sort_swap(arr, i, j);
+        }
+        j += 1i64;
+    }
+    drop sort_swap(arr, i + 1i64, hi);
+    pass i + 1i64;
+};
+
+// ── quicksort recursive helper ──────────────────────────────────────────────
+func:sort_quick_impl = int32(int64:arr, int64:lo, int64:hi) {
+    if (lo >= hi) { pass 0i32; }
+    // for small subarrays use insertion sort
+    if (hi - lo < 16i64) {
+        drop sort_insertion_range(arr, lo, hi);
+        pass 0i32;
+    }
+    int64:p = sort_partition(arr, lo, hi);
+    drop sort_quick_impl(arr, lo, p - 1i64);
+    drop sort_quick_impl(arr, p + 1i64, hi);
+    pass 0i32;
+};
+
+Type:Sort = {
+    // quicksort(arr, len) — in-place quicksort (ascending).
+    func:quicksort = int32(int64:arr, int64:len) {
+        if (len <= 1i64) { pass 0i32; }
+        drop sort_quick_impl(arr, 0i64, len - 1i64);
+        pass 0i32;
+    };
+
+    // insertion_sort(arr, len) — in-place insertion sort (ascending).
+    func:insertion_sort = int32(int64:arr, int64:len) {
+        if (len <= 1i64) { pass 0i32; }
+        drop sort_insertion_range(arr, 0i64, len - 1i64);
+        pass 0i32;
+    };
+
+    // is_sorted(arr, len) — returns 1 if ascending, 0 otherwise.
+    func:is_sorted = int32(int64:arr, int64:len) {
+        if (len <= 1i64) { pass 1i32; }
+        int64:i = 0i64;
+        loop(0i64, len - 1i64, 1i64) {
+            int64:a = aria_libc_mem_read_i64(arr, i * 8i64);
+            int64:b = aria_libc_mem_read_i64(arr, (i + 1i64) * 8i64);
+            if (a > b) { pass 0i32; }
+            i += 1i64;
+        }
+        pass 1i32;
+    };
+
+    // reverse(arr, len) — reverse array in-place.
+    func:reverse = int32(int64:arr, int64:len) {
+        int64:lo = 0i64;
+        int64:hi = len - 1i64;
+        loop(0i64, len / 2i64, 1i64) {
+            drop sort_swap(arr, lo, hi);
+            lo += 1i64;
+            hi -= 1i64;
+        }
+        pass 0i32;
+    };
+
+    // min(arr, len) — return minimum value.
+    func:min = int64(int64:arr, int64:len) {
+        int64:m = aria_libc_mem_read_i64(arr, 0i64);
+        int64:i = 1i64;
+        loop(1i64, len, 1i64) {
+            int64:v = aria_libc_mem_read_i64(arr, i * 8i64);
+            if (v < m) { m = v; }
+            i += 1i64;
+        }
+        pass m;
+    };
+
+    // max(arr, len) — return maximum value.
+    func:max = int64(int64:arr, int64:len) {
+        int64:m = aria_libc_mem_read_i64(arr, 0i64);
+        int64:i = 1i64;
+        loop(1i64, len, 1i64) {
+            int64:v = aria_libc_mem_read_i64(arr, i * 8i64);
+            if (v > m) { m = v; }
+            i += 1i64;
+        }
+        pass m;
+    };
+
+    // sum(arr, len) — return sum of all elements.
+    func:sum = int64(int64:arr, int64:len) {
+        int64:s = 0i64;
+        int64:i = 0i64;
+        loop(0i64, len, 1i64) {
+            s += aria_libc_mem_read_i64(arr, i * 8i64);
+            i += 1i64;
+        }
+        pass s;
+    };
+
+    // binary_search(arr, len, target) — returns index or -1 if not found.
+    // Array must be sorted.
+    func:binary_search = int64(int64:arr, int64:len, int64:target) {
+        int64:lo = 0i64;
+        int64:hi = len - 1i64;
+        loop(0i64, 64i64, 1i64) {
+            if (lo > hi) { pass 0i64 - 1i64; }
+            int64:mid = lo + (hi - lo) / 2i64;
+            int64:v = aria_libc_mem_read_i64(arr, mid * 8i64);
+            if (v == target) { pass mid; }
+            if (v < target) {
+                lo = mid + 1i64;
+            } else {
+                hi = mid - 1i64;
+            }
+        }
+        pass 0i64 - 1i64;
+    };
+};

@@ -1,0 +1,12 @@
+[package]
+name = "aria-ringbuf"
+version = "0.11.1"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Fixed-capacity circular buffer (ring buffer) with FIFO semantics"
+keywords = ["ring-buffer", "circular-buffer", "queue", "data-structure"]
+categories = ["data-structures"]
+
+[build]
+type = "library"
+entry = "src/aria_ringbuf.aria"

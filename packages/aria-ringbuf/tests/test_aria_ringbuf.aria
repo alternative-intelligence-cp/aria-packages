@@ -1,0 +1,66 @@
+// test_aria_ringbuf.aria — 12-test suite for aria-ringbuf (v0.11.1)
+use "../src/aria_ringbuf.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int64:rb = raw RingBuf.create(4i64);
+
+    // T01: initially empty
+    int32:e1 = raw RingBuf.is_empty(rb);
+    if (e1 == 1i32) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
+
+    // T02: size = 0
+    int64:sz0 = raw RingBuf.size(rb);
+    if (sz0 == 0i64) { println("[PASS] T02 size=0"); } else { println("[FAIL] T02"); }
+
+    // T03: capacity
+    int64:cap = raw RingBuf.capacity(rb);
+    if (cap == 4i64) { println("[PASS] T03 cap=4"); } else { println("[FAIL] T03"); }
+
+    // T04: push and size
+    drop RingBuf.push(rb, 10i64);
+    drop RingBuf.push(rb, 20i64);
+    int64:sz2 = raw RingBuf.size(rb);
+    if (sz2 == 2i64) { println("[PASS] T04 size=2"); } else { println("[FAIL] T04"); }
+
+    // T05: peek
+    int64:pk = raw RingBuf.peek(rb);
+    if (pk == 10i64) { println("[PASS] T05 peek=10"); } else { println("[FAIL] T05"); }
+
+    // T06: pop FIFO
+    int64:p1 = raw RingBuf.pop(rb);
+    if (p1 == 10i64) { println("[PASS] T06 pop=10"); } else { println("[FAIL] T06"); }
+
+    // T07: pop second
+    int64:p2 = raw RingBuf.pop(rb);
+    if (p2 == 20i64) { println("[PASS] T07 pop=20"); } else { println("[FAIL] T07"); }
+
+    // T08: empty after pops
+    int32:e2 = raw RingBuf.is_empty(rb);
+    if (e2 == 1i32) { println("[PASS] T08 empty again"); } else { println("[FAIL] T08"); }
+
+    // T09: fill to capacity
+    drop RingBuf.push(rb, 1i64);
+    drop RingBuf.push(rb, 2i64);
+    drop RingBuf.push(rb, 3i64);
+    drop RingBuf.push(rb, 4i64);
+    int32:fl = raw RingBuf.is_full(rb);
+    if (fl == 1i32) { println("[PASS] T09 full"); } else { println("[FAIL] T09"); }
+
+    // T10: not empty when full
+    int32:e3 = raw RingBuf.is_empty(rb);
+    if (e3 == 0i32) { println("[PASS] T10 not empty"); } else { println("[FAIL] T10"); }
+
+    // T11: pop from full wraps correctly
+    int64:p3 = raw RingBuf.pop(rb);
+    if (p3 == 1i64) { println("[PASS] T11 pop=1"); } else { println("[FAIL] T11"); }
+
+    // T12: wrap-around push+pop
+    drop RingBuf.push(rb, 5i64);
+    int64:p4 = raw RingBuf.pop(rb);
+    if (p4 == 2i64) { println("[PASS] T12 wrap pop=2"); } else { println("[FAIL] T12"); }
+
+    drop RingBuf.destroy(rb);
+    exit 0i32;
+};

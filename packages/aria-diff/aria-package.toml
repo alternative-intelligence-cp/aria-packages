@@ -1,0 +1,6 @@
+[package]
+name = "aria-diff"
+version = "0.11.1"
+description = "Sequence diffing — LCS, edit distance, and patch generation"
+entry = "src/aria_diff.aria"
+type = "pure"

@@ -1,0 +1,80 @@
+// test_aria_matrix.aria — 12-test suite for aria-matrix (v0.11.1)
+use "../src/aria_matrix.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    // Create 2x2 matrix [[1,2],[3,4]]
+    int64:m = raw Matrix.create(2i64, 2i64);
+    drop Matrix.set(m, 0i64, 0i64, 1.0);
+    drop Matrix.set(m, 0i64, 1i64, 2.0);
+    drop Matrix.set(m, 1i64, 0i64, 3.0);
+    drop Matrix.set(m, 1i64, 1i64, 4.0);
+
+    // T01: rows
+    int64:r = raw Matrix.rows(m);
+    if (r == 2i64) { println("[PASS] T01 rows=2"); } else { println("[FAIL] T01"); }
+
+    // T02: cols
+    int64:c = raw Matrix.cols(m);
+    if (c == 2i64) { println("[PASS] T02 cols=2"); } else { println("[FAIL] T02"); }
+
+    // T03: get
+    flt64:v = raw Matrix.get(m, 1i64, 0i64);
+    if (v == 3.0) { println("[PASS] T03 get=3"); } else { println("[FAIL] T03"); }
+
+    // T04: trace
+    flt64:tr = raw Matrix.trace(m);
+    if (tr == 5.0) { println("[PASS] T04 trace=5"); } else { println("[FAIL] T04"); }
+
+    // T05: determinant
+    flt64:det = raw Matrix.determinant(m);
+    if (det == -2.0) { println("[PASS] T05 det=-2"); } else { println("[FAIL] T05"); }
+
+    // T06: identity
+    int64:id = raw Matrix.identity(2i64);
+    flt64:id00 = raw Matrix.get(id, 0i64, 0i64);
+    flt64:id01 = raw Matrix.get(id, 0i64, 1i64);
+    if (id00 == 1.0) {
+        if (id01 == 0.0) { println("[PASS] T06 identity"); } else { println("[FAIL] T06"); }
+    } else { println("[FAIL] T06"); }
+
+    // T07: add
+    int64:sum = raw Matrix.add(m, m);
+    flt64:s00 = raw Matrix.get(sum, 0i64, 0i64);
+    if (s00 == 2.0) { println("[PASS] T07 add"); } else { println("[FAIL] T07"); }
+    drop Matrix.destroy(sum);
+
+    // T08: scale
+    int64:sc = raw Matrix.scale(m, 3.0);
+    flt64:sc11 = raw Matrix.get(sc, 1i64, 1i64);
+    if (sc11 == 12.0) { println("[PASS] T08 scale"); } else { println("[FAIL] T08"); }
+    drop Matrix.destroy(sc);
+
+    // T09: transpose
+    int64:mt = raw Matrix.transpose(m);
+    flt64:t10 = raw Matrix.get(mt, 1i64, 0i64);
+    flt64:t01 = raw Matrix.get(mt, 0i64, 1i64);
+    if (t10 == 2.0) {
+        if (t01 == 3.0) { println("[PASS] T09 transpose"); } else { println("[FAIL] T09"); }
+    } else { println("[FAIL] T09"); }
+    drop Matrix.destroy(mt);
+
+    // T10: multiply
+    int64:mm = raw Matrix.multiply(m, id);
+    int32:eq = raw Matrix.equals(mm, m);
+    if (eq == 1i32) { println("[PASS] T10 mul id"); } else { println("[FAIL] T10"); }
+    drop Matrix.destroy(mm);
+
+    // T11: equals (same)
+    int32:eq2 = raw Matrix.equals(m, m);
+    if (eq2 == 1i32) { println("[PASS] T11 equals"); } else { println("[FAIL] T11"); }
+
+    // T12: equals (different)
+    int32:eq3 = raw Matrix.equals(m, id);
+    if (eq3 == 0i32) { println("[PASS] T12 not equal"); } else { println("[FAIL] T12"); }
+
+    drop Matrix.destroy(id);
+    drop Matrix.destroy(m);
+    exit 0i32;
+};
