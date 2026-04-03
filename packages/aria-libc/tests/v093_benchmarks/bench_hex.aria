@@ -1,0 +1,162 @@
+/* Benchmark: aria-hex pure Aria vs hypothetical C encode/decode speed
+ *
+ * v0.9.3 — Measures pure Aria hex encoding/decoding throughput.
+ * Since hex was rewritten to pure Aria, we measure absolute perf.
+ */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_time" {
+    func:aria_libc_time_monotonic_ns = int64();
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_byte_at = int32(string:s, int64:idx);
+}
+
+// ── inline hex helpers (same as aria-hex, inlined to avoid use import issues) ──
+
+func:_hex_digit = string(int32:v) {
+    if (v == 0i32) { pass "0"; }
+    if (v == 1i32) { pass "1"; }
+    if (v == 2i32) { pass "2"; }
+    if (v == 3i32) { pass "3"; }
+    if (v == 4i32) { pass "4"; }
+    if (v == 5i32) { pass "5"; }
+    if (v == 6i32) { pass "6"; }
+    if (v == 7i32) { pass "7"; }
+    if (v == 8i32) { pass "8"; }
+    if (v == 9i32) { pass "9"; }
+    if (v == 10i32) { pass "a"; }
+    if (v == 11i32) { pass "b"; }
+    if (v == 12i32) { pass "c"; }
+    if (v == 13i32) { pass "d"; }
+    if (v == 14i32) { pass "e"; }
+    if (v == 15i32) { pass "f"; }
+    pass "?";
+};
+
+func:_hex_val = int32(int32:byte) {
+    if (byte >= 48i32) { if (byte <= 57i32) { pass byte - 48i32; } }
+    if (byte >= 65i32) { if (byte <= 70i32) { pass byte - 55i32; } }
+    if (byte >= 97i32) { if (byte <= 102i32) { pass byte - 87i32; } }
+    pass 0i32 - 1i32;
+};
+
+func:hex_encode = string(string:input) {
+    int64:len = string_length(input);
+    string:result = "";
+    int64:i = 0i64;
+    while (i < len) {
+        int32:byte = aria_libc_string_byte_at(input, i);
+        int32:hi = byte / 16i32;
+        int32:lo = byte - hi * 16i32;
+        string:hc = raw _hex_digit(hi);
+        string:lc = raw _hex_digit(lo);
+        result = string_concat(result, string_concat(hc, lc));
+        i = i + 1i64;
+    }
+    pass result;
+};
+
+func:hex_decode = string(string:hex) {
+    int64:len = string_length(hex);
+    string:result = "";
+    int64:i = 0i64;
+    while (i < len) {
+        int32:hi_byte = aria_libc_string_byte_at(hex, i);
+        int32:lo_byte = aria_libc_string_byte_at(hex, i + 1i64);
+        int32:hi_val = raw _hex_val(hi_byte);
+        int32:lo_val = raw _hex_val(lo_byte);
+        int32:char_code = hi_val * 16i32 + lo_val;
+        int64:cc64 = @cast<int64>(char_code);
+        string:ch = string_from_char(cc64);
+        result = string_concat(result, ch);
+        i = i + 2i64;
+    }
+    pass result;
+};
+
+func:report = NIL(string:label, int64:ns, int64:iters) {
+    int64:avg = ns / iters;
+    print("  ");
+    print(label);
+    print(": ");
+    print(string_from_int(avg));
+    println(" ns/op");
+};
+
+func:main = int32() {
+    println("=== v0.9.3 Performance Benchmarks: Hex (pure Aria) ===");
+    int64:iters = 1000i64;
+
+    string:short_input = "Hello, Aria!";
+    string:medium_input = "The quick brown fox jumps over the lazy dog. 0123456789";
+
+    // ── Encode short string ──────────────────────────────
+    println("--- encode short (12 bytes) ---");
+    int64:t0 = aria_libc_time_monotonic_ns();
+    string:enc_sink = "";
+    int64:i = 0i64;
+    while (i < iters) {
+        enc_sink = raw hex_encode(short_input);
+        i = i + 1i64;
+    }
+    int64:t1 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria encode", t1 - t0, iters);
+
+    // ── Decode short string ──────────────────────────────
+    println("--- decode short (24 hex chars) ---");
+    string:encoded_short = raw hex_encode(short_input);
+    int64:t2 = aria_libc_time_monotonic_ns();
+    string:dec_sink = "";
+    i = 0i64;
+    while (i < iters) {
+        dec_sink = raw hex_decode(encoded_short);
+        i = i + 1i64;
+    }
+    int64:t3 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria decode", t3 - t2, iters);
+
+    // ── Encode medium string ─────────────────────────────
+    println("--- encode medium (54 bytes) ---");
+    int64:t4 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        enc_sink = raw hex_encode(medium_input);
+        i = i + 1i64;
+    }
+    int64:t5 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria encode", t5 - t4, iters);
+
+    // ── Decode medium string ─────────────────────────────
+    println("--- decode medium (108 hex chars) ---");
+    string:encoded_medium = raw hex_encode(medium_input);
+    int64:t6 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        dec_sink = raw hex_decode(encoded_medium);
+        i = i + 1i64;
+    }
+    int64:t7 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria decode", t7 - t6, iters);
+
+    // ── Roundtrip ────────────────────────────────────────
+    println("--- roundtrip short ---");
+    int64:t8 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        string:e = raw hex_encode(short_input);
+        dec_sink = raw hex_decode(e);
+        i = i + 1i64;
+    }
+    int64:t9 = aria_libc_time_monotonic_ns();
+    drop report("roundtrip      ", t9 - t8, iters);
+
+    // Anti-opt
+    if (string_is_empty(enc_sink)) { println("(sink)"); }
+    if (string_is_empty(dec_sink)) { println("(sink)"); }
+
+    println("=== Done (1k iterations each) ===");
+    exit 0;
+};

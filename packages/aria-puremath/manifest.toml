@@ -1,0 +1,9 @@
+[package]
+name = "aria-puremath"
+version = "0.1.0"
+description = "Pure Aria math implementations (Taylor series, Newton's method) — zero FFI"
+authors = ["Alternative Intelligence"]
+license = "MIT"
+
+[dependencies]
+# None — pure Aria, no external dependencies

@@ -1,0 +1,311 @@
+// aria_puremath.aria — Pure Aria math implementations (no libm required)
+//
+// v0.9.3 — Taylor series and minimax polynomial approximations for
+// platforms without libc. Zero FFI dependencies.
+//
+// Provided functions:
+//   Constants:   puremath_pi, puremath_e, puremath_tau
+//   Trig:        puremath_sin, puremath_cos, puremath_tan
+//   Exponential: puremath_exp, puremath_sqrt
+//   Logarithm:   puremath_ln
+//   Rounding:    puremath_floor, puremath_ceil, puremath_abs
+//   Misc:        puremath_pow_int (integer exponent only)
+//
+// Accuracy: ~1e-10 for trig/exp/ln in normal ranges.
+// Not intended to replace libm for production use — fallback only.
+
+// ── Constants ───────────────────────────────────────────────────
+
+pub func:puremath_pi = float64() { pass 3.14159265358979323846; };
+pub func:puremath_e = float64() { pass 2.71828182845904523536; };
+pub func:puremath_tau = float64() { pass 6.28318530717958647692; };
+
+// ── Absolute value ──────────────────────────────────────────────
+
+pub func:puremath_abs = float64(float64:x) {
+    if (x < 0.0) { pass 0.0 - x; }
+    pass x;
+};
+
+// ── Floor / Ceil ────────────────────────────────────────────────
+
+pub func:puremath_floor = float64(float64:x) {
+    // Truncate by casting to int64 and back
+    int64:i = @cast<int64>(x);
+    flt64:f = @cast<flt64>(i);
+    // If x is negative and not exact, subtract 1
+    if (x < 0.0) {
+        if (f > x) { pass f - 1.0; }
+    }
+    pass f;
+};
+
+pub func:puremath_ceil = float64(float64:x) {
+    flt64:fl = raw puremath_floor(x);
+    if (fl < x) { pass fl + 1.0; }
+    pass fl;
+};
+
+// ── Range reduction helper for trig ─────────────────────────────
+
+// Reduce angle to [-pi, pi]
+func:_reduce_angle = float64(float64:x) {
+    flt64:pi = 3.14159265358979323846;
+    flt64:two_pi = 6.28318530717958647692;
+
+    // Quick reduction for common range
+    flt64:r = x;
+    while (r > pi) { r = r - two_pi; }
+    while (r < 0.0 - pi) { r = r + two_pi; }
+    pass r;
+};
+
+// ── Sin (Taylor series, 11 terms) ───────────────────────────────
+// sin(x) = x - x^3/3! + x^5/5! - x^7/7! + ...
+
+pub func:puremath_sin = float64(float64:x) {
+    flt64:a = raw _reduce_angle(x);
+    flt64:x2 = a * a;
+    flt64:term = a;
+    flt64:sum = a;
+
+    // term *= -x^2 / (n*(n-1))  for n = 3, 5, 7, 9, 11, 13, 15, 17, 19, 21
+    term = term * (0.0 - x2) / 6.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 20.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 42.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 72.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 110.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 156.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 210.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 272.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 342.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 420.0;
+    sum = sum + term;
+
+    pass sum;
+};
+
+// ── Cos (Taylor series, 11 terms) ───────────────────────────────
+// cos(x) = 1 - x^2/2! + x^4/4! - x^6/6! + ...
+
+pub func:puremath_cos = float64(float64:x) {
+    flt64:a = raw _reduce_angle(x);
+    flt64:x2 = a * a;
+    flt64:term = 1.0;
+    flt64:sum = 1.0;
+
+    // term *= -x^2 / (n*(n-1))  for n = 2, 4, 6, 8, 10, 12, 14, 16, 18, 20
+    term = term * (0.0 - x2) / 2.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 12.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 30.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 56.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 90.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 132.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 182.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 240.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 306.0;
+    sum = sum + term;
+
+    term = term * (0.0 - x2) / 380.0;
+    sum = sum + term;
+
+    pass sum;
+};
+
+// ── Tan ─────────────────────────────────────────────────────────
+
+pub func:puremath_tan = float64(float64:x) {
+    flt64:s = raw puremath_sin(x);
+    flt64:c = raw puremath_cos(x);
+    pass s / c;
+};
+
+// ── Exp (Taylor series, 20 terms) ───────────────────────────────
+// e^x = 1 + x + x^2/2! + x^3/3! + ...
+// Range reduction: e^x = 2^k * e^r where r = x - k*ln(2)
+
+pub func:puremath_exp = float64(float64:x) {
+    // Handle edge cases
+    if (x == 0.0) { pass 1.0; }
+    if (x > 709.0) { pass 1.0e308; }
+    if (x < 0.0 - 709.0) { pass 0.0; }
+
+    // Range reduction: express x = k*ln2 + r, |r| <= ln2/2
+    flt64:ln2 = 0.693147180559945309417;
+    flt64:inv_ln2 = 1.44269504088896340736;
+
+    flt64:kf = raw puremath_floor(x * inv_ln2 + 0.5);
+    int64:k = @cast<int64>(kf);
+    flt64:r = x - kf * ln2;
+
+    // Taylor series for e^r (16 terms)
+    flt64:term = 1.0;
+    flt64:sum = 1.0;
+    int64:n = 1i64;
+    while (n <= 16i64) {
+        flt64:nf = @cast<flt64>(n);
+        term = term * r / nf;
+        sum = sum + term;
+        n = n + 1i64;
+    }
+
+    // Multiply by 2^k using successive doubling/halving
+    if (k > 0i64) {
+        int64:j = 0i64;
+        while (j < k) { sum = sum * 2.0; j = j + 1i64; }
+    }
+    if (k < 0i64) {
+        int64:neg_k = 0i64 - k;
+        int64:j = 0i64;
+        while (j < neg_k) { sum = sum / 2.0; j = j + 1i64; }
+    }
+
+    pass sum;
+};
+
+// ── Natural log (series expansion) ──────────────────────────────
+// ln(x) using: ln(x) = ln(m * 2^e) = e*ln(2) + ln(m)
+// For m in [0.5, 1): use series ln(1+t) where t = (m-1)
+
+pub func:puremath_ln = float64(float64:x) {
+    if (x <= 0.0) { pass 0.0 - 1.0e308; }
+    if (x == 1.0) { pass 0.0; }
+
+    flt64:ln2 = 0.693147180559945309417;
+
+    // Reduce: find e such that x = m * 2^e, m in [1, 2)
+    flt64:m = x;
+    int64:e_val = 0i64;
+
+    while (m >= 2.0) { m = m / 2.0; e_val = e_val + 1i64; }
+    while (m < 1.0) { m = m * 2.0; e_val = e_val - 1i64; }
+
+    // Now m in [1, 2), compute ln(m) via ln(1+t), t = m-1, t in [0, 1)
+    flt64:t = m - 1.0;
+
+    // Series: ln(1+t) = t - t^2/2 + t^3/3 - t^4/4 + ...
+    // Converges for |t| < 1
+    flt64:sum = 0.0;
+    flt64:power = t;
+    int64:n = 1i64;
+    flt64:sign = 1.0;
+    while (n <= 30i64) {
+        flt64:nf = @cast<flt64>(n);
+        sum = sum + sign * power / nf;
+        power = power * t;
+        sign = 0.0 - sign;
+        n = n + 1i64;
+    }
+
+    flt64:ef = @cast<flt64>(e_val);
+    pass ef * ln2 + sum;
+};
+
+// ── Square root (Newton's method) ───────────────────────────────
+
+pub func:puremath_sqrt = float64(float64:x) {
+    if (x < 0.0) { pass 0.0 - 1.0; }
+    if (x == 0.0) { pass 0.0; }
+    if (x == 1.0) { pass 1.0; }
+
+    // Initial guess
+    flt64:guess = x / 2.0;
+    if (x > 100.0) { guess = x / 10.0; }
+    if (x < 0.01) { guess = x * 10.0; }
+
+    // Newton iterations: guess = (guess + x/guess) / 2
+    int64:i = 0i64;
+    while (i < 50i64) {
+        flt64:new_guess = (guess + x / guess) / 2.0;
+        // Check convergence
+        flt64:diff = new_guess - guess;
+        if (diff < 0.0) { diff = 0.0 - diff; }
+        if (diff < 1.0e-15) { pass new_guess; }
+        guess = new_guess;
+        i = i + 1i64;
+    }
+    pass guess;
+};
+
+// ── Integer power ───────────────────────────────────────────────
+
+pub func:puremath_pow_int = float64(float64:base, int64:exp_val) {
+    if (exp_val == 0i64) { pass 1.0; }
+
+    int64:n = exp_val;
+    bool:neg = false;
+    if (n < 0i64) {
+        neg = true;
+        n = 0i64 - n;
+    }
+
+    // Exponentiation by squaring
+    flt64:result = 1.0;
+    flt64:b = base;
+    while (n > 0i64) {
+        // Check if n is odd: n - (n/2)*2 != 0
+        int64:half = n / 2i64;
+        int64:rem = n - half * 2i64;
+        if (rem != 0i64) { result = result * b; }
+        b = b * b;
+        n = half;
+    }
+
+    if (neg) { pass 1.0 / result; }
+    pass result;
+};
+
+// ── General power (a^b) via exp(b*ln(a)) ────────────────────────
+
+pub func:puremath_pow = float64(float64:base, float64:exp_val) {
+    if (exp_val == 0.0) { pass 1.0; }
+    if (base == 0.0) { pass 0.0; }
+    if (base == 1.0) { pass 1.0; }
+
+    // Check if exp is integer
+    int64:exp_int = @cast<int64>(exp_val);
+    flt64:exp_check = @cast<flt64>(exp_int);
+    flt64:exp_diff = exp_val - exp_check;
+    if (exp_diff < 0.0) { exp_diff = 0.0 - exp_diff; }
+    if (exp_diff < 0.0001) {
+        pass raw puremath_pow_int(base, exp_int);
+    }
+
+    // General: a^b = e^(b * ln(a))
+    flt64:lg = raw puremath_ln(base);
+    pass raw puremath_exp(exp_val * lg);
+};

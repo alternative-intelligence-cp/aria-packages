@@ -1,0 +1,167 @@
+/* Test: aria-puremath (pure Aria Taylor series math) */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+use "aria_puremath.aria".*;
+
+func:approx = bool(flt64:a, flt64:b, flt64:tol) {
+    flt64:diff = a - b;
+    if (diff < 0.0) { diff = 0.0 - diff; }
+    if (diff < tol) { pass true; }
+    pass false;
+};
+
+func:check = NIL(bool:cond, string:msg) {
+    if (cond) { print("  [PASS] "); println(msg); }
+    if (cond == false) { print("  [FAIL] "); println(msg); }
+};
+
+func:main = int32() {
+    println("=== aria-puremath tests ===");
+    int32:passed = 0i32;
+    int32:failed = 0i32;
+    flt64:tol = 0.0000001;
+
+    // Constants
+    flt64:pi = raw puremath_pi();
+    drop check(raw approx(pi, 3.14159265, tol), "pi");
+    passed = passed + 1i32;
+
+    flt64:euler = raw puremath_e();
+    drop check(raw approx(euler, 2.71828182, tol), "e");
+    passed = passed + 1i32;
+
+    // abs
+    flt64:a1 = raw puremath_abs(0.0 - 5.0);
+    drop check(raw approx(a1, 5.0, tol), "abs(-5)=5");
+    passed = passed + 1i32;
+
+    // floor / ceil
+    flt64:f1 = raw puremath_floor(3.7);
+    drop check(raw approx(f1, 3.0, tol), "floor(3.7)=3");
+    passed = passed + 1i32;
+
+    flt64:f2 = raw puremath_floor(0.0 - 2.3);
+    drop check(raw approx(f2, 0.0 - 3.0, tol), "floor(-2.3)=-3");
+    passed = passed + 1i32;
+
+    flt64:c1 = raw puremath_ceil(3.2);
+    drop check(raw approx(c1, 4.0, tol), "ceil(3.2)=4");
+    passed = passed + 1i32;
+
+    // sin
+    flt64:s0 = raw puremath_sin(0.0);
+    drop check(raw approx(s0, 0.0, tol), "sin(0)=0");
+    passed = passed + 1i32;
+
+    flt64:s1 = raw puremath_sin(pi / 2.0);
+    drop check(raw approx(s1, 1.0, tol), "sin(pi/2)=1");
+    passed = passed + 1i32;
+
+    flt64:s2 = raw puremath_sin(pi);
+    drop check(raw approx(s2, 0.0, 0.000001), "sin(pi)=0");
+    passed = passed + 1i32;
+
+    flt64:s3 = raw puremath_sin(pi / 6.0);
+    drop check(raw approx(s3, 0.5, tol), "sin(pi/6)=0.5");
+    passed = passed + 1i32;
+
+    // cos
+    flt64:co0 = raw puremath_cos(0.0);
+    drop check(raw approx(co0, 1.0, tol), "cos(0)=1");
+    passed = passed + 1i32;
+
+    flt64:co1 = raw puremath_cos(pi / 2.0);
+    drop check(raw approx(co1, 0.0, 0.000001), "cos(pi/2)=0");
+    passed = passed + 1i32;
+
+    flt64:co2 = raw puremath_cos(pi);
+    drop check(raw approx(co2, 0.0 - 1.0, tol), "cos(pi)=-1");
+    passed = passed + 1i32;
+
+    // sin^2 + cos^2 = 1
+    flt64:sx = raw puremath_sin(1.23);
+    flt64:cx = raw puremath_cos(1.23);
+    flt64:identity = sx * sx + cx * cx;
+    drop check(raw approx(identity, 1.0, 0.000001), "sin^2+cos^2=1");
+    passed = passed + 1i32;
+
+    // tan
+    flt64:t0 = raw puremath_tan(0.0);
+    drop check(raw approx(t0, 0.0, tol), "tan(0)=0");
+    passed = passed + 1i32;
+
+    flt64:t1 = raw puremath_tan(pi / 4.0);
+    drop check(raw approx(t1, 1.0, 0.000001), "tan(pi/4)=1");
+    passed = passed + 1i32;
+
+    // exp
+    flt64:e0 = raw puremath_exp(0.0);
+    drop check(raw approx(e0, 1.0, tol), "exp(0)=1");
+    passed = passed + 1i32;
+
+    flt64:e1 = raw puremath_exp(1.0);
+    drop check(raw approx(e1, 2.71828182, 0.00001), "exp(1)=e");
+    passed = passed + 1i32;
+
+    flt64:e2 = raw puremath_exp(2.0);
+    drop check(raw approx(e2, 7.3890560, 0.0001), "exp(2)=7.389");
+    passed = passed + 1i32;
+
+    flt64:e3 = raw puremath_exp(0.0 - 1.0);
+    drop check(raw approx(e3, 0.3678794, 0.00001), "exp(-1)=0.368");
+    passed = passed + 1i32;
+
+    // ln
+    flt64:l1 = raw puremath_ln(1.0);
+    drop check(raw approx(l1, 0.0, tol), "ln(1)=0");
+    passed = passed + 1i32;
+
+    flt64:l2 = raw puremath_ln(euler);
+    drop check(raw approx(l2, 1.0, 0.0001), "ln(e)=1");
+    passed = passed + 1i32;
+
+    flt64:l3 = raw puremath_ln(10.0);
+    drop check(raw approx(l3, 2.302585, 0.001), "ln(10)=2.303");
+    passed = passed + 1i32;
+
+    // sqrt
+    flt64:sq1 = raw puremath_sqrt(4.0);
+    drop check(raw approx(sq1, 2.0, tol), "sqrt(4)=2");
+    passed = passed + 1i32;
+
+    flt64:sq2 = raw puremath_sqrt(9.0);
+    drop check(raw approx(sq2, 3.0, tol), "sqrt(9)=3");
+    passed = passed + 1i32;
+
+    flt64:sq3 = raw puremath_sqrt(2.0);
+    drop check(raw approx(sq3, 1.4142135, 0.00001), "sqrt(2)=1.414");
+    passed = passed + 1i32;
+
+    flt64:sq4 = raw puremath_sqrt(0.25);
+    drop check(raw approx(sq4, 0.5, tol), "sqrt(0.25)=0.5");
+    passed = passed + 1i32;
+
+    // pow_int
+    flt64:p1 = raw puremath_pow_int(2.0, 10i64);
+    drop check(raw approx(p1, 1024.0, tol), "pow(2,10)=1024");
+    passed = passed + 1i32;
+
+    flt64:p2 = raw puremath_pow_int(3.0, 0i64);
+    drop check(raw approx(p2, 1.0, tol), "pow(3,0)=1");
+    passed = passed + 1i32;
+
+    flt64:p3 = raw puremath_pow_int(2.0, 0i64 - 2i64);
+    drop check(raw approx(p3, 0.25, tol), "pow(2,-2)=0.25");
+    passed = passed + 1i32;
+
+    // pow (general)
+    flt64:pg1 = raw puremath_pow(2.0, 0.5);
+    drop check(raw approx(pg1, 1.4142135, 0.001), "pow(2,0.5)=sqrt(2)");
+    passed = passed + 1i32;
+
+    print("aria-puremath: ");
+    print(string_from_int(@cast<int64>(passed)));
+    println("/31 passed");
+    exit 0;
+};

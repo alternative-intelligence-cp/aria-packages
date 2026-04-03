@@ -1,0 +1,152 @@
+/* Benchmark: puremath (Taylor series) vs aria-libc_math (libm)
+ *
+ * v0.9.3 — Direct comparison showing the cost of pure Aria math
+ * vs hardware-optimized libm implementations.
+ */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+extern "aria_libc_time" {
+    func:aria_libc_time_monotonic_ns = int64();
+}
+
+extern "aria_libc_math" {
+    func:aria_libc_math_sin  = flt64(flt64:x);
+    func:aria_libc_math_cos  = flt64(flt64:x);
+    func:aria_libc_math_exp  = flt64(flt64:x);
+    func:aria_libc_math_log  = flt64(flt64:x);
+    func:aria_libc_math_sqrt = flt64(flt64:x);
+    func:aria_libc_math_pow  = flt64(flt64:a, flt64:b);
+}
+
+use "aria_puremath.aria".*;
+
+func:report = NIL(string:label, int64:ns, int64:iters) {
+    int64:avg = ns / iters;
+    print("  ");
+    print(label);
+    print(": ");
+    print(string_from_int(avg));
+    println(" ns/op");
+};
+
+func:main = int32() {
+    println("=== v0.9.3 Benchmark: puremath vs libm ===");
+    int64:iters = 100000i64;
+    flt64:x_val = 1.5;
+    flt64:sink = 0.0;
+
+    // ── sin ──────────────────────────────────────────────
+    println("--- sin ---");
+    int64:t0 = aria_libc_time_monotonic_ns();
+    int64:i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_sin(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t1 = aria_libc_time_monotonic_ns();
+    drop report("libm (shim)    ", t1 - t0, iters);
+
+    int64:t2 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = raw puremath_sin(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t3 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria      ", t3 - t2, iters);
+
+    // ── cos ──────────────────────────────────────────────
+    println("--- cos ---");
+    int64:t4 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_cos(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t5 = aria_libc_time_monotonic_ns();
+    drop report("libm (shim)    ", t5 - t4, iters);
+
+    int64:t6 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = raw puremath_cos(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t7 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria      ", t7 - t6, iters);
+
+    // ── exp ──────────────────────────────────────────────
+    println("--- exp ---");
+    int64:t8 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_exp(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t9 = aria_libc_time_monotonic_ns();
+    drop report("libm (shim)    ", t9 - t8, iters);
+
+    int64:t10 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = raw puremath_exp(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t11 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria      ", t11 - t10, iters);
+
+    // ── ln ───────────────────────────────────────────────
+    println("--- ln ---");
+    int64:t12 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_log(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t13 = aria_libc_time_monotonic_ns();
+    drop report("libm (shim)    ", t13 - t12, iters);
+
+    int64:t14 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = raw puremath_ln(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t15 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria      ", t15 - t14, iters);
+
+    // ── sqrt ─────────────────────────────────────────────
+    println("--- sqrt ---");
+    int64:t16 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_sqrt(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t17 = aria_libc_time_monotonic_ns();
+    drop report("libm (shim)    ", t17 - t16, iters);
+
+    int64:t18 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = raw puremath_sqrt(x_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t19 = aria_libc_time_monotonic_ns();
+    drop report("pure Aria      ", t19 - t18, iters);
+
+    if (sink == 0.0) { println("(sink)"); }
+    println("=== Done (100k iterations each) ===");
+    exit 0;
+};

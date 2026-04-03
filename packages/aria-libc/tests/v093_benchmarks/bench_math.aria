@@ -1,0 +1,208 @@
+/* Benchmark: aria-math port via aria-libc_math vs direct libm extern
+ *
+ * v0.9.3 — Measures overhead of the aria-libc shim layer for math ops.
+ * Each benchmark runs 100,000 iterations and reports avg ns/op.
+ */
+
+func:failsafe = int32(tbb32:err) { exit 1; };
+
+// aria-libc_time for monotonic timing
+extern "aria_libc_time" {
+    func:aria_libc_time_monotonic_ns = int64();
+}
+
+// The ported path: via aria-libc_math
+extern "aria_libc_math" {
+    func:aria_libc_math_sin   = flt64(flt64:x);
+    func:aria_libc_math_cos   = flt64(flt64:x);
+    func:aria_libc_math_sqrt  = flt64(flt64:x);
+    func:aria_libc_math_log   = flt64(flt64:x);
+    func:aria_libc_math_exp   = flt64(flt64:x);
+    func:aria_libc_math_pow   = flt64(flt64:b, flt64:e);
+    func:aria_libc_math_floor = flt64(flt64:x);
+}
+
+// Direct libm baseline (inline extern → same C ABI, no shim layer)
+extern func:sin   = flt64(flt64:x);
+extern func:cos   = flt64(flt64:x);
+extern func:sqrt  = flt64(flt64:x);
+extern func:log   = flt64(flt64:x);
+extern func:exp   = flt64(flt64:x);
+extern func:pow   = flt64(flt64:b, flt64:e);
+extern func:floor = flt64(flt64:x);
+
+func:report = NIL(string:label, int64:ns, int64:iters) {
+    int64:avg = ns / iters;
+    print("  ");
+    print(label);
+    print(": ");
+    print(string_from_int(avg));
+    println(" ns/op");
+};
+
+func:main = int32() {
+    println("=== v0.9.3 Performance Benchmarks: Math ===");
+    int64:iters = 100000i64;
+    flt64:input_val = 1.5;
+    flt64:sink = 0.0;
+
+    // ── sin ──────────────────────────────────────────────
+    println("--- sin ---");
+    int64:t0 = aria_libc_time_monotonic_ns();
+    int64:i = 0i64;
+    while (i < iters) {
+        flt64:r = sin(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t1 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t1 - t0, iters);
+
+    int64:t2 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_sin(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t3 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t3 - t2, iters);
+
+    // ── cos ──────────────────────────────────────────────
+    println("--- cos ---");
+    int64:t4 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = cos(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t5 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t5 - t4, iters);
+
+    int64:t6 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_cos(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t7 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t7 - t6, iters);
+
+    // ── sqrt ─────────────────────────────────────────────
+    println("--- sqrt ---");
+    int64:t8 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = sqrt(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t9 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t9 - t8, iters);
+
+    int64:t10 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_sqrt(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t11 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t11 - t10, iters);
+
+    // ── exp ──────────────────────────────────────────────
+    println("--- exp ---");
+    int64:t12 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = exp(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t13 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t13 - t12, iters);
+
+    int64:t14 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_exp(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t15 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t15 - t14, iters);
+
+    // ── log ──────────────────────────────────────────────
+    println("--- log ---");
+    int64:t16 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = log(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t17 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t17 - t16, iters);
+
+    int64:t18 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_log(input_val);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t19 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t19 - t18, iters);
+
+    // ── pow ──────────────────────────────────────────────
+    println("--- pow ---");
+    int64:t20 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = pow(2.0, 10.0);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t21 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t21 - t20, iters);
+
+    int64:t22 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_pow(2.0, 10.0);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t23 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t23 - t22, iters);
+
+    // ── floor ────────────────────────────────────────────
+    println("--- floor ---");
+    int64:t24 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = floor(3.7);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t25 = aria_libc_time_monotonic_ns();
+    drop report("direct libm    ", t25 - t24, iters);
+
+    int64:t26 = aria_libc_time_monotonic_ns();
+    i = 0i64;
+    while (i < iters) {
+        flt64:r = aria_libc_math_floor(3.7);
+        sink = sink + r;
+        i = i + 1i64;
+    }
+    int64:t27 = aria_libc_time_monotonic_ns();
+    drop report("aria-libc shim ", t27 - t26, iters);
+
+    // Prevent sink from being optimized away
+    if (sink == 0.0) { println("(sink anti-opt)"); }
+
+    println("=== Done (100k iterations each) ===");
+    exit 0;
+};
