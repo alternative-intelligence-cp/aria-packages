@@ -1,0 +1,15 @@
+[package]
+name = "aria-deque"
+version = "0.11.3"
+description = "Double-ended queue with O(1) push/pop at both ends (circular buffer)"
+license = "MIT"
+repository = "https://github.com/alternative-intelligence-cp/aria-packages"
+categories = ["data-structures"]
+
+[dependencies]
+aria-libc = "0.10.0"
+
+[build]
+type = "library"
+entry = "src/aria_deque.aria"
+link_libraries = ["aria_libc_mem"]

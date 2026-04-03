@@ -1,0 +1,181 @@
+// aria_bitset.aria — Fixed-size bit set with set operations (v0.11.3)
+//
+// Pure Aria + aria-libc_mem.
+// Import with: use "aria_bitset.aria".*;
+//
+// One-byte-per-bit representation for simplicity (no bitwise ops in Aria).
+// Layout: [nbits:i64 @ 0][byte0 @ 8][byte1 @ 9]...
+// Each byte is 0 (clear) or 1 (set).
+//
+// v0.11.3: New pure Aria package.
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:bytes);
+    func:aria_libc_mem_free        = int32(int64:ptr);
+    func:aria_libc_mem_zero        = int32(int64:ptr, int64:bytes);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte  = void(int64:ptr, int64:offset, int32:val);
+    func:aria_libc_mem_read_byte   = int32(int64:ptr, int64:offset);
+}
+
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+func:bs_nbits = int64(int64:bs) {
+    pass aria_libc_mem_read_i64(bs, 0i64);
+};
+
+// ── core functions ──────────────────────────────────────────────────────────
+
+func:bitset_create = int64(int64:nbits) {
+    int64:total = 8i64 + nbits;
+    int64:ptr = aria_libc_mem_malloc(total);
+    int32:zr = aria_libc_mem_zero(ptr, total);
+    aria_libc_mem_write_i64(ptr, 0i64, nbits);
+    pass ptr;
+};
+
+func:bitset_destroy = int32(int64:bs) {
+    pass aria_libc_mem_free(bs);
+};
+
+func:bitset_set = int32(int64:bs, int64:idx) {
+    int64:nb = bs_nbits(bs);
+    if (idx < 0i64) { pass -1i32; }
+    if (idx >= nb) { pass -1i32; }
+    aria_libc_mem_write_byte(bs, 8i64 + idx, 1i32);
+    pass 0i32;
+};
+
+func:bitset_clear = int32(int64:bs, int64:idx) {
+    int64:nb = bs_nbits(bs);
+    if (idx < 0i64) { pass -1i32; }
+    if (idx >= nb) { pass -1i32; }
+    aria_libc_mem_write_byte(bs, 8i64 + idx, 0i32);
+    pass 0i32;
+};
+
+func:bitset_test = int32(int64:bs, int64:idx) {
+    int64:nb = bs_nbits(bs);
+    if (idx < 0i64) { pass -1i32; }
+    if (idx >= nb) { pass -1i32; }
+    pass aria_libc_mem_read_byte(bs, 8i64 + idx);
+};
+
+func:bitset_toggle = int32(int64:bs, int64:idx) {
+    int32:cur = bitset_test(bs, idx);
+    if (cur == 1i32) { pass bitset_clear(bs, idx); }
+    pass bitset_set(bs, idx);
+};
+
+func:bitset_count = int32(int64:bs) {
+    int64:nb = bs_nbits(bs);
+    int32:cnt = 0i32;
+    int64:i = 0i64;
+    loop(0i64, nb, 1i64) {
+        int32:b = aria_libc_mem_read_byte(bs, 8i64 + i);
+        if (b == 1i32) { cnt += 1i32; }
+        i += 1i64;
+    }
+    pass cnt;
+};
+
+func:bitset_size = int64(int64:bs) {
+    pass bs_nbits(bs);
+};
+
+func:bitset_is_empty = int32(int64:bs) {
+    int32:c = bitset_count(bs);
+    if (c == 0i32) { pass 1i32; }
+    pass 0i32;
+};
+
+// ── set operations (mutate first argument) ──────────────────────────────────
+
+func:bitset_union = int32(int64:a, int64:b) {
+    int64:na = bs_nbits(a);
+    int64:i = 0i64;
+    loop(0i64, na, 1i64) {
+        int32:bv = aria_libc_mem_read_byte(b, 8i64 + i);
+        if (bv == 1i32) {
+            aria_libc_mem_write_byte(a, 8i64 + i, 1i32);
+        }
+        i += 1i64;
+    }
+    pass 0i32;
+};
+
+func:bitset_intersect = int32(int64:a, int64:b) {
+    int64:na = bs_nbits(a);
+    int64:i = 0i64;
+    loop(0i64, na, 1i64) {
+        int32:bv = aria_libc_mem_read_byte(b, 8i64 + i);
+        if (bv == 0i32) {
+            aria_libc_mem_write_byte(a, 8i64 + i, 0i32);
+        }
+        i += 1i64;
+    }
+    pass 0i32;
+};
+
+func:bitset_complement = int32(int64:bs) {
+    int64:nb = bs_nbits(bs);
+    int64:i = 0i64;
+    loop(0i64, nb, 1i64) {
+        int32:cur = aria_libc_mem_read_byte(bs, 8i64 + i);
+        if (cur == 1i32) {
+            aria_libc_mem_write_byte(bs, 8i64 + i, 0i32);
+        }
+        if (cur == 0i32) {
+            aria_libc_mem_write_byte(bs, 8i64 + i, 1i32);
+        }
+        i += 1i64;
+    }
+    pass 0i32;
+};
+
+func:bitset_difference = int32(int64:a, int64:b) {
+    int64:na = bs_nbits(a);
+    int64:i = 0i64;
+    loop(0i64, na, 1i64) {
+        int32:bv = aria_libc_mem_read_byte(b, 8i64 + i);
+        if (bv == 1i32) {
+            aria_libc_mem_write_byte(a, 8i64 + i, 0i32);
+        }
+        i += 1i64;
+    }
+    pass 0i32;
+};
+
+func:bitset_equals = int32(int64:a, int64:b) {
+    int64:na = bs_nbits(a);
+    int64:nb = bs_nbits(b);
+    if (na != nb) { pass 0i32; }
+    int64:i = 0i64;
+    loop(0i64, na, 1i64) {
+        int32:av = aria_libc_mem_read_byte(a, 8i64 + i);
+        int32:bv = aria_libc_mem_read_byte(b, 8i64 + i);
+        if (av != bv) { pass 0i32; }
+        i += 1i64;
+    }
+    pass 1i32;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Bitset = {
+    func:create = int64(int64:nbits) { pass raw bitset_create(nbits); };
+    func:destroy = int32(int64:bs) { pass raw bitset_destroy(bs); };
+    func:set = int32(int64:bs, int64:idx) { pass raw bitset_set(bs, idx); };
+    func:clear = int32(int64:bs, int64:idx) { pass raw bitset_clear(bs, idx); };
+    func:test = int32(int64:bs, int64:idx) { pass raw bitset_test(bs, idx); };
+    func:toggle = int32(int64:bs, int64:idx) { pass raw bitset_toggle(bs, idx); };
+    func:count = int32(int64:bs) { pass raw bitset_count(bs); };
+    func:size = int64(int64:bs) { pass raw bitset_size(bs); };
+    func:is_empty = int32(int64:bs) { pass raw bitset_is_empty(bs); };
+    func:union = int32(int64:a, int64:b) { pass raw bitset_union(a, b); };
+    func:intersect = int32(int64:a, int64:b) { pass raw bitset_intersect(a, b); };
+    func:complement = int32(int64:bs) { pass raw bitset_complement(bs); };
+    func:difference = int32(int64:a, int64:b) { pass raw bitset_difference(a, b); };
+    func:equals = int32(int64:a, int64:b) { pass raw bitset_equals(a, b); };
+};

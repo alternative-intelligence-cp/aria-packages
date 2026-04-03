@@ -1,0 +1,130 @@
+// aria_result.aria — Extended Result/Option combinators (v0.11.3)
+//
+// Pure Aria + aria-libc_mem.
+// Import with: use "aria_result.aria".*;
+//
+// A Result is a 16-byte allocation: [tag:i64 @ 0][value:i64 @ 8]
+//   tag = 1 → Ok (value holds the success value)
+//   tag = 0 → Err (value holds the error code)
+//
+// Provides typed result containers with combinators for
+// programmatic error handling beyond compiler-level Result<T>.
+//
+// v0.11.3: New pure Aria package.
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:bytes);
+    func:aria_libc_mem_free        = int32(int64:ptr);
+    func:aria_libc_mem_zero        = int32(int64:ptr, int64:bytes);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+}
+
+// ── core constructors ───────────────────────────────────────────────────────
+
+func:result_ok = int64(int64:val) {
+    int64:r = aria_libc_mem_malloc(16i64);
+    aria_libc_mem_write_i64(r, 0i64, 1i64);
+    aria_libc_mem_write_i64(r, 8i64, val);
+    pass r;
+};
+
+func:result_err = int64(int64:code) {
+    int64:r = aria_libc_mem_malloc(16i64);
+    aria_libc_mem_write_i64(r, 0i64, 0i64);
+    aria_libc_mem_write_i64(r, 8i64, code);
+    pass r;
+};
+
+// ── inspectors ──────────────────────────────────────────────────────────────
+
+func:result_tag = int64(int64:r) {
+    pass aria_libc_mem_read_i64(r, 0i64);
+};
+
+func:result_is_ok = int32(int64:r) {
+    int64:t = result_tag(r);
+    if (t == 1i64) { pass 1i32; }
+    pass 0i32;
+};
+
+func:result_is_err = int32(int64:r) {
+    int64:t = result_tag(r);
+    if (t == 0i64) { pass 1i32; }
+    pass 0i32;
+};
+
+// ── extractors ──────────────────────────────────────────────────────────────
+
+func:result_unwrap = int64(int64:r) {
+    int64:t = result_tag(r);
+    if (t == 1i64) { pass aria_libc_mem_read_i64(r, 8i64); }
+    pass -1i64;
+};
+
+func:result_unwrap_or = int64(int64:r, int64:fallback) {
+    int64:t = result_tag(r);
+    if (t == 1i64) { pass aria_libc_mem_read_i64(r, 8i64); }
+    pass fallback;
+};
+
+func:result_value = int64(int64:r) {
+    pass aria_libc_mem_read_i64(r, 8i64);
+};
+
+func:result_error_code = int64(int64:r) {
+    pass aria_libc_mem_read_i64(r, 8i64);
+};
+
+// ── combinators ─────────────────────────────────────────────────────────────
+
+func:result_and = int64(int64:r1, int64:r2) {
+    int64:t = result_tag(r1);
+    if (t == 1i64) { pass r2; }
+    pass r1;
+};
+
+func:result_or = int64(int64:r1, int64:r2) {
+    int64:t = result_tag(r1);
+    if (t == 1i64) { pass r1; }
+    pass r2;
+};
+
+func:result_map_or = int64(int64:r, int64:ok_val, int64:err_val) {
+    int64:t = result_tag(r);
+    if (t == 1i64) { pass ok_val; }
+    pass err_val;
+};
+
+// ── clone / destroy ─────────────────────────────────────────────────────────
+
+func:result_clone = int64(int64:r) {
+    int64:tag = result_tag(r);
+    int64:val = result_value(r);
+    int64:c = aria_libc_mem_malloc(16i64);
+    aria_libc_mem_write_i64(c, 0i64, tag);
+    aria_libc_mem_write_i64(c, 8i64, val);
+    pass c;
+};
+
+func:result_destroy = int32(int64:r) {
+    pass aria_libc_mem_free(r);
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Res = {
+    func:success = int64(int64:val) { pass raw result_ok(val); };
+    func:err = int64(int64:code) { pass raw result_err(code); };
+    func:is_ok = int32(int64:r) { pass raw result_is_ok(r); };
+    func:is_err = int32(int64:r) { pass raw result_is_err(r); };
+    func:unwrap = int64(int64:r) { pass raw result_unwrap(r); };
+    func:unwrap_or = int64(int64:r, int64:fallback) { pass raw result_unwrap_or(r, fallback); };
+    func:value = int64(int64:r) { pass raw result_value(r); };
+    func:error_code = int64(int64:r) { pass raw result_error_code(r); };
+    func:and_both = int64(int64:r1, int64:r2) { pass raw result_and(r1, r2); };
+    func:or_either = int64(int64:r1, int64:r2) { pass raw result_or(r1, r2); };
+    func:map_or = int64(int64:r, int64:ok_val, int64:err_val) { pass raw result_map_or(r, ok_val, err_val); };
+    func:clone = int64(int64:r) { pass raw result_clone(r); };
+    func:destroy = int32(int64:r) { pass raw result_destroy(r); };
+};
