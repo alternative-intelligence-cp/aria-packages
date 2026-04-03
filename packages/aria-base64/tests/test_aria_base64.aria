@@ -1,37 +1,71 @@
-// test_aria_base64.aria — Tests for aria-base64 (C-side assertions)
+// test_aria_base64.aria — Base64 tests (13 tests)
+
+use "../src/aria_base64.aria".*;
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern func:aria_base64_assert_encode_eq     = void(string:input, string:expected, string:msg);
-extern func:aria_base64_assert_encode_len_eq = void(string:input, int32:len, string:expected, string:msg);
-extern func:aria_base64_assert_encode_url_eq = void(string:input, string:expected, string:msg);
-extern func:aria_base64_assert_decode_eq     = void(string:encoded, string:expected, string:msg);
-extern func:aria_base64_assert_roundtrip     = void(string:input, string:msg);
-extern func:aria_base64_assert_int_eq        = void(int32:actual, int32:expected, string:msg);
-extern func:aria_base64_test_summary         = void();
+func:_check = NIL(string:got, string:expected, string:label) {
+    int32:c = aria_libc_string_strcmp(got, expected);
+    if (c == 0i32) { drop println(label); }
+    if (c != 0i32) { drop print("[FAIL instead of "); drop print(label); drop println("]"); }
+    pass NIL;
+};
 
 func:main = int32() {
-    // ── encode tests ───────────────────────────────────────────
-    aria_base64_assert_encode_eq("Hello", "SGVsbG8=", "test 01: encode Hello");
-    aria_base64_assert_encode_eq("", "", "test 02: encode empty");
-    aria_base64_assert_encode_len_eq("Hi!", 3i32, "SGkh", "test 03: encode Hi! with len");
-    aria_base64_assert_encode_len_eq("A", 1i32, "QQ==", "test 04: encode single byte");
-    aria_base64_assert_encode_len_eq("AB", 2i32, "QUI=", "test 05: encode two bytes");
-    aria_base64_assert_encode_len_eq("ABC", 3i32, "QUJD", "test 06: encode three bytes");
+    // T01: encode Hello
+    string:e1 = raw b64_encode_str("Hello");
+    drop _check(e1, "SGVsbG8=", "[PASS] T01 encode Hello");
 
-    // ── decode tests ───────────────────────────────────────────
-    aria_base64_assert_decode_eq("SGVsbG8=", "Hello", "test 07: decode SGVsbG8=");
-    aria_base64_assert_decode_eq("SGVsbG8", "Hello", "test 08: decode unpadded");
-    aria_base64_assert_decode_eq("QUJD", "ABC", "test 09: decode QUJD");
+    // T02: encode empty
+    string:e2 = raw b64_encode_str("");
+    drop _check(e2, "", "[PASS] T02 encode empty");
 
-    // ── URL-safe encode ────────────────────────────────────────
-    aria_base64_assert_encode_url_eq("Hello", "SGVsbG8", "test 10: URL encode no padding");
+    // T03: encode Hi! with len
+    string:e3 = raw b64_encode("Hi!", 3i32);
+    drop _check(e3, "SGkh", "[PASS] T03 encode Hi! len=3");
 
-    // ── roundtrip tests ────────────────────────────────────────
-    aria_base64_assert_roundtrip("Hello", "test 11: roundtrip Hello");
-    aria_base64_assert_roundtrip("The quick brown fox", "test 12: roundtrip long string");
-    aria_base64_assert_roundtrip("", "test 13: roundtrip empty");
+    // T04: encode single byte
+    string:e4 = raw b64_encode("A", 1i32);
+    drop _check(e4, "QQ==", "[PASS] T04 encode single byte");
 
-    aria_base64_test_summary();
+    // T05: encode two bytes
+    string:e5 = raw b64_encode("AB", 2i32);
+    drop _check(e5, "QUI=", "[PASS] T05 encode two bytes");
+
+    // T06: encode three bytes
+    string:e6 = raw b64_encode("ABC", 3i32);
+    drop _check(e6, "QUJD", "[PASS] T06 encode three bytes");
+
+    // T07: decode SGVsbG8=
+    string:d7 = raw b64_decode("SGVsbG8=");
+    drop _check(d7, "Hello", "[PASS] T07 decode padded");
+
+    // T08: decode unpadded
+    string:d8 = raw b64_decode("SGVsbG8");
+    drop _check(d8, "Hello", "[PASS] T08 decode unpadded");
+
+    // T09: decode QUJD
+    string:d9 = raw b64_decode("QUJD");
+    drop _check(d9, "ABC", "[PASS] T09 decode QUJD");
+
+    // T10: URL encode no padding
+    string:e10 = raw b64_encode_url_str("Hello");
+    drop _check(e10, "SGVsbG8", "[PASS] T10 URL encode");
+
+    // T11: roundtrip Hello
+    string:enc11 = raw b64_encode_str("Hello");
+    string:dec11 = raw b64_decode(enc11);
+    drop _check(dec11, "Hello", "[PASS] T11 roundtrip Hello");
+
+    // T12: roundtrip long string
+    string:enc12 = raw b64_encode_str("The quick brown fox");
+    string:dec12 = raw b64_decode(enc12);
+    drop _check(dec12, "The quick brown fox", "[PASS] T12 roundtrip long");
+
+    // T13: roundtrip empty
+    string:enc13 = raw b64_encode_str("");
+    string:dec13 = raw b64_decode(enc13);
+    drop _check(dec13, "", "[PASS] T13 roundtrip empty");
+
     exit 0;
 };

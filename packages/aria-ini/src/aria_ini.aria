@@ -1,58 +1,442 @@
-// aria_ini.aria — INI config file parser for Aria
-//
-// Parse INI text into sections with key-value pairs.
-// Supports [section] headers, key=value, ; and # comments.
-// Requires: libaria_ini_shim.so
+// aria_ini.aria — Pure Aria INI parser (no C shim)
+// Global slot 24
+// Supports: [section], key=value, ; and # comments, whitespace trim
 
-extern "aria_ini_shim" {
-    func:aria_ini_parse         = int32(string:text);
-    func:aria_ini_num_sections  = int32();
-    func:aria_ini_section_name_s = int32(int32:idx);
-    func:aria_ini_num_keys      = int32(string:section);
-    func:aria_ini_get_s         = int32(string:section, string:key);
-    func:aria_ini_has_key       = int32(string:section, string:key);
-    func:aria_ini_last_result   = string();
+// ── Extern: aria_libc_mem (block 1) ──
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:off);
+    func:aria_libc_mem_write_i64  = NIL(int64:ptr, int64:off, int64:val);
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:off);
+    func:aria_libc_mem_write_byte = NIL(int64:ptr, int64:off, int32:val);
+    func:aria_libc_mem_get_global = int64(int32:slot);
+    func:aria_libc_mem_set_global = NIL(int32:slot, int64:ptr);
 }
 
-// ── public API ──────────────────────────────────────────────────────
+// ── Extern: aria_libc_string ──
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen       = int64(string:s);
+    func:aria_libc_string_strcmp       = int32(string:a, string:b);
+    func:aria_libc_string_from_buf     = string(int64:buf, int64:off, int64:len);
+    func:aria_libc_string_copy_to_buf  = NIL(int64:buf, int64:off, string:src, int64:soff, int64:slen);
+    func:aria_libc_string_byte_at      = int32(string:s, int64:idx);
+    func:aria_libc_string_char_indexof_from = int64(string:s, int32:ch, int64:from);
+}
+
+// ── Slot 24 layout (320 bytes) ──
+// [0]  init flag
+// [8]  num_sections
+// [16] sec_ptr   (128 sections × 136 bytes: 8 name_len + 128 name)
+// [24] num_entries
+// [32] ent_ptr   (2048 entries × 280 bytes: 8 sec_idx + 8 key_len + 120 key + 8 val_len + 136 val)
+// [40..167]  scratch A: section name (128 bytes)
+// [168..295] scratch B: key name (128 bytes)
+
+func:_ini_buf = int64() { pass aria_libc_mem_get_global(24i32); };
+
+func:_ini_init = NIL() {
+    int64:ptr = raw _ini_buf();
+    if (ptr > 0i64) {
+        int64:flag = aria_libc_mem_read_i64(ptr, 0i64);
+        if (flag == 1i64) { pass NIL; }
+    }
+    int64:slot = aria_libc_mem_malloc(320i64);
+    aria_libc_mem_set_global(24i32, slot);
+    aria_libc_mem_write_i64(slot, 8i64, 0i64);
+    int64:sec = aria_libc_mem_malloc(17408i64);
+    aria_libc_mem_write_i64(slot, 16i64, sec);
+    aria_libc_mem_write_i64(slot, 24i64, 0i64);
+    int64:ent = aria_libc_mem_malloc(573440i64);
+    aria_libc_mem_write_i64(slot, 32i64, ent);
+    aria_libc_mem_write_i64(slot, 0i64, 1i64);
+    pass NIL;
+};
+
+// Find section by comparing scratch A [40..40+nlen] against stored names
+func:_ini_find_sec = int32(int64:nlen) {
+    int64:slot = raw _ini_buf();
+    int64:nsec = aria_libc_mem_read_i64(slot, 8i64);
+    int64:sec_ptr = aria_libc_mem_read_i64(slot, 16i64);
+    int32:result = 0i32 - 1i32;
+    int64:si = 0i64;
+    loop(0i64, nsec, 1i64) {
+        if (result < 0i32) {
+            int64:soff = si * 136i64;
+            int64:slen = aria_libc_mem_read_i64(sec_ptr, soff);
+            if (slen == nlen) {
+                int32:mmatch = 1i32;
+                int64:j = 0i64;
+                loop(0i64, nlen, 1i64) {
+                    if (mmatch == 1i32) {
+                        int32:a = aria_libc_mem_read_byte(slot, 40i64 + j);
+                        int32:b = aria_libc_mem_read_byte(sec_ptr, soff + 8i64 + j);
+                        if (a != b) { mmatch = 0i32; }
+                    }
+                    j = j + 1i64;
+                }
+                if (mmatch == 1i32) { result = @cast<int32>(si); }
+            }
+        }
+        si = si + 1i64;
+    }
+    pass result;
+};
+
+// Create section with name from scratch A [40..40+nlen]
+func:_ini_ensure_sec = int32(int64:nlen) {
+    int32:idx = raw _ini_find_sec(nlen);
+    if (idx >= 0i32) { pass idx; }
+    int64:slot = raw _ini_buf();
+    int64:nsec = aria_libc_mem_read_i64(slot, 8i64);
+    if (nsec >= 128i64) { pass 0i32 - 1i32; }
+    int64:sec_ptr = aria_libc_mem_read_i64(slot, 16i64);
+    int64:soff = nsec * 136i64;
+    aria_libc_mem_write_i64(sec_ptr, soff, nlen);
+    int64:j = 0i64;
+    loop(0i64, nlen, 1i64) {
+        int32:bv = aria_libc_mem_read_byte(slot, 40i64 + j);
+        aria_libc_mem_write_byte(sec_ptr, soff + 8i64 + j, bv);
+        j = j + 1i64;
+    }
+    aria_libc_mem_write_i64(slot, 8i64, nsec + 1i64);
+    pass @cast<int32>(nsec);
+};
+
+// Find section by string (copies to scratch A, then searches)
+func:_ini_find_sec_str = int32(string:name) {
+    int64:slot = raw _ini_buf();
+    int64:nlen = aria_libc_string_strlen(name);
+    if (nlen > 128i64) { nlen = 128i64; }
+    aria_libc_string_copy_to_buf(slot, 40i64, name, 0i64, nlen);
+    pass raw _ini_find_sec(nlen);
+};
+
+// Count entries for a given section index
+func:_ini_count_for_sec = int32(int32:sec_idx) {
+    int64:slot = raw _ini_buf();
+    int64:nent = aria_libc_mem_read_i64(slot, 24i64);
+    int64:ent = aria_libc_mem_read_i64(slot, 32i64);
+    int32:cnt = 0i32;
+    int64:ei = 0i64;
+    int64:si64 = @cast<int64>(sec_idx);
+    loop(0i64, nent, 1i64) {
+        int64:eoff = ei * 280i64;
+        int64:esec = aria_libc_mem_read_i64(ent, eoff);
+        if (esec == si64) { cnt = cnt + 1i32; }
+        ei = ei + 1i64;
+    }
+    pass cnt;
+};
+
+// Find entry: section string in scratch A[40..+slen], key in scratch B[168..+klen]
+func:_ini_find_entry = int32(int32:sec_idx, int64:klen) {
+    int64:slot = raw _ini_buf();
+    int64:nent = aria_libc_mem_read_i64(slot, 24i64);
+    int64:ent = aria_libc_mem_read_i64(slot, 32i64);
+    int32:result = 0i32 - 1i32;
+    int64:ei = 0i64;
+    int64:si64 = @cast<int64>(sec_idx);
+    loop(0i64, nent, 1i64) {
+        if (result < 0i32) {
+            int64:eoff = ei * 280i64;
+            int64:esec = aria_libc_mem_read_i64(ent, eoff);
+            if (esec == si64) {
+                int64:eklen = aria_libc_mem_read_i64(ent, eoff + 8i64);
+                if (eklen == klen) {
+                    int32:mmatch = 1i32;
+                    int64:j = 0i64;
+                    loop(0i64, klen, 1i64) {
+                        if (mmatch == 1i32) {
+                            int32:a = aria_libc_mem_read_byte(slot, 168i64 + j);
+                            int32:b = aria_libc_mem_read_byte(ent, eoff + 16i64 + j);
+                            if (a != b) { mmatch = 0i32; }
+                        }
+                        j = j + 1i64;
+                    }
+                    if (mmatch == 1i32) { result = @cast<int32>(ei); }
+                }
+            }
+        }
+        ei = ei + 1i64;
+    }
+    pass result;
+};
+
+// ── Public API ──
 
 pub func:ini_parse = int32(string:text) {
-    int32:r = aria_ini_parse(text);
-    pass r;
+    drop _ini_init();
+    int64:slot = raw _ini_buf();
+    int64:sec_ptr = aria_libc_mem_read_i64(slot, 16i64);
+    int64:ent_ptr = aria_libc_mem_read_i64(slot, 32i64);
+
+    // Clear
+    aria_libc_mem_write_i64(slot, 8i64, 0i64);
+    aria_libc_mem_write_i64(slot, 24i64, 0i64);
+
+    int64:tlen = aria_libc_string_strlen(text);
+    if (tlen == 0i64) { pass 0i32; }
+
+    // Create default global section "" (name_len = 0)
+    aria_libc_mem_write_i64(sec_ptr, 0i64, 0i64);
+    aria_libc_mem_write_i64(slot, 8i64, 1i64);
+    int32:cur_sec = 0i32;
+
+    int64:pos = 0i64;
+    loop(0i64, tlen + 1i64, 1i64) {
+        if (pos < tlen) {
+            // Find newline
+            int64:nl = aria_libc_string_char_indexof_from(text, 10i32, pos);
+            int64:ls = pos;
+            int64:le = nl;
+            if (nl < 0i64) { le = tlen; }
+            if (nl >= 0i64) { pos = nl + 1i64; }
+            if (nl < 0i64) { pos = tlen; }
+
+            // Trim leading whitespace/CR
+            loop(0i64, 256i64, 1i64) {
+                if (ls < le) {
+                    int32:ch = aria_libc_string_byte_at(text, ls);
+                    int32:skip = 0i32;
+                    if (ch == 32i32) { skip = 1i32; }
+                    if (ch == 9i32) { skip = 1i32; }
+                    if (ch == 13i32) { skip = 1i32; }
+                    if (skip == 1i32) { ls = ls + 1i64; }
+                }
+            }
+            // Trim trailing whitespace/CR
+            loop(0i64, 256i64, 1i64) {
+                if (le > ls) {
+                    int32:ch = aria_libc_string_byte_at(text, le - 1i64);
+                    int32:skip = 0i32;
+                    if (ch == 32i32) { skip = 1i32; }
+                    if (ch == 9i32) { skip = 1i32; }
+                    if (ch == 13i32) { skip = 1i32; }
+                    if (skip == 1i32) { le = le - 1i64; }
+                }
+            }
+
+            int64:llen = le - ls;
+            int32:handled = 0i32;
+
+            // Skip empty lines
+            if (llen == 0i64) { handled = 1i32; }
+
+            // Skip comments
+            if (handled == 0i32) {
+                int32:fc = aria_libc_string_byte_at(text, ls);
+                if (fc == 59i32) { handled = 1i32; }
+                if (fc == 35i32) { handled = 1i32; }
+            }
+
+            // Section header [name]
+            if (handled == 0i32) {
+                int32:fc2 = aria_libc_string_byte_at(text, ls);
+                if (fc2 == 91i32) {
+                    handled = 1i32;
+                    // Find ]
+                    int64:cp = ls + 1i64;
+                    int64:close = 0i64 - 1i64;
+                    loop(0i64, llen, 1i64) {
+                        if (close < 0i64) {
+                            if (cp < le) {
+                                int32:cc = aria_libc_string_byte_at(text, cp);
+                                if (cc == 93i32) { close = cp; }
+                            }
+                        }
+                        cp = cp + 1i64;
+                    }
+                    if (close >= 0i64) {
+                        int64:ns = ls + 1i64;
+                        int64:ne = close;
+                        // Trim section name
+                        loop(0i64, 128i64, 1i64) {
+                            if (ns < ne) {
+                                int32:sc = aria_libc_string_byte_at(text, ns);
+                                if (sc == 32i32) { ns = ns + 1i64; }
+                            }
+                        }
+                        loop(0i64, 128i64, 1i64) {
+                            if (ne > ns) {
+                                int32:sc = aria_libc_string_byte_at(text, ne - 1i64);
+                                if (sc == 32i32) { ne = ne - 1i64; }
+                            }
+                        }
+                        // Copy name to scratch A
+                        int64:nlen = ne - ns;
+                        int64:ni = 0i64;
+                        loop(0i64, nlen, 1i64) {
+                            int32:nb = aria_libc_string_byte_at(text, ns + ni);
+                            aria_libc_mem_write_byte(slot, 40i64 + ni, nb);
+                            ni = ni + 1i64;
+                        }
+                        cur_sec = raw _ini_ensure_sec(nlen);
+                    }
+                }
+            }
+
+            // Key = value
+            if (handled == 0i32) {
+                // Find = between ls and le
+                int64:eq = 0i64 - 1i64;
+                int64:sp = ls;
+                loop(0i64, llen, 1i64) {
+                    if (eq < 0i64) {
+                        if (sp < le) {
+                            int32:ec = aria_libc_string_byte_at(text, sp);
+                            if (ec == 61i32) { eq = sp; }
+                        }
+                    }
+                    sp = sp + 1i64;
+                }
+                if (eq >= 0i64) {
+                    int64:ks = ls;
+                    int64:ke = eq;
+                    int64:vs = eq + 1i64;
+                    int64:ve = le;
+                    // Trim key
+                    loop(0i64, 128i64, 1i64) {
+                        if (ke > ks) {
+                            int32:kc = aria_libc_string_byte_at(text, ke - 1i64);
+                            if (kc == 32i32) { ke = ke - 1i64; }
+                            if (kc == 9i32) { ke = ke - 1i64; }
+                        }
+                    }
+                    // Trim value
+                    loop(0i64, 128i64, 1i64) {
+                        if (vs < ve) {
+                            int32:vc = aria_libc_string_byte_at(text, vs);
+                            if (vc == 32i32) { vs = vs + 1i64; }
+                            if (vc == 9i32) { vs = vs + 1i64; }
+                        }
+                    }
+                    loop(0i64, 128i64, 1i64) {
+                        if (ve > vs) {
+                            int32:vc = aria_libc_string_byte_at(text, ve - 1i64);
+                            if (vc == 32i32) { ve = ve - 1i64; }
+                            if (vc == 9i32) { ve = ve - 1i64; }
+                        }
+                    }
+                    // Store entry
+                    int64:nent = aria_libc_mem_read_i64(slot, 24i64);
+                    if (nent < 2048i64) {
+                        int64:eoff = nent * 280i64;
+                        aria_libc_mem_write_i64(ent_ptr, eoff, @cast<int64>(cur_sec));
+                        int64:klen = ke - ks;
+                        if (klen > 120i64) { klen = 120i64; }
+                        aria_libc_mem_write_i64(ent_ptr, eoff + 8i64, klen);
+                        aria_libc_string_copy_to_buf(ent_ptr, eoff + 16i64, text, ks, klen);
+                        int64:vlen = ve - vs;
+                        if (vlen > 136i64) { vlen = 136i64; }
+                        aria_libc_mem_write_i64(ent_ptr, eoff + 136i64, vlen);
+                        aria_libc_string_copy_to_buf(ent_ptr, eoff + 144i64, text, vs, vlen);
+                        aria_libc_mem_write_i64(slot, 24i64, nent + 1i64);
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove empty global section if it has no entries
+    int64:nsec = aria_libc_mem_read_i64(slot, 8i64);
+    if (nsec > 0i64) {
+        int64:gname_len = aria_libc_mem_read_i64(sec_ptr, 0i64);
+        if (gname_len == 0i64) {
+            int32:gcnt = raw _ini_count_for_sec(0i32);
+            if (gcnt == 0i32) {
+                // Shift sections down
+                int64:si = 0i64;
+                loop(0i64, nsec - 1i64, 1i64) {
+                    int64:doff = si * 136i64;
+                    int64:soff = (si + 1i64) * 136i64;
+                    int64:snlen = aria_libc_mem_read_i64(sec_ptr, soff);
+                    aria_libc_mem_write_i64(sec_ptr, doff, snlen);
+                    int64:j = 0i64;
+                    loop(0i64, snlen, 1i64) {
+                        int32:bv = aria_libc_mem_read_byte(sec_ptr, soff + 8i64 + j);
+                        aria_libc_mem_write_byte(sec_ptr, doff + 8i64 + j, bv);
+                        j = j + 1i64;
+                    }
+                    si = si + 1i64;
+                }
+                nsec = nsec - 1i64;
+                aria_libc_mem_write_i64(slot, 8i64, nsec);
+                // Decrement all entry section_idx by 1
+                int64:nent = aria_libc_mem_read_i64(slot, 24i64);
+                int64:ei = 0i64;
+                loop(0i64, nent, 1i64) {
+                    int64:eoff = ei * 280i64;
+                    int64:esec = aria_libc_mem_read_i64(ent_ptr, eoff);
+                    aria_libc_mem_write_i64(ent_ptr, eoff, esec - 1i64);
+                    ei = ei + 1i64;
+                }
+            }
+        }
+    }
+
+    pass @cast<int32>(aria_libc_mem_read_i64(slot, 8i64));
 };
 
 pub func:ini_num_sections = int32() {
-    int32:r = aria_ini_num_sections();
-    pass r;
+    drop _ini_init();
+    int64:slot = raw _ini_buf();
+    pass @cast<int32>(aria_libc_mem_read_i64(slot, 8i64));
 };
 
 pub func:ini_section_name = string(int32:idx) {
-    int32:s = aria_ini_section_name_s(idx);
-    string:r = aria_ini_last_result();
-    pass r;
+    drop _ini_init();
+    int64:slot = raw _ini_buf();
+    int64:sec_ptr = aria_libc_mem_read_i64(slot, 16i64);
+    int64:nsec = aria_libc_mem_read_i64(slot, 8i64);
+    int64:i64idx = @cast<int64>(idx);
+    if (i64idx < 0i64) { pass ""; }
+    if (i64idx >= nsec) { pass ""; }
+    int64:soff = i64idx * 136i64;
+    int64:nlen = aria_libc_mem_read_i64(sec_ptr, soff);
+    if (nlen == 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(sec_ptr, soff + 8i64, nlen);
 };
 
 pub func:ini_num_keys = int32(string:section) {
-    int32:r = aria_ini_num_keys(section);
-    pass r;
+    drop _ini_init();
+    int32:si = raw _ini_find_sec_str(section);
+    if (si < 0i32) { pass 0i32; }
+    pass raw _ini_count_for_sec(si);
 };
 
 pub func:ini_get = string(string:section, string:key) {
-    int32:s = aria_ini_get_s(section, key);
-    string:r = aria_ini_last_result();
-    pass r;
+    drop _ini_init();
+    int32:si = raw _ini_find_sec_str(section);
+    if (si < 0i32) { pass ""; }
+    int64:slot = raw _ini_buf();
+    int64:klen = aria_libc_string_strlen(key);
+    if (klen > 128i64) { klen = 128i64; }
+    aria_libc_string_copy_to_buf(slot, 168i64, key, 0i64, klen);
+    int32:ei = raw _ini_find_entry(si, klen);
+    if (ei < 0i32) { pass ""; }
+    int64:ent_ptr = aria_libc_mem_read_i64(slot, 32i64);
+    int64:eoff = @cast<int64>(ei) * 280i64;
+    int64:vlen = aria_libc_mem_read_i64(ent_ptr, eoff + 136i64);
+    pass aria_libc_string_from_buf(ent_ptr, eoff + 144i64, vlen);
 };
 
 pub func:ini_has_key = int32(string:section, string:key) {
-    int32:r = aria_ini_has_key(section, key);
-    pass r;
+    drop _ini_init();
+    int32:si = raw _ini_find_sec_str(section);
+    if (si < 0i32) { pass 0i32; }
+    int64:slot = raw _ini_buf();
+    int64:klen = aria_libc_string_strlen(key);
+    if (klen > 128i64) { klen = 128i64; }
+    aria_libc_string_copy_to_buf(slot, 168i64, key, 0i64, klen);
+    int32:ei = raw _ini_find_entry(si, klen);
+    if (ei >= 0i32) { pass 1i32; }
+    pass 0i32;
 };
 
-extern "aria_ini_shim" {
-    func:aria_ini_cleanup = void();
-}
-
 pub func:ini_cleanup = NIL() {
-    aria_ini_cleanup();
+    drop _ini_init();
+    int64:slot = raw _ini_buf();
+    aria_libc_mem_write_i64(slot, 8i64, 0i64);
+    aria_libc_mem_write_i64(slot, 24i64, 0i64);
     pass NIL;
 };

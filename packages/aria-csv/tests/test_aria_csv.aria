@@ -1,70 +1,73 @@
-// test_aria_csv.aria — Parse tests for aria-csv (C-side assertions)
-// Uses <=7 externs to stay under compiler complexity limit.
-// All string comparisons happen in C-side assertion helpers.
+// test_aria_csv.aria — Parse tests for aria-csv (pure Aria, 15 tests)
+
+use "../src/aria_csv.aria".*;
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern func:aria_csv_parse          = int32(string:csv_text);
-extern func:aria_csv_num_cols       = int32();
-extern func:aria_csv_cleanup        = void();
-extern func:aria_csv_assert_int_eq  = void(int32:actual, int32:expected, string:msg);
-extern func:aria_csv_assert_true    = void(int32:val, string:msg);
-extern func:aria_csv_assert_field_eq = void(int32:row, int32:col, string:expected, string:msg);
-extern func:aria_csv_test_summary   = void();
+func:_check_int = NIL(int32:got, int32:expected, string:label) {
+    if (got == expected) { drop println(label); }
+    if (got != expected) {
+        drop print("[FAIL instead of ");
+        drop print(label);
+        drop println("]");
+    }
+    pass NIL;
+};
+
+func:_check_field = NIL(int32:row, int32:col_p, string:expected, string:label) {
+    string:got = raw csv_get(row, col_p);
+    int32:c = aria_libc_string_strcmp(got, expected);
+    if (c == 0i32) { drop println(label); }
+    if (c != 0i32) {
+        drop print("[FAIL instead of ");
+        drop print(label);
+        drop print("] got=");
+        drop println(got);
+    }
+    pass NIL;
+};
 
 func:main = int32() {
-    // ── test 01: parse simple CSV ──────────────────────────────
-    int32:rows = aria_csv_parse("name,age,city\nAlice,30,NYC\nBob,25,LA\n");
-    aria_csv_assert_int_eq(rows, 3i32, "test 01: parsed 3 rows");
+    // T01: parse simple CSV
+    int32:rows = raw csv_parse("name,age,city\nAlice,30,NYC\nBob,25,LA\n");
+    drop _check_int(rows, 3i32, "[PASS] T01 parsed 3 rows");
 
-    // ── test 02: num_cols ──────────────────────────────────────
-    int32:cols = aria_csv_num_cols();
-    aria_csv_assert_int_eq(cols, 3i32, "test 02: 3 columns");
+    // T02: num_cols
+    int32:cols = raw csv_num_cols();
+    drop _check_int(cols, 3i32, "[PASS] T02 3 columns");
 
-    // ── test 03: header field ──────────────────────────────────
-    aria_csv_assert_field_eq(0i32, 0i32, "name", "test 03: header[0]=name");
+    // T03-05: header fields
+    drop _check_field(0i32, 0i32, "name", "[PASS] T03 header[0]=name");
+    drop _check_field(0i32, 1i32, "age", "[PASS] T04 header[1]=age");
+    drop _check_field(0i32, 2i32, "city", "[PASS] T05 header[2]=city");
 
-    // ── test 04: header field 1 ────────────────────────────────
-    aria_csv_assert_field_eq(0i32, 1i32, "age", "test 04: header[1]=age");
+    // T06-07: data row 1
+    drop _check_field(1i32, 0i32, "Alice", "[PASS] T06 row1[0]=Alice");
+    drop _check_field(1i32, 1i32, "30", "[PASS] T07 row1[1]=30");
 
-    // ── test 05: header field 2 ────────────────────────────────
-    aria_csv_assert_field_eq(0i32, 2i32, "city", "test 05: header[2]=city");
+    // T08-09: data row 2
+    drop _check_field(2i32, 0i32, "Bob", "[PASS] T08 row2[0]=Bob");
+    drop _check_field(2i32, 2i32, "LA", "[PASS] T09 row2[2]=LA");
 
-    // ── test 06: data row 1 ────────────────────────────────────
-    aria_csv_assert_field_eq(1i32, 0i32, "Alice", "test 06: row1[0]=Alice");
+    // T10-11: quoted field with comma
+    int32:qrows = raw csv_parse("a,\"b,c\",d\n");
+    drop _check_int(qrows, 1i32, "[PASS] T10 quoted CSV 1 row");
+    drop _check_field(0i32, 1i32, "b,c", "[PASS] T11 quoted field=b,c");
 
-    // ── test 07: data row 1 age ────────────────────────────────
-    aria_csv_assert_field_eq(1i32, 1i32, "30", "test 07: row1[1]=30");
+    // T12: empty input
+    int32:erows = raw csv_parse("");
+    drop _check_int(erows, 0i32, "[PASS] T12 empty input 0 rows");
 
-    // ── test 08: data row 2 ────────────────────────────────────
-    aria_csv_assert_field_eq(2i32, 0i32, "Bob", "test 08: row2[0]=Bob");
+    // T13-14: single field
+    int32:sf = raw csv_parse("hello\n");
+    drop _check_int(sf, 1i32, "[PASS] T13 single field 1 row");
+    drop _check_field(0i32, 0i32, "hello", "[PASS] T14 single field=hello");
 
-    // ── test 09: data row 2 col 2 ──────────────────────────────
-    aria_csv_assert_field_eq(2i32, 2i32, "LA", "test 09: row2[2]=LA");
+    // T15: multi-row count
+    int32:mr = raw csv_parse("a\nb\nc\nd\n");
+    drop _check_int(mr, 4i32, "[PASS] T15 multi-row 4 rows");
 
-    // ── test 10: quoted field with comma ────────────────────────
-    int32:qrows = aria_csv_parse("a,\"b,c\",d\n");
-    aria_csv_assert_int_eq(qrows, 1i32, "test 10: quoted CSV 1 row");
-    aria_csv_assert_field_eq(0i32, 1i32, "b,c", "test 11: quoted field=b,c");
-
-    // ── test 12: empty input ───────────────────────────────────
-    int32:empty = aria_csv_parse("");
-    aria_csv_assert_int_eq(empty, 0i32, "test 12: empty input 0 rows");
-
-    // ── test 13: single field ──────────────────────────────────
-    int32:sf = aria_csv_parse("hello\n");
-    aria_csv_assert_int_eq(sf, 1i32, "test 13: single field 1 row");
-    aria_csv_assert_field_eq(0i32, 0i32, "hello", "test 14: single field=hello");
-
-    // ── test 15: multi-row count ───────────────────────────────
-    int32:mr = aria_csv_parse("a\nb\nc\nd\n");
-    aria_csv_assert_int_eq(mr, 4i32, "test 15: multi-row 4 rows");
-
-    // ── cleanup ────────────────────────────────────────────────
-    aria_csv_cleanup();
-
-    // ── summary ────────────────────────────────────────────────
-    aria_csv_test_summary();
+    drop csv_cleanup();
 
     exit 0;
 };

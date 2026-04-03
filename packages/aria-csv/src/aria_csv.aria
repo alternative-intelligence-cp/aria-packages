@@ -1,81 +1,331 @@
-// aria_csv.aria — CSV parser and writer for Aria
-//
-// RFC 4180 compliant. Parse CSV text into a row×column grid,
-// or build CSV output field-by-field.
-// Requires: libaria_csv_shim.so
+// aria_csv.aria — Pure Aria CSV parser/writer (no C shim)
+// RFC 4180 compliant: quoted fields, embedded commas, escaped quotes
+// Global slot 26 — max 512 rows × 64 cols
 
-extern "aria_csv_shim" {
-    // parsing
-    func:aria_csv_parse    = int32(string:csv_text);
-    func:aria_csv_num_rows = int32();
-    func:aria_csv_num_cols = int32();
-    func:aria_csv_get_s    = int32(int32:row, int32:col);
-    func:aria_csv_last_result = string();
-
-    // writing
-    func:aria_csv_write_begin    = void();
-    func:aria_csv_write_field    = void(string:value);
-    func:aria_csv_write_row_end  = void();
-    func:aria_csv_write_result   = string();
-    func:aria_csv_write_length   = int32();
-
-    // cleanup
-    func:aria_csv_cleanup = void();
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_free       = NIL(int64:ptr);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:off);
+    func:aria_libc_mem_write_i64  = NIL(int64:ptr, int64:off, int64:val);
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:off);
+    func:aria_libc_mem_write_byte = NIL(int64:ptr, int64:off, int32:val);
+    func:aria_libc_mem_get_global = int64(int32:slot);
 }
 
-// ── public API: parsing ─────────────────────────────────────────────
+extern "aria_libc_mem" {
+    func:aria_libc_mem_set_global = NIL(int32:slot, int64:ptr);
+    func:aria_libc_mem_zero       = NIL(int64:ptr, int64:size);
+}
 
-pub func:csv_parse = int32(string:text) {
-    int32:r = aria_csv_parse(text);
-    pass r;
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen   = int64(string:s);
+    func:aria_libc_string_from_buf = string(int64:buf, int64:off, int64:len);
+    func:aria_libc_string_byte_at  = int32(string:s, int64:idx);
+    func:aria_libc_string_strcmp   = int32(string:a, string:b);
+}
+
+// Slot 26 layout (88 bytes):
+// [0]  init       [8]  idx_ptr (524288 B)
+// [16] data_ptr (524288 B)  [24] data_pos
+// [32] num_rows   [40] num_cols
+// [48] wr_ptr (65536 B)     [56] wr_len
+// [64] wr_col
+
+func:_csv_buf = int64() { pass aria_libc_mem_get_global(26i32); };
+
+func:_csv_init = NIL() {
+    int64:ptr = raw _csv_buf();
+    if (ptr > 0i64) {
+        int64:flag = aria_libc_mem_read_i64(ptr, 0i64);
+        if (flag == 1i64) { pass NIL; }
+    }
+    int64:slot = aria_libc_mem_malloc(88i64);
+    aria_libc_mem_set_global(26i32, slot);
+    int64:idx = aria_libc_mem_malloc(524288i64);
+    aria_libc_mem_write_i64(slot, 8i64, idx);
+    int64:dat = aria_libc_mem_malloc(524288i64);
+    aria_libc_mem_write_i64(slot, 16i64, dat);
+    aria_libc_mem_write_i64(slot, 24i64, 0i64);
+    aria_libc_mem_write_i64(slot, 32i64, 0i64);
+    aria_libc_mem_write_i64(slot, 40i64, 0i64);
+    int64:wr = aria_libc_mem_malloc(65536i64);
+    aria_libc_mem_write_i64(slot, 48i64, wr);
+    aria_libc_mem_write_i64(slot, 56i64, 0i64);
+    aria_libc_mem_write_i64(slot, 64i64, 0i64);
+    aria_libc_mem_write_i64(slot, 0i64, 1i64);
+    pass NIL;
 };
 
+// ── Parsing ─────────────────────────────────────────────────────
+
+pub func:csv_parse = int32(string:text) {
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:idx_ptr  = aria_libc_mem_read_i64(slot, 8i64);
+    int64:data_ptr = aria_libc_mem_read_i64(slot, 16i64);
+
+    int64:slen = aria_libc_string_strlen(text);
+    if (slen == 0i64) {
+        aria_libc_mem_write_i64(slot, 24i64, 0i64);
+        aria_libc_mem_write_i64(slot, 32i64, 0i64);
+        aria_libc_mem_write_i64(slot, 40i64, 0i64);
+        pass 0i32;
+    }
+
+    int64:posn = 0i64;
+    int32:row = 0i32;
+    int32:col = 0i32;
+    int64:dpos = 0i64;
+    int32:ncols = 0i32;
+
+    // Outer loop: one field per iteration (max slen+1 fields)
+    loop(0i64, slen + 1i64, 1i64) {
+        if (posn < slen) {
+            int64:fstart = dpos;
+            int32:ch = aria_libc_string_byte_at(text, posn);
+
+            if (ch == 34i32) {
+                // ── QUOTED FIELD ──
+                posn = posn + 1i64;
+                int32:qdone = 0i32;
+                loop(0i64, slen, 1i64) {
+                    if (qdone == 0i32) {
+                        if (posn < slen) {
+                            int32:qc = aria_libc_string_byte_at(text, posn);
+                            if (qc == 34i32) {
+                                int32:niq = 0i32;
+                                if (posn + 1i64 < slen) {
+                                    if (aria_libc_string_byte_at(text, posn + 1i64) == 34i32) {
+                                        niq = 1i32;
+                                    }
+                                }
+                                if (niq == 1i32) {
+                                    aria_libc_mem_write_byte(data_ptr, dpos, 34i32);
+                                    dpos = dpos + 1i64;
+                                    posn = posn + 2i64;
+                                }
+                                if (niq == 0i32) {
+                                    posn = posn + 1i64;
+                                    qdone = 1i32;
+                                }
+                            }
+                            if (qc != 34i32) {
+                                aria_libc_mem_write_byte(data_ptr, dpos, qc);
+                                dpos = dpos + 1i64;
+                                posn = posn + 1i64;
+                            }
+                        }
+                        if (posn >= slen) { qdone = 1i32; }
+                    }
+                }
+            }
+
+            if (ch != 34i32) {
+                // ── UNQUOTED FIELD ──
+                int32:udone = 0i32;
+                loop(0i64, slen, 1i64) {
+                    if (udone == 0i32) {
+                        if (posn < slen) {
+                            int32:uc = aria_libc_string_byte_at(text, posn);
+                            int32:is_dlm = 0i32;
+                            if (uc == 44i32) { is_dlm = 1i32; }
+                            if (uc == 10i32) { is_dlm = 1i32; }
+                            if (uc == 13i32) { is_dlm = 1i32; }
+                            if (is_dlm == 0i32) {
+                                aria_libc_mem_write_byte(data_ptr, dpos, uc);
+                                dpos = dpos + 1i64;
+                                posn = posn + 1i64;
+                            }
+                            if (is_dlm == 1i32) { udone = 1i32; }
+                        }
+                        if (posn >= slen) { udone = 1i32; }
+                    }
+                }
+            }
+
+            // Store field in index: cell = row*64+col, each cell 16 bytes
+            int64:flen = dpos - fstart;
+            int64:cidx = @cast<int64>(row) * 64i64 + @cast<int64>(col);
+            int64:ioff = cidx * 16i64;
+            aria_libc_mem_write_i64(idx_ptr, ioff, fstart);
+            aria_libc_mem_write_i64(idx_ptr, ioff + 8i64, flen);
+            col = col + 1i32;
+
+            // Handle delimiter
+            int32:dhandled = 0i32;
+            if (posn < slen) {
+                int32:dc = aria_libc_string_byte_at(text, posn);
+                if (dc == 44i32) {
+                    posn = posn + 1i64;
+                    dhandled = 1i32;
+                }
+                if (dc == 13i32) {
+                    if (dhandled == 0i32) {
+                        posn = posn + 1i64;
+                        if (posn < slen) {
+                            if (aria_libc_string_byte_at(text, posn) == 10i32) {
+                                posn = posn + 1i64;
+                            }
+                        }
+                        if (row == 0i32) { ncols = col; }
+                        row = row + 1i32;
+                        col = 0i32;
+                        dhandled = 1i32;
+                    }
+                }
+                if (dc == 10i32) {
+                    if (dhandled == 0i32) {
+                        posn = posn + 1i64;
+                        if (row == 0i32) { ncols = col; }
+                        row = row + 1i32;
+                        col = 0i32;
+                        dhandled = 1i32;
+                    }
+                }
+            }
+            if (posn >= slen) {
+                if (dhandled == 0i32) {
+                    if (row == 0i32) { ncols = col; }
+                    row = row + 1i32;
+                    col = 0i32;
+                }
+            }
+        }
+    }
+
+    aria_libc_mem_write_i64(slot, 24i64, dpos);
+    aria_libc_mem_write_i64(slot, 32i64, @cast<int64>(row));
+    aria_libc_mem_write_i64(slot, 40i64, @cast<int64>(ncols));
+    pass row;
+};
+
+// ── Accessors ───────────────────────────────────────────────────
+
 pub func:csv_num_rows = int32() {
-    int32:r = aria_csv_num_rows();
-    pass r;
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:nr = aria_libc_mem_read_i64(slot, 32i64);
+    pass @cast<int32>(nr);
 };
 
 pub func:csv_num_cols = int32() {
-    int32:r = aria_csv_num_cols();
-    pass r;
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:nc = aria_libc_mem_read_i64(slot, 40i64);
+    pass @cast<int32>(nc);
 };
 
-pub func:csv_get = string(int32:row, int32:col) {
-    int32:status = aria_csv_get_s(row, col);
-    string:r = aria_csv_last_result();
-    pass r;
+pub func:csv_get = string(int32:row, int32:col_param) {
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:nr = aria_libc_mem_read_i64(slot, 32i64);
+    int64:idx_ptr  = aria_libc_mem_read_i64(slot, 8i64);
+    int64:data_ptr = aria_libc_mem_read_i64(slot, 16i64);
+
+    if (@cast<int64>(row) < 0i64) { pass ""; }
+    if (@cast<int64>(row) >= nr) { pass ""; }
+    if (@cast<int64>(col_param) < 0i64) { pass ""; }
+    if (@cast<int64>(col_param) >= 64i64) { pass ""; }
+
+    int64:cidx = @cast<int64>(row) * 64i64 + @cast<int64>(col_param);
+    int64:ioff = cidx * 16i64;
+    int64:foff = aria_libc_mem_read_i64(idx_ptr, ioff);
+    int64:flen = aria_libc_mem_read_i64(idx_ptr, ioff + 8i64);
+
+    if (flen == 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(data_ptr, foff, flen);
 };
 
-// ── public API: writing ─────────────────────────────────────────────
+// ── Writer ──────────────────────────────────────────────────────
 
 pub func:csv_write_begin = NIL() {
-    aria_csv_write_begin();
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    aria_libc_mem_write_i64(slot, 56i64, 0i64);
+    aria_libc_mem_write_i64(slot, 64i64, 0i64);
+    pass NIL;
+};
+
+func:_csv_wr_byte = NIL(int32:byte_val) {
+    int64:slot = raw _csv_buf();
+    int64:wr = aria_libc_mem_read_i64(slot, 48i64);
+    int64:wlen = aria_libc_mem_read_i64(slot, 56i64);
+    aria_libc_mem_write_byte(wr, wlen, byte_val);
+    aria_libc_mem_write_i64(slot, 56i64, wlen + 1i64);
     pass NIL;
 };
 
 pub func:csv_write_field = NIL(string:value) {
-    aria_csv_write_field(value);
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:wcol = aria_libc_mem_read_i64(slot, 64i64);
+    if (wcol > 0i64) { drop _csv_wr_byte(44i32); }
+
+    int64:vlen = aria_libc_string_strlen(value);
+    // Check if quoting needed
+    int32:need_q = 0i32;
+    int64:qi = 0i64;
+    loop(0i64, vlen, 1i64) {
+        if (need_q == 0i32) {
+            int32:qch = aria_libc_string_byte_at(value, qi);
+            if (qch == 44i32) { need_q = 1i32; }
+            if (qch == 34i32) { need_q = 1i32; }
+            if (qch == 10i32) { need_q = 1i32; }
+            if (qch == 13i32) { need_q = 1i32; }
+        }
+        qi = qi + 1i64;
+    }
+
+    if (need_q == 1i32) {
+        drop _csv_wr_byte(34i32);
+        int64:wi = 0i64;
+        loop(0i64, vlen, 1i64) {
+            int32:wch = aria_libc_string_byte_at(value, wi);
+            if (wch == 34i32) {
+                drop _csv_wr_byte(34i32);
+                drop _csv_wr_byte(34i32);
+            }
+            if (wch != 34i32) { drop _csv_wr_byte(wch); }
+            wi = wi + 1i64;
+        }
+        drop _csv_wr_byte(34i32);
+    }
+    if (need_q == 0i32) {
+        int64:wi2 = 0i64;
+        loop(0i64, vlen, 1i64) {
+            drop _csv_wr_byte(aria_libc_string_byte_at(value, wi2));
+            wi2 = wi2 + 1i64;
+        }
+    }
+    aria_libc_mem_write_i64(slot, 64i64, wcol + 1i64);
     pass NIL;
 };
 
 pub func:csv_write_row_end = NIL() {
-    aria_csv_write_row_end();
+    drop _csv_wr_byte(10i32);
+    int64:slot = raw _csv_buf();
+    aria_libc_mem_write_i64(slot, 64i64, 0i64);
     pass NIL;
 };
 
 pub func:csv_write_result = string() {
-    string:r = aria_csv_write_result();
-    pass r;
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:wr = aria_libc_mem_read_i64(slot, 48i64);
+    int64:wlen = aria_libc_mem_read_i64(slot, 56i64);
+    if (wlen == 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(wr, 0i64, wlen);
 };
 
 pub func:csv_write_length = int32() {
-    int32:r = aria_csv_write_length();
-    pass r;
+    drop _csv_init();
+    int64:slot = raw _csv_buf();
+    int64:wlen = aria_libc_mem_read_i64(slot, 56i64);
+    pass @cast<int32>(wlen);
 };
 
-// ── public API: cleanup ─────────────────────────────────────────────
+// ── Cleanup ─────────────────────────────────────────────────────
 
 pub func:csv_cleanup = NIL() {
-    aria_csv_cleanup();
     pass NIL;
 };

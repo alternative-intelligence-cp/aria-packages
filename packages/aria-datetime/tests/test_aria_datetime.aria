@@ -1,28 +1,29 @@
-// test_aria_datetime.aria — Time basics (C-side assertions)
+// test_aria_datetime.aria — Time basics (4 tests)
+
+use "../src/aria_datetime.aria".*;
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern func:aria_datetime_now              = int64();
-extern func:aria_datetime_now_ms           = int64();
-extern func:aria_datetime_now_us           = int64();
-extern func:aria_datetime_monotonic_ms     = int64();
-extern func:aria_datetime_assert_int64_positive = void(int64:val, string:msg);
-extern func:aria_datetime_assert_int64_gt  = void(int64:a, int64:b, string:msg);
-extern func:aria_datetime_test_summary     = void();
-
 func:main = int32() {
-    int64:now = aria_datetime_now();
-    aria_datetime_assert_int64_positive(now, "test 01: now > 0");
+    // T01: now > 0
+    int64:now = raw dt_now();
+    if (now > 0i64) { drop println("[PASS] T01 now > 0"); }
+    if (now <= 0i64) { drop println("[FAIL] T01 now > 0"); }
 
-    int64:now_ms = aria_datetime_now_ms();
-    aria_datetime_assert_int64_positive(now_ms, "test 02: now_ms > 0");
+    // T02: now_ms > 0
+    int64:ms = raw dt_now_ms();
+    if (ms > 0i64) { drop println("[PASS] T02 now_ms > 0"); }
+    if (ms <= 0i64) { drop println("[FAIL] T02 now_ms > 0"); }
 
-    int64:now_us = aria_datetime_now_us();
-    aria_datetime_assert_int64_gt(now_us, now_ms, "test 03: now_us > now_ms");
+    // T03: now_us > now_ms
+    int64:us = raw dt_now_us();
+    if (us > ms) { drop println("[PASS] T03 now_us > now_ms"); }
+    if (us <= ms) { drop println("[FAIL] T03 now_us > now_ms"); }
 
-    int64:mono = aria_datetime_monotonic_ms();
-    aria_datetime_assert_int64_positive(mono, "test 04: monotonic > 0");
+    // T04: monotonic > 0
+    int64:mono = raw dt_monotonic_ms();
+    if (mono > 0i64) { drop println("[PASS] T04 monotonic > 0"); }
+    if (mono <= 0i64) { drop println("[FAIL] T04 monotonic > 0"); }
 
-    aria_datetime_test_summary();
     exit 0;
 };

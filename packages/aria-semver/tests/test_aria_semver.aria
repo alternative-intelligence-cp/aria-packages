@@ -1,62 +1,65 @@
-// test_aria_semver.aria — SemVer tests (8 tests)
+// test_aria_semver.aria — SemVer tests (pure Aria, 10 tests)
+
+use "../src/aria_semver.aria".*;
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int64(string:a, string:b);
+}
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern "aria_semver_shim" {
-    func:aria_semver_parse          = int32(string:version);
-    func:aria_semver_get_major      = int32();
-    func:aria_semver_get_minor      = int32();
-    func:aria_semver_get_patch      = int32();
-    func:aria_semver_get_prerelease = string();
-    func:aria_semver_get_build      = string();
-    func:aria_semver_to_string      = string();
-    func:aria_semver_compare        = int32(string:a, string:b);
-    func:aria_semver_satisfies      = int32(string:version, string:constraint);
-    func:aria_semver_bump_major     = string(string:version);
-    func:aria_semver_bump_minor     = string(string:version);
-    func:aria_semver_bump_patch     = string(string:version);
-}
-
 func:main = int32() {
-    // T01: parse
-    int32:r1 = aria_semver_parse("1.2.3");
-    if (r1 == 1i32) { drop println("[PASS] T01 parse"); }
-    if (r1 != 1i32) { drop println("[FAIL] T01 parse"); }
+    // T01: parse basic version
+    int32:r1 = raw semver_parse("1.2.3");
+    if (r1 == 1i32) { println("[PASS] T01 parse"); }
+    if (r1 != 1i32) { println("[FAIL] T01 parse"); }
 
     // T02: major
-    int32:maj = aria_semver_get_major();
-    if (maj == 1i32) { drop println("[PASS] T02 major"); }
-    if (maj != 1i32) { drop println("[FAIL] T02 major"); }
+    int32:maj = raw semver_get_major();
+    if (maj == 1i32) { println("[PASS] T02 major"); }
+    if (maj != 1i32) { println("[FAIL] T02 major"); }
 
     // T03: minor
-    int32:min = aria_semver_get_minor();
-    if (min == 2i32) { drop println("[PASS] T03 minor"); }
-    if (min != 2i32) { drop println("[FAIL] T03 minor"); }
+    int32:mii = raw semver_get_minor();
+    if (mii == 2i32) { println("[PASS] T03 minor"); }
+    if (mii != 2i32) { println("[FAIL] T03 minor"); }
 
     // T04: patch
-    int32:pat = aria_semver_get_patch();
-    if (pat == 3i32) { drop println("[PASS] T04 patch"); }
-    if (pat != 3i32) { drop println("[FAIL] T04 patch"); }
+    int32:pat = raw semver_get_patch();
+    if (pat == 3i32) { println("[PASS] T04 patch"); }
+    if (pat != 3i32) { println("[FAIL] T04 patch"); }
 
-    // T05: compare equal
-    int32:c1 = aria_semver_compare("1.0.0", "1.0.0");
-    if (c1 == 0i32) { drop println("[PASS] T05 compare equal"); }
-    if (c1 != 0i32) { drop println("[FAIL] T05 compare equal"); }
+    // T05: to_string roundtrip
+    string:sv = raw semver_to_string();
+    int64:cmp = aria_libc_string_strcmp(sv, "1.2.3");
+    if (cmp == 0i64) { println("[PASS] T05 to_string"); }
+    if (cmp != 0i64) { println("[FAIL] T05 to_string"); }
 
-    // T06: compare less
-    int32:c2 = aria_semver_compare("1.0.0", "2.0.0");
-    if (c2 == -1i32) { drop println("[PASS] T06 compare less"); }
-    if (c2 != -1i32) { drop println("[FAIL] T06 compare less"); }
+    // T06: compare equal
+    int32:c1 = raw semver_compare("1.0.0", "1.0.0");
+    if (c1 == 0i32) { println("[PASS] T06 compare equal"); }
+    if (c1 != 0i32) { println("[FAIL] T06 compare equal"); }
 
-    // T07: compare greater
-    int32:c3 = aria_semver_compare("2.1.0", "1.9.0");
-    if (c3 == 1i32) { drop println("[PASS] T07 compare greater"); }
-    if (c3 != 1i32) { drop println("[FAIL] T07 compare greater"); }
+    // T07: compare less
+    int32:c2 = raw semver_compare("1.0.0", "2.0.0");
+    if (c2 == -1i32) { println("[PASS] T07 compare less"); }
+    if (c2 != -1i32) { println("[FAIL] T07 compare less"); }
 
-    // T08: satisfies
-    int32:s1 = aria_semver_satisfies("1.2.3", ">=1.0.0");
-    if (s1 == 1i32) { drop println("[PASS] T08 satisfies"); }
-    if (s1 != 1i32) { drop println("[FAIL] T08 satisfies"); }
+    // T08: compare greater
+    int32:c3 = raw semver_compare("2.1.0", "1.9.0");
+    if (c3 == 1i32) { println("[PASS] T08 compare greater"); }
+    if (c3 != 1i32) { println("[FAIL] T08 compare greater"); }
+
+    // T09: satisfies
+    int32:s1 = raw semver_satisfies("1.2.3", ">=1.0.0");
+    if (s1 == 1i32) { println("[PASS] T09 satisfies"); }
+    if (s1 != 1i32) { println("[FAIL] T09 satisfies"); }
+
+    // T10: bump_major
+    string:bm = raw semver_bump_major("1.2.3");
+    int64:bc = aria_libc_string_strcmp(bm, "2.0.0");
+    if (bc == 0i64) { println("[PASS] T10 bump_major"); }
+    if (bc != 0i64) { println("[FAIL] T10 bump_major"); }
 
     exit 0;
 };

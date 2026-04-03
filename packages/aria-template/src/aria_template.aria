@@ -1,39 +1,282 @@
-// aria_template.aria — String template engine for Aria
+// aria_template.aria — Pure Aria template engine (no C shim)
+// {{var}} substitution — global slot 22
+// Layout: keys buffer (128 * 128), vals buffer (128 * 4096), output (65536)
 
-extern "aria_template_shim" {
-    func:aria_template_set    = int32(string:key, string:value);
-    func:aria_template_get    = string(string:key);
-    func:aria_template_render = string(string:tmpl);
-    func:aria_template_clear  = void();
-    func:aria_template_count  = int32();
-    func:aria_template_has    = int32(string:key);
-    func:aria_template_remove = int32(string:key);
+// ── Extern: aria_libc_mem ──
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:off);
+    func:aria_libc_mem_write_i64  = NIL(int64:ptr, int64:off, int64:val);
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:off);
+    func:aria_libc_mem_write_byte = NIL(int64:ptr, int64:off, int32:val);
+    func:aria_libc_mem_get_global = int64(int32:slot);
+    func:aria_libc_mem_set_global = NIL(int32:slot, int64:ptr);
 }
 
-pub func:set = int32(string:key, string:value) {
-    pass aria_template_set(key, value);
+// ── Extern: aria_libc_string ──
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen      = int64(string:s);
+    func:aria_libc_string_strcmp      = int32(string:a, string:b);
+    func:aria_libc_string_from_buf    = string(int64:buf, int64:off, int64:len);
+    func:aria_libc_string_copy_to_buf = NIL(int64:buf, int64:off, string:src, int64:soff, int64:slen);
+    func:aria_libc_string_byte_at     = int32(string:s, int64:idx);
+    func:aria_libc_string_indexof_from= int64(string:s, string:needle, int64:from);
+}
+
+// ── Slot 22: template state ──
+// [0]   init flag
+// [8]   var_count
+// [16]  keys_ptr  (malloc: 128 * 128 = 16384)
+// [24]  vals_ptr  (malloc: 128 * 4096 = 524288)
+// [32]  out_ptr   (malloc: 65536)
+// [40..167] scratch for key matching (128 bytes)
+
+func:_tpl_buf = int64() {
+    pass aria_libc_mem_get_global(22i32);
 };
 
-pub func:get = string(string:key) {
-    pass aria_template_get(key);
+func:_tpl_init = NIL() {
+    int64:ptr = raw _tpl_buf();
+    if (ptr > 0i64) {
+        int64:flag = aria_libc_mem_read_i64(ptr, 0i64);
+        if (flag == 1i64) { pass NIL; }
+    }
+    int64:slot = aria_libc_mem_malloc(256i64);
+    aria_libc_mem_set_global(22i32, slot);
+    aria_libc_mem_write_i64(slot, 8i64, 0i64);
+    int64:keys = aria_libc_mem_malloc(16384i64);
+    aria_libc_mem_write_i64(slot, 16i64, keys);
+    int64:vals = aria_libc_mem_malloc(524288i64);
+    aria_libc_mem_write_i64(slot, 24i64, vals);
+    int64:outb = aria_libc_mem_malloc(65536i64);
+    aria_libc_mem_write_i64(slot, 32i64, outb);
+    aria_libc_mem_write_i64(slot, 0i64, 1i64);
+    pass NIL;
 };
 
-pub func:render = string(string:tmpl) {
-    pass aria_template_render(tmpl);
+// ── Find key in scratch [40..40+nlen] via byte compare ──
+func:_tpl_find_in_scratch = int32(int64:nlen) {
+    int64:slot = raw _tpl_buf();
+    int64:count = aria_libc_mem_read_i64(slot, 8i64);
+    int64:keys = aria_libc_mem_read_i64(slot, 16i64);
+    int32:result = 0i32 - 1i32;
+    int64:i = 0i64;
+    loop(0i64, count, 1i64) {
+        if (result < 0i32) {
+            int64:koff = i * 128i64;
+            int64:klen = aria_libc_mem_read_i64(keys, koff);
+            if (klen == nlen) {
+                int32:mmatch = 1i32;
+                int64:j = 0i64;
+                loop(0i64, nlen, 1i64) {
+                    if (mmatch == 1i32) {
+                        int32:a = aria_libc_mem_read_byte(slot, 40i64 + j);
+                        int32:b = aria_libc_mem_read_byte(keys, koff + 8i64 + j);
+                        if (a != b) { mmatch = 0i32; }
+                    }
+                    j = j + 1i64;
+                }
+                if (mmatch == 1i32) { result = @cast<int32>(i); }
+            }
+        }
+        i = i + 1i64;
+    }
+    pass result;
 };
 
-pub func:clear = void() {
-    aria_template_clear();
+// ── Find key by string — copies to scratch then searches ──
+func:_tpl_find = int32(string:needle) {
+    int64:slot = raw _tpl_buf();
+    int64:nlen = aria_libc_string_strlen(needle);
+    if (nlen > 120i64) { nlen = 120i64; }
+    aria_libc_string_copy_to_buf(slot, 40i64, needle, 0i64, nlen);
+    pass raw _tpl_find_in_scratch(nlen);
 };
 
-pub func:count = int32() {
-    pass aria_template_count();
+// ── Public API ──
+
+pub func:template_set = int32(string:key, string:value) {
+    drop _tpl_init();
+    int64:slot = raw _tpl_buf();
+    int64:keys = aria_libc_mem_read_i64(slot, 16i64);
+    int64:vals = aria_libc_mem_read_i64(slot, 24i64);
+    int64:klen = aria_libc_string_strlen(key);
+    int64:vlen = aria_libc_string_strlen(value);
+    if (klen > 120i64) { klen = 120i64; }
+    if (vlen > 4088i64) { vlen = 4088i64; }
+
+    int32:idx = raw _tpl_find(key);
+    if (idx >= 0i32) {
+        int64:voff = @cast<int64>(idx) * 4096i64;
+        aria_libc_mem_write_i64(vals, voff, vlen);
+        aria_libc_string_copy_to_buf(vals, voff + 8i64, value, 0i64, vlen);
+        pass 1i32;
+    }
+    int64:count = aria_libc_mem_read_i64(slot, 8i64);
+    if (count >= 128i64) { pass 0i32; }
+    int64:koff = count * 128i64;
+    aria_libc_mem_write_i64(keys, koff, klen);
+    aria_libc_string_copy_to_buf(keys, koff + 8i64, key, 0i64, klen);
+    int64:voff2 = count * 4096i64;
+    aria_libc_mem_write_i64(vals, voff2, vlen);
+    aria_libc_string_copy_to_buf(vals, voff2 + 8i64, value, 0i64, vlen);
+    aria_libc_mem_write_i64(slot, 8i64, count + 1i64);
+    pass 1i32;
 };
 
-pub func:has = int32(string:key) {
-    pass aria_template_has(key);
+pub func:template_get = string(string:key) {
+    drop _tpl_init();
+    int32:idx = raw _tpl_find(key);
+    if (idx < 0i32) { pass ""; }
+    int64:slot = raw _tpl_buf();
+    int64:vals = aria_libc_mem_read_i64(slot, 24i64);
+    int64:voff = @cast<int64>(idx) * 4096i64;
+    int64:vlen = aria_libc_mem_read_i64(vals, voff);
+    pass aria_libc_string_from_buf(vals, voff + 8i64, vlen);
 };
 
-pub func:remove = int32(string:key) {
-    pass aria_template_remove(key);
+pub func:template_render = string(string:tmpl) {
+    drop _tpl_init();
+    int64:slot = raw _tpl_buf();
+    int64:out_ptr = aria_libc_mem_read_i64(slot, 32i64);
+    int64:vals = aria_libc_mem_read_i64(slot, 24i64);
+    int64:tlen = aria_libc_string_strlen(tmpl);
+    int64:opos = 0i64;
+    int64:pos = 0i64;
+
+    loop(0i64, tlen + 1i64, 1i64) {
+        if (pos < tlen) {
+            int64:found = aria_libc_string_indexof_from(tmpl, "{{", pos);
+            if (found < 0i64) {
+                // No more {{ — copy remainder
+                int64:cp = pos;
+                loop(pos, tlen, 1i64) {
+                    int32:bv = aria_libc_string_byte_at(tmpl, cp);
+                    aria_libc_mem_write_byte(out_ptr, opos, bv);
+                    opos = opos + 1i64;
+                    cp = cp + 1i64;
+                }
+                pos = tlen;
+            }
+            if (found >= 0i64) {
+                // Copy text before {{
+                int64:cp2 = pos;
+                loop(pos, found, 1i64) {
+                    int32:bv = aria_libc_string_byte_at(tmpl, cp2);
+                    aria_libc_mem_write_byte(out_ptr, opos, bv);
+                    opos = opos + 1i64;
+                    cp2 = cp2 + 1i64;
+                }
+                // Find }}
+                int64:close_pos = aria_libc_string_indexof_from(tmpl, "}}", found + 2i64);
+                if (close_pos < 0i64) {
+                    int64:cp3 = found;
+                    loop(found, tlen, 1i64) {
+                        int32:bv = aria_libc_string_byte_at(tmpl, cp3);
+                        aria_libc_mem_write_byte(out_ptr, opos, bv);
+                        opos = opos + 1i64;
+                        cp3 = cp3 + 1i64;
+                    }
+                    pos = tlen;
+                }
+                if (close_pos >= 0i64) {
+                    // Extract key, trim whitespace
+                    int64:kstart = found + 2i64;
+                    int64:kend = close_pos;
+                    loop(0i64, 128i64, 1i64) {
+                        if (kstart < kend) {
+                            int32:sc = aria_libc_string_byte_at(tmpl, kstart);
+                            if (sc == 32i32) { kstart = kstart + 1i64; }
+                        }
+                    }
+                    loop(0i64, 128i64, 1i64) {
+                        if (kend > kstart) {
+                            int32:ec = aria_libc_string_byte_at(tmpl, kend - 1i64);
+                            if (ec == 32i32) { kend = kend - 1i64; }
+                        }
+                    }
+                    // Copy key to scratch [40..]
+                    int64:klen = kend - kstart;
+                    int64:ki = 0i64;
+                    loop(0i64, klen, 1i64) {
+                        int32:kb = aria_libc_string_byte_at(tmpl, kstart + ki);
+                        aria_libc_mem_write_byte(slot, 40i64 + ki, kb);
+                        ki = ki + 1i64;
+                    }
+                    // Look up value
+                    int32:vidx = raw _tpl_find_in_scratch(klen);
+                    if (vidx >= 0i32) {
+                        int64:voff = @cast<int64>(vidx) * 4096i64;
+                        int64:vlen = aria_libc_mem_read_i64(vals, voff);
+                        int64:vb = 0i64;
+                        loop(0i64, vlen, 1i64) {
+                            int32:vbyte = aria_libc_mem_read_byte(vals, voff + 8i64 + vb);
+                            aria_libc_mem_write_byte(out_ptr, opos, vbyte);
+                            opos = opos + 1i64;
+                            vb = vb + 1i64;
+                        }
+                    }
+                    pos = close_pos + 2i64;
+                }
+            }
+        }
+    }
+    pass aria_libc_string_from_buf(out_ptr, 0i64, opos);
+};
+
+pub func:template_clear = NIL() {
+    drop _tpl_init();
+    int64:slot = raw _tpl_buf();
+    aria_libc_mem_write_i64(slot, 8i64, 0i64);
+    pass NIL;
+};
+
+pub func:template_count = int32() {
+    drop _tpl_init();
+    int64:slot = raw _tpl_buf();
+    pass @cast<int32>(aria_libc_mem_read_i64(slot, 8i64));
+};
+
+pub func:template_has = int32(string:key) {
+    drop _tpl_init();
+    int32:idx = raw _tpl_find(key);
+    if (idx >= 0i32) { pass 1i32; }
+    pass 0i32;
+};
+
+pub func:template_remove = int32(string:key) {
+    drop _tpl_init();
+    int32:idx = raw _tpl_find(key);
+    if (idx < 0i32) { pass 0i32; }
+    int64:slot = raw _tpl_buf();
+    int64:keys = aria_libc_mem_read_i64(slot, 16i64);
+    int64:vals = aria_libc_mem_read_i64(slot, 24i64);
+    int64:count = aria_libc_mem_read_i64(slot, 8i64);
+    int64:ii = @cast<int64>(idx);
+    int64:si = ii;
+    loop(ii, count - 1i64, 1i64) {
+        int64:dst_k = si * 128i64;
+        int64:src_k = (si + 1i64) * 128i64;
+        int64:next_klen = aria_libc_mem_read_i64(keys, src_k);
+        aria_libc_mem_write_i64(keys, dst_k, next_klen);
+        int64:jk = 0i64;
+        loop(0i64, next_klen, 1i64) {
+            int32:kb = aria_libc_mem_read_byte(keys, src_k + 8i64 + jk);
+            aria_libc_mem_write_byte(keys, dst_k + 8i64 + jk, kb);
+            jk = jk + 1i64;
+        }
+        int64:dst_v = si * 4096i64;
+        int64:src_v = (si + 1i64) * 4096i64;
+        int64:next_vlen = aria_libc_mem_read_i64(vals, src_v);
+        aria_libc_mem_write_i64(vals, dst_v, next_vlen);
+        int64:jv = 0i64;
+        loop(0i64, next_vlen, 1i64) {
+            int32:vbt = aria_libc_mem_read_byte(vals, src_v + 8i64 + jv);
+            aria_libc_mem_write_byte(vals, dst_v + 8i64 + jv, vbt);
+            jv = jv + 1i64;
+        }
+        si = si + 1i64;
+    }
+    aria_libc_mem_write_i64(slot, 8i64, count - 1i64);
+    pass 1i32;
 };

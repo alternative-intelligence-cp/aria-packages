@@ -1,75 +1,97 @@
-// test_aria_ini.aria — Tests for aria-ini (C-side assertions)
+// test_aria_ini.aria — INI parser tests (15 tests)
+
+use "../src/aria_ini.aria".*;
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern func:aria_ini_parse         = int32(string:text);
-extern func:aria_ini_num_sections  = int32();
-extern func:aria_ini_has_key       = int32(string:section, string:key);
-extern func:aria_ini_cleanup       = void();
-extern func:aria_ini_assert_int_eq = void(int32:actual, int32:expected, string:msg);
-extern func:aria_ini_assert_str_eq = void(string:section, string:key, string:expected, string:msg);
-extern func:aria_ini_test_summary  = void();
-
 func:main = int32() {
-    // ── test 01: parse simple INI ──
-    int32:secs = aria_ini_parse("[server]\nhost = localhost\nport = 8080\n\n[database]\nname = mydb\n");
-    aria_ini_assert_int_eq(secs, 2i32, "test 01: parsed 2 sections");
+    // T01: parse simple INI
+    int32:secs = raw ini_parse("[server]\nhost = localhost\nport = 8080\n\n[database]\nname = mydb\n");
+    if (secs == 2i32) { drop println("[PASS] T01 parsed 2 sections"); }
+    if (secs != 2i32) { drop println("[FAIL] T01 parsed 2 sections"); }
 
-    // ── test 02: num_sections ──
-    int32:ns = aria_ini_num_sections();
-    aria_ini_assert_int_eq(ns, 2i32, "test 02: num_sections == 2");
+    // T02: num_sections
+    int32:ns = raw ini_num_sections();
+    if (ns == 2i32) { drop println("[PASS] T02 num_sections == 2"); }
+    if (ns != 2i32) { drop println("[FAIL] T02 num_sections == 2"); }
 
-    // ── test 03: get server host ──
-    aria_ini_assert_str_eq("server", "host", "localhost", "test 03: server.host = localhost");
+    // T03: get server host
+    string:host = raw ini_get("server", "host");
+    int32:c3 = aria_libc_string_strcmp(host, "localhost");
+    if (c3 == 0i32) { drop println("[PASS] T03 server.host = localhost"); }
+    if (c3 != 0i32) { drop println("[FAIL] T03 server.host = localhost"); }
 
-    // ── test 04: get server port ──
-    aria_ini_assert_str_eq("server", "port", "8080", "test 04: server.port = 8080");
+    // T04: get server port
+    string:port = raw ini_get("server", "port");
+    int32:c4 = aria_libc_string_strcmp(port, "8080");
+    if (c4 == 0i32) { drop println("[PASS] T04 server.port = 8080"); }
+    if (c4 != 0i32) { drop println("[FAIL] T04 server.port = 8080"); }
 
-    // ── test 05: get database name ──
-    aria_ini_assert_str_eq("database", "name", "mydb", "test 05: database.name = mydb");
+    // T05: get database name
+    string:dbname = raw ini_get("database", "name");
+    int32:c5 = aria_libc_string_strcmp(dbname, "mydb");
+    if (c5 == 0i32) { drop println("[PASS] T05 database.name = mydb"); }
+    if (c5 != 0i32) { drop println("[FAIL] T05 database.name = mydb"); }
 
-    // ── test 06: has_key positive ──
-    int32:hk = aria_ini_has_key("server", "host");
-    aria_ini_assert_int_eq(hk, 1i32, "test 06: has_key server.host == 1");
+    // T06: has_key positive
+    int32:hk = raw ini_has_key("server", "host");
+    if (hk == 1i32) { drop println("[PASS] T06 has_key server.host"); }
+    if (hk != 1i32) { drop println("[FAIL] T06 has_key server.host"); }
 
-    // ── test 07: has_key negative ──
-    int32:hk2 = aria_ini_has_key("server", "missing");
-    aria_ini_assert_int_eq(hk2, 0i32, "test 07: has_key server.missing == 0");
+    // T07: has_key negative
+    int32:hk2 = raw ini_has_key("server", "missing");
+    if (hk2 == 0i32) { drop println("[PASS] T07 has_key server.missing == 0"); }
+    if (hk2 != 0i32) { drop println("[FAIL] T07 has_key server.missing == 0"); }
 
-    // ── test 08: comments ignored ──
-    int32:cs = aria_ini_parse("[app]\n; this is a comment\nname = test\n# another comment\nmode = dev\n");
-    aria_ini_assert_str_eq("app", "name", "test", "test 08: comment lines ignored, name = test");
+    // T08: comments ignored
+    int32:cs = raw ini_parse("[app]\n; this is a comment\nname = test\n# another comment\nmode = dev\n");
+    string:an = raw ini_get("app", "name");
+    int32:c8 = aria_libc_string_strcmp(an, "test");
+    if (c8 == 0i32) { drop println("[PASS] T08 comments ignored"); }
+    if (c8 != 0i32) { drop println("[FAIL] T08 comments ignored"); }
 
-    // ── test 09: mode after comments ──
-    aria_ini_assert_str_eq("app", "mode", "dev", "test 09: mode = dev after comments");
+    // T09: mode after comments
+    string:am = raw ini_get("app", "mode");
+    int32:c9 = aria_libc_string_strcmp(am, "dev");
+    if (c9 == 0i32) { drop println("[PASS] T09 mode = dev"); }
+    if (c9 != 0i32) { drop println("[FAIL] T09 mode = dev"); }
 
-    // ── test 10: whitespace trimming ──
-    int32:ws = aria_ini_parse("[fmt]\n  key1  =  value1  \nkey2=value2\n");
-    aria_ini_assert_str_eq("fmt", "key1", "value1", "test 10: whitespace trimmed around key1");
+    // T10: whitespace trimming
+    int32:ws = raw ini_parse("[fmt]\n  key1  =  value1  \nkey2=value2\n");
+    string:v10 = raw ini_get("fmt", "key1");
+    int32:c10 = aria_libc_string_strcmp(v10, "value1");
+    if (c10 == 0i32) { drop println("[PASS] T10 whitespace trimmed"); }
+    if (c10 != 0i32) { drop println("[FAIL] T10 whitespace trimmed"); }
 
-    // ── test 11: no-space equals ──
-    aria_ini_assert_str_eq("fmt", "key2", "value2", "test 11: key2=value2 no spaces");
+    // T11: no-space equals
+    string:v11 = raw ini_get("fmt", "key2");
+    int32:c11 = aria_libc_string_strcmp(v11, "value2");
+    if (c11 == 0i32) { drop println("[PASS] T11 key2=value2"); }
+    if (c11 != 0i32) { drop println("[FAIL] T11 key2=value2"); }
 
-    // ── test 12: empty input ──
-    int32:ei = aria_ini_parse("");
-    aria_ini_assert_int_eq(ei, 0i32, "test 12: empty input 0 sections");
+    // T12: empty input
+    int32:ei = raw ini_parse("");
+    if (ei == 0i32) { drop println("[PASS] T12 empty input"); }
+    if (ei != 0i32) { drop println("[FAIL] T12 empty input"); }
 
-    // ── test 13: global keys (no section header) ──
-    int32:gk = aria_ini_parse("key = globalval\n[sec]\nk = v\n");
-    aria_ini_assert_str_eq("", "key", "globalval", "test 13: global key before any section");
+    // T13: global keys (no section header)
+    int32:gk = raw ini_parse("key = globalval\n[sec]\nk = v\n");
+    string:gv = raw ini_get("", "key");
+    int32:c13 = aria_libc_string_strcmp(gv, "globalval");
+    if (c13 == 0i32) { drop println("[PASS] T13 global key"); }
+    if (c13 != 0i32) { drop println("[FAIL] T13 global key"); }
 
-    // ── test 14: section count with global ──
-    int32:gns = aria_ini_num_sections();
-    aria_ini_assert_int_eq(gns, 2i32, "test 14: 2 sections (global + sec)");
+    // T14: section count with global
+    int32:gns = raw ini_num_sections();
+    if (gns == 2i32) { drop println("[PASS] T14 2 sections with global"); }
+    if (gns != 2i32) { drop println("[FAIL] T14 2 sections with global"); }
 
-    // ── test 15: multiple keys in section ──
-    int32:mk = aria_ini_parse("[multi]\na = 1\nb = 2\nc = 3\nd = 4\ne = 5\n");
-    int32:mks = aria_ini_has_key("multi", "e");
-    aria_ini_assert_int_eq(mks, 1i32, "test 15: 5 keys in section, key e exists");
+    // T15: multiple keys in section
+    int32:mk = raw ini_parse("[multi]\na = 1\nb = 2\nc = 3\nd = 4\ne = 5\n");
+    int32:mks = raw ini_has_key("multi", "e");
+    if (mks == 1i32) { drop println("[PASS] T15 5 keys, key e exists"); }
+    if (mks != 1i32) { drop println("[FAIL] T15 5 keys, key e exists"); }
 
-    // ── cleanup ──
-    aria_ini_cleanup();
-    aria_ini_test_summary();
-
+    drop ini_cleanup();
     exit 0;
 };

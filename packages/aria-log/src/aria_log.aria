@@ -1,28 +1,112 @@
-// aria_log.aria — Structured logging library for Aria
-//
-// Leveled logging with timestamps and configurable output.
-// Requires: libaria_log_shim.so
+// aria_log.aria — Pure Aria structured logging (no C shim)
+// Leveled logging: TRACE(0) DEBUG(1) INFO(2) WARN(3) ERROR(4) FATAL(5)
+// Timestamps, configurable output (stderr/stdout/file)
+// Global slot 23
 
-extern "aria_log_shim" {
-    func:aria_log_init              = void();
-    func:aria_log_cleanup           = void();
-    func:aria_log_set_level         = void(int32:level);
-    func:aria_log_get_level         = int32();
-    func:aria_log_set_output_file   = void(string:path);
-    func:aria_log_set_output_stderr = void();
-    func:aria_log_set_output_stdout = void();
-    func:aria_log_show_timestamp    = void(int32:show);
-    func:aria_log_show_level        = void(int32:show);
-    func:aria_log_trace = void(string:msg);
-    func:aria_log_debug = void(string:msg);
-    func:aria_log_info  = void(string:msg);
-    func:aria_log_warn  = void(string:msg);
-    func:aria_log_error = void(string:msg);
-    func:aria_log_fatal = void(string:msg);
-    func:aria_log_count = int64();
+// ── Extern: aria_libc_mem ──
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:off);
+    func:aria_libc_mem_write_i64  = NIL(int64:ptr, int64:off, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:slot);
+    func:aria_libc_mem_set_global = NIL(int32:slot, int64:ptr);
 }
 
-// log level constants
+// ── Extern: aria_libc_io ──
+extern "aria_libc_io" {
+    func:aria_libc_io_stderr  = int64();
+    func:aria_libc_io_stdout  = int64();
+    func:aria_libc_io_fputs   = int32(string:s, int64:handle);
+    func:aria_libc_io_fflush  = int32(int64:handle);
+    func:aria_libc_io_fopen   = int64(string:path, string:mode);
+    func:aria_libc_io_fclose  = int32(int64:handle);
+}
+
+// ── Extern: aria_libc_time ──
+extern "aria_libc_time" {
+    func:aria_libc_time_now    = int64();
+    func:aria_libc_time_format = string(int64:epoch, string:fmt);
+}
+
+// ── Slot 23 layout ──
+// [0]  init flag
+// [8]  min_level
+// [16] output_handle (0 = stderr)
+// [24] show_timestamp (0 or 1)
+// [32] show_level (0 or 1)
+// [40] log_count
+
+func:_log_buf = int64() {
+    pass aria_libc_mem_get_global(23i32);
+};
+
+func:_log_init = NIL() {
+    int64:ptr = raw _log_buf();
+    if (ptr > 0i64) {
+        int64:flag = aria_libc_mem_read_i64(ptr, 0i64);
+        if (flag == 1i64) { pass NIL; }
+    }
+    int64:slot = aria_libc_mem_malloc(64i64);
+    aria_libc_mem_set_global(23i32, slot);
+    aria_libc_mem_write_i64(slot, 8i64, 2i64);
+    aria_libc_mem_write_i64(slot, 16i64, 0i64);
+    aria_libc_mem_write_i64(slot, 24i64, 1i64);
+    aria_libc_mem_write_i64(slot, 32i64, 1i64);
+    aria_libc_mem_write_i64(slot, 40i64, 0i64);
+    aria_libc_mem_write_i64(slot, 0i64, 1i64);
+    pass NIL;
+};
+
+func:_log_output = int64() {
+    int64:slot = raw _log_buf();
+    int64:h = aria_libc_mem_read_i64(slot, 16i64);
+    if (h == 0i64) { pass aria_libc_io_stderr(); }
+    pass h;
+};
+
+func:_log_level_name = string(int64:lvl) {
+    if (lvl == 0i64) { pass "TRACE"; }
+    if (lvl == 1i64) { pass "DEBUG"; }
+    if (lvl == 2i64) { pass "INFO "; }
+    if (lvl == 3i64) { pass "WARN "; }
+    if (lvl == 4i64) { pass "ERROR"; }
+    if (lvl == 5i64) { pass "FATAL"; }
+    pass "?????";
+};
+
+func:_do_log = NIL(int64:level, string:msg) {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    int64:minlvl = aria_libc_mem_read_i64(slot, 8i64);
+    if (level < minlvl) { pass NIL; }
+
+    int64:out = raw _log_output();
+
+    int64:show_ts = aria_libc_mem_read_i64(slot, 24i64);
+    if (show_ts == 1i64) {
+        int64:now = aria_libc_time_now();
+        string:ts = aria_libc_time_format(now, "%Y-%m-%d %H:%M:%S ");
+        aria_libc_io_fputs(ts, out);
+    }
+
+    int64:show_lv = aria_libc_mem_read_i64(slot, 32i64);
+    if (show_lv == 1i64) {
+        aria_libc_io_fputs("[", out);
+        string:lname = raw _log_level_name(level);
+        aria_libc_io_fputs(lname, out);
+        aria_libc_io_fputs("] ", out);
+    }
+
+    aria_libc_io_fputs(msg, out);
+    aria_libc_io_fputs("\n", out);
+    aria_libc_io_fflush(out);
+
+    int64:cnt = aria_libc_mem_read_i64(slot, 40i64);
+    aria_libc_mem_write_i64(slot, 40i64, cnt + 1i64);
+    pass NIL;
+};
+
+// ── Level constants ──
 pub func:LOG_TRACE = int32() { pass 0i32; };
 pub func:LOG_DEBUG = int32() { pass 1i32; };
 pub func:LOG_INFO  = int32() { pass 2i32; };
@@ -30,22 +114,109 @@ pub func:LOG_WARN  = int32() { pass 3i32; };
 pub func:LOG_ERROR = int32() { pass 4i32; };
 pub func:LOG_FATAL = int32() { pass 5i32; };
 
-pub func:log_init = NIL() { aria_log_init(); pass NIL; };
-pub func:log_cleanup = NIL() { aria_log_cleanup(); pass NIL; };
+// ── Init / cleanup ──
+pub func:log_init = NIL() {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    aria_libc_mem_write_i64(slot, 8i64, 2i64);
+    aria_libc_mem_write_i64(slot, 16i64, 0i64);
+    aria_libc_mem_write_i64(slot, 24i64, 1i64);
+    aria_libc_mem_write_i64(slot, 32i64, 1i64);
+    aria_libc_mem_write_i64(slot, 40i64, 0i64);
+    pass NIL;
+};
 
-pub func:log_set_level = NIL(int32:level) { aria_log_set_level(level); pass NIL; };
-pub func:log_get_level = int32() { int32:r = aria_log_get_level(); pass r; };
-pub func:log_to_file = NIL(string:path) { aria_log_set_output_file(path); pass NIL; };
-pub func:log_to_stderr = NIL() { aria_log_set_output_stderr(); pass NIL; };
-pub func:log_to_stdout = NIL() { aria_log_set_output_stdout(); pass NIL; };
-pub func:log_show_timestamp = NIL(int32:show) { aria_log_show_timestamp(show); pass NIL; };
-pub func:log_show_level = NIL(int32:show) { aria_log_show_level(show); pass NIL; };
+pub func:log_cleanup = NIL() {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    int64:h = aria_libc_mem_read_i64(slot, 16i64);
+    int64:err_h = aria_libc_io_stderr();
+    int64:out_h = aria_libc_io_stdout();
+    if (h > 0i64) {
+        if (h != err_h) {
+            if (h != out_h) {
+                aria_libc_io_fclose(h);
+            }
+        }
+    }
+    aria_libc_mem_write_i64(slot, 16i64, 0i64);
+    pass NIL;
+};
 
-pub func:log_trace = NIL(string:msg) { aria_log_trace(msg); pass NIL; };
-pub func:log_debug = NIL(string:msg) { aria_log_debug(msg); pass NIL; };
-pub func:log_info  = NIL(string:msg) { aria_log_info(msg); pass NIL; };
-pub func:log_warn  = NIL(string:msg) { aria_log_warn(msg); pass NIL; };
-pub func:log_error = NIL(string:msg) { aria_log_error(msg); pass NIL; };
-pub func:log_fatal = NIL(string:msg) { aria_log_fatal(msg); pass NIL; };
+// ── Configuration ──
+pub func:log_set_level = NIL(int32:level) {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    int64:lv = @cast<int64>(level);
+    if (lv >= 0i64) {
+        if (lv <= 5i64) {
+            aria_libc_mem_write_i64(slot, 8i64, lv);
+        }
+    }
+    pass NIL;
+};
 
-pub func:log_count = int64() { int64:r = aria_log_count(); pass r; };
+pub func:log_get_level = int32() {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    pass @cast<int32>(aria_libc_mem_read_i64(slot, 8i64));
+};
+
+pub func:log_to_file = NIL(string:path) {
+    drop _log_init();
+    drop log_cleanup();
+    int64:slot = raw _log_buf();
+    int64:fh = aria_libc_io_fopen(path, "a");
+    aria_libc_mem_write_i64(slot, 16i64, fh);
+    pass NIL;
+};
+
+pub func:log_to_stderr = NIL() {
+    drop _log_init();
+    drop log_cleanup();
+    int64:slot = raw _log_buf();
+    aria_libc_mem_write_i64(slot, 16i64, 0i64);
+    pass NIL;
+};
+
+pub func:log_to_stdout = NIL() {
+    drop _log_init();
+    drop log_cleanup();
+    int64:slot = raw _log_buf();
+    int64:out_h = aria_libc_io_stdout();
+    aria_libc_mem_write_i64(slot, 16i64, out_h);
+    pass NIL;
+};
+
+pub func:log_show_timestamp = NIL(int32:show) {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    int64:val = 0i64;
+    if (show != 0i32) { val = 1i64; }
+    aria_libc_mem_write_i64(slot, 24i64, val);
+    pass NIL;
+};
+
+pub func:log_show_level = NIL(int32:show) {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    int64:val = 0i64;
+    if (show != 0i32) { val = 1i64; }
+    aria_libc_mem_write_i64(slot, 32i64, val);
+    pass NIL;
+};
+
+// ── Log by level ──
+pub func:log_trace = NIL(string:msg) { drop _do_log(0i64, msg); pass NIL; };
+pub func:log_debug = NIL(string:msg) { drop _do_log(1i64, msg); pass NIL; };
+pub func:log_info  = NIL(string:msg) { drop _do_log(2i64, msg); pass NIL; };
+pub func:log_warn  = NIL(string:msg) { drop _do_log(3i64, msg); pass NIL; };
+pub func:log_error = NIL(string:msg) { drop _do_log(4i64, msg); pass NIL; };
+pub func:log_fatal = NIL(string:msg) { drop _do_log(5i64, msg); pass NIL; };
+
+// ── Stats ──
+pub func:log_count = int64() {
+    drop _log_init();
+    int64:slot = raw _log_buf();
+    pass aria_libc_mem_read_i64(slot, 40i64);
+};

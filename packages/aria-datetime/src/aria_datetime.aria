@@ -1,103 +1,90 @@
-// aria_datetime.aria — Date and time library for Aria
-//
-// Timestamps, components, formatting, duration arithmetic, sleep.
-// Requires: libaria_datetime_shim.so
+// aria_datetime.aria — Pure Aria date/time library (no per-package shim)
+// Wraps aria_libc_time for timestamps, components, formatting, duration, sleep
 
-extern "aria_datetime_shim" {
-    // current time
-    func:aria_datetime_now          = int64();
-    func:aria_datetime_now_ms       = int64();
-    func:aria_datetime_now_us       = int64();
-    func:aria_datetime_monotonic_ms = int64();
-
-    // local time components
-    func:aria_datetime_year    = int32(int64:epoch);
-    func:aria_datetime_month   = int32(int64:epoch);
-    func:aria_datetime_day     = int32(int64:epoch);
-    func:aria_datetime_hour    = int32(int64:epoch);
-    func:aria_datetime_minute  = int32(int64:epoch);
-    func:aria_datetime_second  = int32(int64:epoch);
-    func:aria_datetime_weekday = int32(int64:epoch);
-    func:aria_datetime_yearday = int32(int64:epoch);
-
-    // UTC components
-    func:aria_datetime_utc_year   = int32(int64:epoch);
-    func:aria_datetime_utc_month  = int32(int64:epoch);
-    func:aria_datetime_utc_day    = int32(int64:epoch);
-    func:aria_datetime_utc_hour   = int32(int64:epoch);
-    func:aria_datetime_utc_minute = int32(int64:epoch);
-    func:aria_datetime_utc_second = int32(int64:epoch);
-
-    // formatting
-    func:aria_datetime_format     = string(int64:epoch, string:fmt);
-    func:aria_datetime_format_utc = string(int64:epoch, string:fmt);
-    func:aria_datetime_iso8601    = string(int64:epoch);
-    func:aria_datetime_last_result = string();
-
-    // construction
-    func:aria_datetime_make     = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second);
-    func:aria_datetime_make_utc = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second);
-
-    // duration
-    func:aria_datetime_diff        = int64(int64:a, int64:b);
-    func:aria_datetime_add_seconds = int64(int64:epoch, int64:seconds);
-    func:aria_datetime_add_days    = int64(int64:epoch, int32:days);
-
-    // sleep
-    func:aria_datetime_sleep_ms = void(int32:ms);
+// ── Extern: aria_libc_time (block 1: clock functions) ──
+extern "aria_libc_time" {
+    func:aria_libc_time_now          = int64();
+    func:aria_libc_time_now_ms       = int64();
+    func:aria_libc_time_now_us       = int64();
+    func:aria_libc_time_monotonic_ms = int64();
+    func:aria_libc_time_sleep_ms     = NIL(int32:ms);
 }
 
-// ── public API: current time ────────────────────────────────────────
+// ── Extern: aria_libc_time (block 2: UTC components) ──
+extern "aria_libc_time" {
+    func:aria_libc_time_year    = int32(int64:epoch);
+    func:aria_libc_time_month   = int32(int64:epoch);
+    func:aria_libc_time_day     = int32(int64:epoch);
+    func:aria_libc_time_hour    = int32(int64:epoch);
+    func:aria_libc_time_minute  = int32(int64:epoch);
+    func:aria_libc_time_second  = int32(int64:epoch);
+    func:aria_libc_time_weekday = int32(int64:epoch);
+}
 
-pub func:dt_now = int64() { int64:r = aria_datetime_now(); pass r; };
-pub func:dt_now_ms = int64() { int64:r = aria_datetime_now_ms(); pass r; };
-pub func:dt_now_us = int64() { int64:r = aria_datetime_now_us(); pass r; };
-pub func:dt_monotonic_ms = int64() { int64:r = aria_datetime_monotonic_ms(); pass r; };
+// ── Extern: aria_libc_time (block 3: local components) ──
+extern "aria_libc_time" {
+    func:aria_libc_time_yearday      = int32(int64:epoch);
+    func:aria_libc_time_local_year   = int32(int64:epoch);
+    func:aria_libc_time_local_month  = int32(int64:epoch);
+    func:aria_libc_time_local_day    = int32(int64:epoch);
+    func:aria_libc_time_local_hour   = int32(int64:epoch);
+    func:aria_libc_time_local_minute = int32(int64:epoch);
+    func:aria_libc_time_local_second = int32(int64:epoch);
+}
 
-// ── public API: local time components ───────────────────────────────
+// ── Extern: aria_libc_time (block 4: local extras + format) ──
+extern "aria_libc_time" {
+    func:aria_libc_time_local_weekday = int32(int64:epoch);
+    func:aria_libc_time_local_yearday = int32(int64:epoch);
+    func:aria_libc_time_format        = string(int64:epoch, string:fmt);
+    func:aria_libc_time_format_local  = string(int64:epoch, string:fmt);
+    func:aria_libc_time_iso8601       = string(int64:epoch);
+    func:aria_libc_time_make_utc      = int64(int32:yr, int32:mo, int32:dy, int32:hr, int32:mn, int32:sc);
+    func:aria_libc_time_make_local    = int64(int32:yr, int32:mo, int32:dy, int32:hr, int32:mn, int32:sc);
+}
 
-pub func:dt_year = int32(int64:epoch) { int32:r = aria_datetime_year(epoch); pass r; };
-pub func:dt_month = int32(int64:epoch) { int32:r = aria_datetime_month(epoch); pass r; };
-pub func:dt_day = int32(int64:epoch) { int32:r = aria_datetime_day(epoch); pass r; };
-pub func:dt_hour = int32(int64:epoch) { int32:r = aria_datetime_hour(epoch); pass r; };
-pub func:dt_minute = int32(int64:epoch) { int32:r = aria_datetime_minute(epoch); pass r; };
-pub func:dt_second = int32(int64:epoch) { int32:r = aria_datetime_second(epoch); pass r; };
-pub func:dt_weekday = int32(int64:epoch) { int32:r = aria_datetime_weekday(epoch); pass r; };
-pub func:dt_yearday = int32(int64:epoch) { int32:r = aria_datetime_yearday(epoch); pass r; };
+// ── Current time ──
+pub func:dt_now = int64() { pass aria_libc_time_now(); };
+pub func:dt_now_ms = int64() { pass aria_libc_time_now_ms(); };
+pub func:dt_now_us = int64() { pass aria_libc_time_now_us(); };
+pub func:dt_monotonic_ms = int64() { pass aria_libc_time_monotonic_ms(); };
 
-// ── public API: UTC components ──────────────────────────────────────
+// ── Local time components ──
+pub func:dt_year = int32(int64:epoch) { pass aria_libc_time_local_year(epoch); };
+pub func:dt_month = int32(int64:epoch) { pass aria_libc_time_local_month(epoch); };
+pub func:dt_day = int32(int64:epoch) { pass aria_libc_time_local_day(epoch); };
+pub func:dt_hour = int32(int64:epoch) { pass aria_libc_time_local_hour(epoch); };
+pub func:dt_minute = int32(int64:epoch) { pass aria_libc_time_local_minute(epoch); };
+pub func:dt_second = int32(int64:epoch) { pass aria_libc_time_local_second(epoch); };
+pub func:dt_weekday = int32(int64:epoch) { pass aria_libc_time_local_weekday(epoch); };
+pub func:dt_yearday = int32(int64:epoch) { pass aria_libc_time_local_yearday(epoch); };
 
-pub func:dt_utc_year = int32(int64:epoch) { int32:r = aria_datetime_utc_year(epoch); pass r; };
-pub func:dt_utc_month = int32(int64:epoch) { int32:r = aria_datetime_utc_month(epoch); pass r; };
-pub func:dt_utc_day = int32(int64:epoch) { int32:r = aria_datetime_utc_day(epoch); pass r; };
-pub func:dt_utc_hour = int32(int64:epoch) { int32:r = aria_datetime_utc_hour(epoch); pass r; };
-pub func:dt_utc_minute = int32(int64:epoch) { int32:r = aria_datetime_utc_minute(epoch); pass r; };
-pub func:dt_utc_second = int32(int64:epoch) { int32:r = aria_datetime_utc_second(epoch); pass r; };
+// ── UTC components ──
+pub func:dt_utc_year = int32(int64:epoch) { pass aria_libc_time_year(epoch); };
+pub func:dt_utc_month = int32(int64:epoch) { pass aria_libc_time_month(epoch); };
+pub func:dt_utc_day = int32(int64:epoch) { pass aria_libc_time_day(epoch); };
+pub func:dt_utc_hour = int32(int64:epoch) { pass aria_libc_time_hour(epoch); };
+pub func:dt_utc_minute = int32(int64:epoch) { pass aria_libc_time_minute(epoch); };
+pub func:dt_utc_second = int32(int64:epoch) { pass aria_libc_time_second(epoch); };
 
-// ── public API: formatting ──────────────────────────────────────────
+// ── Formatting ──
+pub func:dt_format = string(int64:epoch, string:fmt) { pass aria_libc_time_format_local(epoch, fmt); };
+pub func:dt_format_utc = string(int64:epoch, string:fmt) { pass aria_libc_time_format(epoch, fmt); };
+pub func:dt_iso8601 = string(int64:epoch) { pass aria_libc_time_iso8601(epoch); };
 
-pub func:dt_format = string(int64:epoch, string:fmt) { drop aria_datetime_format(epoch, fmt); string:r = aria_datetime_last_result(); pass r; };
-pub func:dt_format_utc = string(int64:epoch, string:fmt) { drop aria_datetime_format_utc(epoch, fmt); string:r = aria_datetime_last_result(); pass r; };
-pub func:dt_iso8601 = string(int64:epoch) { drop aria_datetime_iso8601(epoch); string:r = aria_datetime_last_result(); pass r; };
-
-// ── public API: construction ────────────────────────────────────────
-
-pub func:dt_make = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second) {
-    int64:r = aria_datetime_make(year, month, day, hour, minute, second);
-    pass r;
+// ── Construction ──
+pub func:dt_make = int64(int32:yr, int32:mo, int32:dy, int32:hr, int32:mn, int32:sc) {
+    pass aria_libc_time_make_local(yr, mo, dy, hr, mn, sc);
 };
 
-pub func:dt_make_utc = int64(int32:year, int32:month, int32:day, int32:hour, int32:minute, int32:second) {
-    int64:r = aria_datetime_make_utc(year, month, day, hour, minute, second);
-    pass r;
+pub func:dt_make_utc = int64(int32:yr, int32:mo, int32:dy, int32:hr, int32:mn, int32:sc) {
+    pass aria_libc_time_make_utc(yr, mo, dy, hr, mn, sc);
 };
 
-// ── public API: duration ────────────────────────────────────────────
+// ── Duration ──
+pub func:dt_diff = int64(int64:a, int64:b) { pass a - b; };
+pub func:dt_add_seconds = int64(int64:epoch, int64:seconds) { pass epoch + seconds; };
+pub func:dt_add_days = int64(int64:epoch, int32:days) { pass epoch + @cast<int64>(days) * 86400i64; };
 
-pub func:dt_diff = int64(int64:a, int64:b) { int64:r = aria_datetime_diff(a, b); pass r; };
-pub func:dt_add_seconds = int64(int64:epoch, int64:seconds) { int64:r = aria_datetime_add_seconds(epoch, seconds); pass r; };
-pub func:dt_add_days = int64(int64:epoch, int32:days) { int64:r = aria_datetime_add_days(epoch, days); pass r; };
-
-// ── public API: sleep ───────────────────────────────────────────────
-
-pub func:dt_sleep_ms = NIL(int32:ms) { aria_datetime_sleep_ms(ms); pass NIL; };
+// ── Sleep ──
+pub func:dt_sleep_ms = NIL(int32:ms) { aria_libc_time_sleep_ms(ms); pass NIL; };

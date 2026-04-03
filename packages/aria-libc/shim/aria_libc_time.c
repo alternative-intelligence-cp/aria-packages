@@ -136,3 +136,55 @@ void aria_libc_time_sleep_s(int32_t sec) {
     ts.tv_nsec = 0;
     nanosleep(&ts, NULL);
 }
+
+/* ── Wallclock milliseconds/microseconds ─────────────────────────── */
+
+int64_t aria_libc_time_now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
+}
+
+int64_t aria_libc_time_now_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (int64_t)ts.tv_sec * 1000000 + (int64_t)ts.tv_nsec / 1000;
+}
+
+/* ── Local time decompose ────────────────────────────────────────── */
+
+static void decompose_local(int64_t epoch) {
+    time_t t = (time_t)epoch;
+    localtime_r(&t, &g_tm);
+}
+
+int32_t aria_libc_time_local_year(int64_t epoch)    { decompose_local(epoch); return (int32_t)(g_tm.tm_year + 1900); }
+int32_t aria_libc_time_local_month(int64_t epoch)   { decompose_local(epoch); return (int32_t)(g_tm.tm_mon + 1); }
+int32_t aria_libc_time_local_day(int64_t epoch)     { decompose_local(epoch); return (int32_t)g_tm.tm_mday; }
+int32_t aria_libc_time_local_hour(int64_t epoch)    { decompose_local(epoch); return (int32_t)g_tm.tm_hour; }
+int32_t aria_libc_time_local_minute(int64_t epoch)  { decompose_local(epoch); return (int32_t)g_tm.tm_min; }
+int32_t aria_libc_time_local_second(int64_t epoch)  { decompose_local(epoch); return (int32_t)g_tm.tm_sec; }
+int32_t aria_libc_time_local_weekday(int64_t epoch) { decompose_local(epoch); return (int32_t)g_tm.tm_wday; }
+int32_t aria_libc_time_local_yearday(int64_t epoch) { decompose_local(epoch); return (int32_t)(g_tm.tm_yday + 1); }
+
+const char *aria_libc_time_format_local(int64_t epoch, const char *fmt) {
+    g_fmt_buf[0] = '\0';
+    if (!fmt) return g_fmt_buf;
+    decompose_local(epoch);
+    strftime(g_fmt_buf, sizeof(g_fmt_buf), fmt, &g_tm);
+    return g_fmt_buf;
+}
+
+int64_t aria_libc_time_make_local(int32_t year, int32_t month, int32_t day,
+                                  int32_t hour, int32_t minute, int32_t second) {
+    struct tm t;
+    memset(&t, 0, sizeof(t));
+    t.tm_year = year - 1900;
+    t.tm_mon  = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min  = minute;
+    t.tm_sec  = second;
+    t.tm_isdst = -1;
+    return (int64_t)mktime(&t);
+}

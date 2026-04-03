@@ -1,26 +1,286 @@
-// aria_base64.aria — Base64 encoding and decoding for Aria
+// aria_base64.aria — Pure Aria base64 encode/decode (no C shim)
+// RFC 4648 standard + URL-safe variant — global slot 25
 
-extern "aria_base64_shim" {
-    func:aria_base64_encode         = string(string:data, int32:len);
-    func:aria_base64_encode_str     = string(string:str);
-    func:aria_base64_encode_url     = string(string:data, int32:len);
-    func:aria_base64_encode_url_str = string(string:str);
-    func:aria_base64_decode         = string(string:encoded);
-    func:aria_base64_last_result     = string();
-    func:aria_base64_decode_length  = int64();
-    func:aria_base64_encoded_length = int64(int32:input_len);
-    func:aria_base64_is_valid       = int32(string:str);
-    func:aria_base64_cleanup        = void();
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:off);
+    func:aria_libc_mem_write_i64  = NIL(int64:ptr, int64:off, int64:val);
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:off);
+    func:aria_libc_mem_write_byte = NIL(int64:ptr, int64:off, int32:val);
+    func:aria_libc_mem_get_global = int64(int32:slot);
+    func:aria_libc_mem_set_global = NIL(int32:slot, int64:ptr);
 }
 
-// ── pub wrappers ────────────────────────────────────────
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen   = int64(string:s);
+    func:aria_libc_string_strcmp   = int32(string:a, string:b);
+    func:aria_libc_string_from_buf = string(int64:buf, int64:off, int64:len);
+    func:aria_libc_string_byte_at  = int32(string:s, int64:idx);
+}
 
-pub func:b64_encode         = string(string:data, int32:len)   { drop aria_base64_encode(data, len); pass aria_base64_last_result(); };
-pub func:b64_encode_str     = string(string:str)               { drop aria_base64_encode_str(str); pass aria_base64_last_result(); };
-pub func:b64_encode_url     = string(string:data, int32:len)   { drop aria_base64_encode_url(data, len); pass aria_base64_last_result(); };
-pub func:b64_encode_url_str = string(string:str)               { drop aria_base64_encode_url_str(str); pass aria_base64_last_result(); };
-pub func:b64_decode         = string(string:encoded)            { drop aria_base64_decode(encoded); pass aria_base64_last_result(); };
-pub func:b64_decode_length  = int64()                           { pass aria_base64_decode_length(); };
-pub func:b64_encoded_length = int64(int32:input_len)            { pass aria_base64_encoded_length(input_len); };
-pub func:b64_is_valid       = int32(string:str)                 { pass aria_base64_is_valid(str); };
-pub func:b64_cleanup        = NIL()                             { aria_base64_cleanup(); pass NIL; };
+// Slot 25: [0] init, [8] enc_ptr, [16] dec_ptr
+
+func:_b64_buf = int64() { pass aria_libc_mem_get_global(25i32); };
+
+func:_b64_init = NIL() {
+    int64:ptr = raw _b64_buf();
+    if (ptr > 0i64) {
+        int64:flag = aria_libc_mem_read_i64(ptr, 0i64);
+        if (flag == 1i64) { pass NIL; }
+    }
+    int64:slot = aria_libc_mem_malloc(48i64);
+    aria_libc_mem_set_global(25i32, slot);
+    int64:enc = aria_libc_mem_malloc(65536i64);
+    aria_libc_mem_write_i64(slot, 8i64, enc);
+    int64:dec = aria_libc_mem_malloc(65536i64);
+    aria_libc_mem_write_i64(slot, 16i64, dec);
+    aria_libc_mem_write_i64(slot, 0i64, 1i64);
+    pass NIL;
+};
+
+// Standard base64 table: A-Z a-z 0-9 + /
+func:_b64_echar = int32(int64:val) {
+    if (val < 26i64) { pass @cast<int32>(val) + 65i32; }
+    if (val < 52i64) { pass @cast<int32>(val - 26i64) + 97i32; }
+    if (val < 62i64) { pass @cast<int32>(val - 52i64) + 48i32; }
+    if (val == 62i64) { pass 43i32; }
+    pass 47i32;
+};
+
+// URL-safe table: A-Z a-z 0-9 - _
+func:_b64_echar_url = int32(int64:val) {
+    if (val < 26i64) { pass @cast<int32>(val) + 65i32; }
+    if (val < 52i64) { pass @cast<int32>(val - 26i64) + 97i32; }
+    if (val < 62i64) { pass @cast<int32>(val - 52i64) + 48i32; }
+    if (val == 62i64) { pass 45i32; }
+    pass 95i32;
+};
+
+// Decode char to 0-63 or -1
+func:_b64_dchar = int64(int32:ch) {
+    if (ch >= 65i32) { if (ch <= 90i32) { pass @cast<int64>(ch - 65i32); } }
+    if (ch >= 97i32) { if (ch <= 122i32) { pass @cast<int64>(ch - 97i32) + 26i64; } }
+    if (ch >= 48i32) { if (ch <= 57i32) { pass @cast<int64>(ch - 48i32) + 52i64; } }
+    if (ch == 43i32) { pass 62i64; }
+    if (ch == 45i32) { pass 62i64; }
+    if (ch == 47i32) { pass 63i64; }
+    if (ch == 95i32) { pass 63i64; }
+    pass 0i64 - 1i64;
+};
+
+// Core encode: text + len, url_mode (0=std+pad, 1=url+nopad)
+func:_b64_encode_core = string(string:text, int64:input_len, int32:url_mode) {
+    drop _b64_init();
+    int64:slot = raw _b64_buf();
+    int64:enc_ptr = aria_libc_mem_read_i64(slot, 8i64);
+
+    if (input_len == 0i64) { pass ""; }
+
+    int64:num_groups = (input_len + 2i64) / 3i64;
+    int64:opos = 0i64;
+    int64:ipos = 0i64;
+
+    loop(0i64, num_groups, 1i64) {
+        int64:abyte = @cast<int64>(aria_libc_string_byte_at(text, ipos));
+        int64:bbyte = 0i64;
+        int64:cbyte = 0i64;
+        int32:has_b = 0i32;
+        int32:has_c = 0i32;
+        if (ipos + 1i64 < input_len) {
+            bbyte = @cast<int64>(aria_libc_string_byte_at(text, ipos + 1i64));
+            has_b = 1i32;
+        }
+        if (ipos + 2i64 < input_len) {
+            cbyte = @cast<int64>(aria_libc_string_byte_at(text, ipos + 2i64));
+            has_c = 1i32;
+        }
+
+        int64:triple = abyte * 65536i64 + bbyte * 256i64 + cbyte;
+
+        // v0 = (triple >> 18) & 0x3F
+        int64:v0 = triple / 262144i64;
+        v0 = v0 - (v0 / 64i64) * 64i64;
+        // v1 = (triple >> 12) & 0x3F
+        int64:v1 = triple / 4096i64;
+        v1 = v1 - (v1 / 64i64) * 64i64;
+
+        if (url_mode == 0i32) {
+            aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar(v0));
+            opos = opos + 1i64;
+            aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar(v1));
+            opos = opos + 1i64;
+        }
+        if (url_mode == 1i32) {
+            aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar_url(v0));
+            opos = opos + 1i64;
+            aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar_url(v1));
+            opos = opos + 1i64;
+        }
+
+        if (has_b == 1i32) {
+            int64:v2 = triple / 64i64;
+            v2 = v2 - (v2 / 64i64) * 64i64;
+            if (url_mode == 0i32) {
+                aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar(v2));
+            }
+            if (url_mode == 1i32) {
+                aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar_url(v2));
+            }
+            opos = opos + 1i64;
+        }
+        if (has_b == 0i32) {
+            if (url_mode == 0i32) {
+                aria_libc_mem_write_byte(enc_ptr, opos, 61i32);
+                opos = opos + 1i64;
+                aria_libc_mem_write_byte(enc_ptr, opos, 61i32);
+                opos = opos + 1i64;
+            }
+        }
+
+        if (has_c == 1i32) {
+            int64:v3 = triple - (triple / 64i64) * 64i64;
+            if (url_mode == 0i32) {
+                aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar(v3));
+            }
+            if (url_mode == 1i32) {
+                aria_libc_mem_write_byte(enc_ptr, opos, raw _b64_echar_url(v3));
+            }
+            opos = opos + 1i64;
+        }
+        if (has_c == 0i32) {
+            if (has_b == 1i32) {
+                if (url_mode == 0i32) {
+                    aria_libc_mem_write_byte(enc_ptr, opos, 61i32);
+                    opos = opos + 1i64;
+                }
+            }
+        }
+
+        ipos = ipos + 3i64;
+    }
+
+    pass aria_libc_string_from_buf(enc_ptr, 0i64, opos);
+};
+
+// ── Public API ──
+
+pub func:b64_encode_str = string(string:text) {
+    int64:slen = aria_libc_string_strlen(text);
+    pass raw _b64_encode_core(text, slen, 0i32);
+};
+
+pub func:b64_encode = string(string:text, int32:len_param) {
+    int64:slen = @cast<int64>(len_param);
+    pass raw _b64_encode_core(text, slen, 0i32);
+};
+
+pub func:b64_encode_url_str = string(string:text) {
+    int64:slen = aria_libc_string_strlen(text);
+    pass raw _b64_encode_core(text, slen, 1i32);
+};
+
+pub func:b64_decode = string(string:encoded) {
+    drop _b64_init();
+    int64:slot = raw _b64_buf();
+    int64:enc_ptr = aria_libc_mem_read_i64(slot, 8i64);
+    int64:dec_ptr = aria_libc_mem_read_i64(slot, 16i64);
+    int64:elen = aria_libc_string_strlen(encoded);
+    if (elen == 0i64) { pass ""; }
+
+    // Phase 1: strip padding/invalid, copy valid chars to enc_ptr as scratch
+    int64:clean_len = 0i64;
+    int64:ci = 0i64;
+    loop(0i64, elen, 1i64) {
+        int32:ch = aria_libc_string_byte_at(encoded, ci);
+        int64:dv = raw _b64_dchar(ch);
+        if (dv >= 0i64) {
+            aria_libc_mem_write_byte(enc_ptr, clean_len, ch);
+            clean_len = clean_len + 1i64;
+        }
+        ci = ci + 1i64;
+    }
+
+    // Phase 2: decode groups of 4 clean chars
+    int64:opos = 0i64;
+    int64:pi = 0i64;
+    int64:ngroups = (clean_len + 3i64) / 4i64;
+    loop(0i64, ngroups, 1i64) {
+        if (pi < clean_len) {
+            int64:d0 = 0i64;
+            int64:d1 = 0i64;
+            int64:d2 = 0i64;
+            int64:d3 = 0i64;
+            int32:cnt = 0i32;
+
+            if (pi < clean_len) {
+                d0 = raw _b64_dchar(aria_libc_mem_read_byte(enc_ptr, pi));
+                pi = pi + 1i64;
+                cnt = 1i32;
+            }
+            if (pi < clean_len) {
+                d1 = raw _b64_dchar(aria_libc_mem_read_byte(enc_ptr, pi));
+                pi = pi + 1i64;
+                cnt = 2i32;
+            }
+            if (pi < clean_len) {
+                d2 = raw _b64_dchar(aria_libc_mem_read_byte(enc_ptr, pi));
+                pi = pi + 1i64;
+                cnt = 3i32;
+            }
+            if (pi < clean_len) {
+                d3 = raw _b64_dchar(aria_libc_mem_read_byte(enc_ptr, pi));
+                pi = pi + 1i64;
+                cnt = 4i32;
+            }
+
+            int64:triple = d0 * 262144i64 + d1 * 4096i64 + d2 * 64i64 + d3;
+
+            if (cnt >= 2i32) {
+                int64:byte0 = triple / 65536i64;
+                byte0 = byte0 - (byte0 / 256i64) * 256i64;
+                aria_libc_mem_write_byte(dec_ptr, opos, @cast<int32>(byte0));
+                opos = opos + 1i64;
+            }
+            if (cnt >= 3i32) {
+                int64:byte1 = triple / 256i64;
+                byte1 = byte1 - (byte1 / 256i64) * 256i64;
+                aria_libc_mem_write_byte(dec_ptr, opos, @cast<int32>(byte1));
+                opos = opos + 1i64;
+            }
+            if (cnt >= 4i32) {
+                int64:byte2 = triple - (triple / 256i64) * 256i64;
+                aria_libc_mem_write_byte(dec_ptr, opos, @cast<int32>(byte2));
+                opos = opos + 1i64;
+            }
+        }
+    }
+
+    pass aria_libc_string_from_buf(dec_ptr, 0i64, opos);
+};
+
+pub func:b64_is_valid = int32(string:text) {
+    int64:slen = aria_libc_string_strlen(text);
+    int32:valid = 1i32;
+    int64:vi = 0i64;
+    loop(0i64, slen, 1i64) {
+        if (valid == 1i32) {
+            int32:ch = aria_libc_string_byte_at(text, vi);
+            int32:is_ok = 0i32;
+            // Allow '=' only in last 2 positions
+            if (ch == 61i32) {
+                if (vi >= slen - 2i64) { is_ok = 1i32; }
+            }
+            if (is_ok == 0i32) {
+                int64:dv = raw _b64_dchar(ch);
+                if (dv >= 0i64) { is_ok = 1i32; }
+            }
+            if (is_ok == 0i32) { valid = 0i32; }
+        }
+        vi = vi + 1i64;
+    }
+    pass valid;
+};
+
+pub func:b64_cleanup = NIL() {
+    pass NIL;
+};
