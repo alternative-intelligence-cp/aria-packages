@@ -1,103 +1,91 @@
-// test_aria_diff.aria — Tests for aria-diff (C-side assertions)
-//
-// Tests LCS diffing with various text pairs.
+// test_aria_diff.aria — 12-test suite for aria-diff (v0.11.1)
+use "../src/aria_diff.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+}
 
-extern func:aria_diff_compute    = int32(string:text_a, string:text_b);
-extern func:aria_diff_count      = int32();
-extern func:aria_diff_get_tag    = int32(int32:idx);
-extern func:aria_diff_get_line   = string(int32:idx);
-extern func:aria_diff_additions  = int32();
-extern func:aria_diff_deletions  = int32();
-extern func:aria_diff_unchanged  = int32();
-extern func:aria_diff_unified    = string();
-
-extern func:aria_diff_assert_int_eq      = void(int32:actual, int32:expected, string:msg);
-extern func:aria_diff_assert_str_eq      = void(string:actual, string:expected, string:msg);
-extern func:aria_diff_assert_str_contains = void(string:haystack, string:needle, string:msg);
-extern func:aria_diff_assert_int_gt      = void(int32:actual, int32:threshold, string:msg);
-extern func:aria_diff_test_summary       = void();
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── test 01: identical texts ──
-    int32:n1 = aria_diff_compute("hello\nworld", "hello\nworld");
-    aria_diff_assert_int_eq(n1, 2i32, "test 01: identical texts = 2 entries");
+    // a = [1,2,3,4,5], b = [1,3,5]
+    int64:a = aria_libc_mem_malloc(40i64);
+    aria_libc_mem_write_i64(a, 0i64,  1i64);
+    aria_libc_mem_write_i64(a, 8i64,  2i64);
+    aria_libc_mem_write_i64(a, 16i64, 3i64);
+    aria_libc_mem_write_i64(a, 24i64, 4i64);
+    aria_libc_mem_write_i64(a, 32i64, 5i64);
+    int64:b = aria_libc_mem_malloc(24i64);
+    aria_libc_mem_write_i64(b, 0i64, 1i64);
+    aria_libc_mem_write_i64(b, 8i64, 3i64);
+    aria_libc_mem_write_i64(b, 16i64, 5i64);
 
-    // ── test 02: all context for identical ──
-    int32:u2 = aria_diff_unchanged();
-    aria_diff_assert_int_eq(u2, 2i32, "test 02: unchanged == 2");
+    // T01: lcs_length
+    int64:lcs = raw Diff.lcs_length(a, 5i64, b, 3i64);
+    if (lcs == 3i64) { println("[PASS] T01 lcs=3"); } else { println("[FAIL] T01"); }
 
-    // ── test 03: no additions for identical ──
-    int32:a3 = aria_diff_additions();
-    aria_diff_assert_int_eq(a3, 0i32, "test 03: additions == 0");
+    // T02: edit_distance
+    int64:ed = raw Diff.edit_distance(a, 5i64, b, 3i64);
+    if (ed == 2i64) { println("[PASS] T02 ed=2"); } else { println("[FAIL] T02"); }
 
-    // ── test 04: no deletions for identical ──
-    int32:d4 = aria_diff_deletions();
-    aria_diff_assert_int_eq(d4, 0i32, "test 04: deletions == 0");
+    // T03: are_equal (not equal)
+    int32:eq1 = raw Diff.are_equal(a, 5i64, b, 3i64);
+    if (eq1 == 0i32) { println("[PASS] T03 not equal"); } else { println("[FAIL] T03"); }
 
-    // ── test 05: added line ──
-    int32:n5 = aria_diff_compute("aaa\nccc", "aaa\nbbb\nccc");
-    int32:a5 = aria_diff_additions();
-    aria_diff_assert_int_eq(a5, 1i32, "test 05: one line added");
+    // T04: are_equal (equal)
+    int32:eq2 = raw Diff.are_equal(a, 5i64, a, 5i64);
+    if (eq2 == 1i32) { println("[PASS] T04 equal"); } else { println("[FAIL] T04"); }
 
-    // ── test 06: unchanged count with addition ──
-    int32:u6 = aria_diff_unchanged();
-    aria_diff_assert_int_eq(u6, 2i32, "test 06: unchanged == 2");
+    // T05: similarity (equal seqs)
+    int64:sim = raw Diff.similarity(a, 5i64, a, 5i64);
+    if (sim == 100i64) { println("[PASS] T05 sim=100"); } else { println("[FAIL] T05"); }
 
-    // ── test 07: removed line ──
-    int32:n7 = aria_diff_compute("aaa\nbbb\nccc", "aaa\nccc");
-    int32:d7 = aria_diff_deletions();
-    aria_diff_assert_int_eq(d7, 1i32, "test 07: one line removed");
+    // T06: diff returns handle
+    int64:dh = raw Diff.diff(a, 5i64, b, 3i64);
+    int64:dlen = raw Diff.length(dh);
+    if (dlen > 0i64) { println("[PASS] T06 diff len>0"); } else { println("[FAIL] T06"); }
 
-    // ── test 08: get_tag context (0) ──
-    int32:t8 = aria_diff_get_tag(0i32);
-    aria_diff_assert_int_eq(t8, 0i32, "test 08: first tag is context (0)");
+    // T07: delete_count
+    int64:dc = raw Diff.delete_count(dh);
+    if (dc == 2i64) { println("[PASS] T07 del=2"); } else { println("[FAIL] T07"); }
 
-    // ── test 09: get_tag removed (2) ──
-    int32:t9 = aria_diff_get_tag(1i32);
-    aria_diff_assert_int_eq(t9, 2i32, "test 09: second tag is removed (2)");
+    // T08: insert_count
+    int64:ic = raw Diff.insert_count(dh);
+    if (ic == 0i64) { println("[PASS] T08 ins=0"); } else { println("[FAIL] T08"); }
 
-    // ── test 10: get_line for context ──
-    string:l10 = aria_diff_get_line(0i32);
-    aria_diff_assert_str_eq(l10, "aaa", "test 10: context line == aaa");
+    // T09: equal_count
+    int64:ec = raw Diff.equal_count(dh);
+    if (ec == 3i64) { println("[PASS] T09 eq=3"); } else { println("[FAIL] T09"); }
 
-    // ── test 11: get_line for removed ──
-    string:l11 = aria_diff_get_line(1i32);
-    aria_diff_assert_str_eq(l11, "bbb", "test 11: removed line == bbb");
+    drop Diff.destroy(dh);
 
-    // ── test 12: unified output contains - prefix ──
-    string:uni = aria_diff_unified();
-    aria_diff_assert_str_contains(uni, "-bbb", "test 12: unified has -bbb");
+    // T10: lcs output
+    int64:out = aria_libc_mem_malloc(40i64);
+    int64:olen = aria_libc_mem_malloc(8i64);
+    drop Diff.lcs(a, 5i64, b, 3i64, out, olen);
+    int64:ol = aria_libc_mem_read_i64(olen, 0i64);
+    if (ol == 3i64) { println("[PASS] T10 lcs out=3"); } else { println("[FAIL] T10"); }
 
-    // ── test 13: empty vs non-empty ──
-    int32:n13 = aria_diff_compute("", "hello");
-    int32:a13 = aria_diff_additions();
-    aria_diff_assert_int_eq(a13, 1i32, "test 13: empty->hello = 1 addition");
+    // T11: lcs values correct
+    int64:lv0 = aria_libc_mem_read_i64(out, 0i64);
+    int64:lv1 = aria_libc_mem_read_i64(out, 8i64);
+    int64:lv2 = aria_libc_mem_read_i64(out, 16i64);
+    if (lv0 == 1i64) {
+        if (lv1 == 3i64) {
+            if (lv2 == 5i64) { println("[PASS] T11 lcs vals"); } else { println("[FAIL] T11"); }
+        } else { println("[FAIL] T11"); }
+    } else { println("[FAIL] T11"); }
 
-    // ── test 14: non-empty vs empty ──
-    int32:n14 = aria_diff_compute("hello", "");
-    int32:d14 = aria_diff_deletions();
-    aria_diff_assert_int_eq(d14, 1i32, "test 14: hello->empty = 1 deletion");
+    // T12: edit_distance of identical
+    int64:ed2 = raw Diff.edit_distance(a, 5i64, a, 5i64);
+    if (ed2 == 0i64) { println("[PASS] T12 ed=0 same"); } else { println("[FAIL] T12"); }
 
-    // ── test 15: completely different ──
-    int32:n15 = aria_diff_compute("aaa\nbbb", "ccc\nddd");
-    int32:a15 = aria_diff_additions();
-    int32:d15 = aria_diff_deletions();
-    aria_diff_assert_int_eq(a15, 2i32, "test 15: completely different = 2 additions");
-    aria_diff_assert_int_eq(d15, 2i32, "test 15b: completely different = 2 deletions");
-
-    // ── test 16: out-of-range tag returns -1 ──
-    int32:t16 = aria_diff_get_tag(9999i32);
-    aria_diff_assert_int_eq(t16, -1i32, "test 16: out-of-range tag == -1");
-
-    // ── test 17: modification (change line) ──
-    int32:n17 = aria_diff_compute("foo\nbar\nbaz", "foo\nqux\nbaz");
-    int32:a17 = aria_diff_additions();
-    int32:d17 = aria_diff_deletions();
-    aria_diff_assert_int_eq(a17, 1i32, "test 17: modified = 1 addition (qux)");
-    aria_diff_assert_int_eq(d17, 1i32, "test 17b: modified = 1 deletion (bar)");
-
-    aria_diff_test_summary();
-    exit 0;
+    aria_libc_mem_free(out);
+    aria_libc_mem_free(olen);
+    aria_libc_mem_free(a);
+    aria_libc_mem_free(b);
+    exit 0i32;
 };

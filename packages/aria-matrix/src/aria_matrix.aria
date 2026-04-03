@@ -1,96 +1,311 @@
-// aria_matrix.aria — Matrix operations for Aria
+// aria_matrix.aria — Dense Matrix Operations (v0.11.1)
 //
-// Handle-based matrix: create, set/get elements, arithmetic, transpose.
-// Requires: libaria_matrix_shim.so
+// Row-major dense flt64 matrix backed by aria-libc_mem + aria-libc_math.
+// Import with: use "aria_matrix.aria".*;
+//
+// Handle-based: Matrix.create(rows, cols) → set/get/add/multiply/etc.
+//
+// v0.11.1: Rewritten from C shim to aria-libc backed.
 
-extern "aria_matrix_shim" {
-    func:aria_matrix_create    = int32(int32:rows, int32:cols);
-    func:aria_matrix_destroy   = void(int32:handle);
-    func:aria_matrix_rows      = int32(int32:handle);
-    func:aria_matrix_cols      = int32(int32:handle);
-    func:aria_matrix_set       = int32(int32:handle, int32:r, int32:c, flt64:val);
-    func:aria_matrix_get       = flt64(int32:handle, int32:r, int32:c);
-    func:aria_matrix_identity  = int32(int32:n);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_calloc    = int64(int64:count, int64:size);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_zero      = void(int64:ptr, int64:bytes);
 }
 
-extern "aria_matrix_shim" {
-    func:aria_matrix_add       = int32(int32:a, int32:b);
-    func:aria_matrix_multiply  = int32(int32:a, int32:b);
-    func:aria_matrix_scale     = int32(int32:a, flt64:scalar);
-    func:aria_matrix_transpose = int32(int32:a);
-    func:aria_matrix_determinant = flt64(int32:a);
-    func:aria_matrix_trace     = flt64(int32:a);
-    func:aria_matrix_equals    = int32(int32:a, int32:b, flt64:eps);
+extern "aria_libc_math" {
+    func:aria_libc_math_flt64_bits      = int64(flt64:v);
+    func:aria_libc_math_flt64_from_bits = flt64(int64:bits);
+    func:aria_libc_math_fabs            = flt64(flt64:x);
 }
 
-// ── public API ──────────────────────────────────────────────────────
+// Header layout: rows(0) | cols(8) | data_ptr(16)
+fixed int64:MAT_ROWS = 0i64;
+fixed int64:MAT_COLS = 8i64;
+fixed int64:MAT_DATA = 16i64;
 
-pub func:matrix_create = int32(int32:rows, int32:cols) {
-    int32:h = aria_matrix_create(rows, cols);
-    pass h;
+// ── internal: read element ──────────────────────────────────────────────────
+func:mat_read = flt64(int64:hdr, int64:row, int64:col) {
+    int64:cols = aria_libc_mem_read_i64(hdr, MAT_COLS);
+    int64:data = aria_libc_mem_read_i64(hdr, MAT_DATA);
+    int64:off = (row * cols + col) * 8i64;
+    int64:bits = aria_libc_mem_read_i64(data, off);
+    pass aria_libc_math_flt64_from_bits(bits);
 };
 
-pub func:matrix_destroy = NIL(int32:handle) {
-    aria_matrix_destroy(handle);
-    pass NIL;
+// ── internal: write element ─────────────────────────────────────────────────
+func:mat_write = int32(int64:hdr, int64:row, int64:col, flt64:val) {
+    int64:cols = aria_libc_mem_read_i64(hdr, MAT_COLS);
+    int64:data = aria_libc_mem_read_i64(hdr, MAT_DATA);
+    int64:off = (row * cols + col) * 8i64;
+    int64:bits = aria_libc_math_flt64_bits(val);
+    aria_libc_mem_write_i64(data, off, bits);
+    pass 0i32;
 };
 
-pub func:matrix_rows = int32(int32:handle) {
-    int32:r = aria_matrix_rows(handle);
-    pass r;
-};
+Type:Matrix = {
+    func:create = int64(int64:rows, int64:cols) {
+        int64:hdr = aria_libc_mem_malloc(24i64);
+        int64:n = rows * cols;
+        int64:data = aria_libc_mem_calloc(n, 8i64);
+        aria_libc_mem_write_i64(hdr, MAT_ROWS, rows);
+        aria_libc_mem_write_i64(hdr, MAT_COLS, cols);
+        aria_libc_mem_write_i64(hdr, MAT_DATA, data);
+        pass hdr;
+    };
 
-pub func:matrix_cols = int32(int32:handle) {
-    int32:c = aria_matrix_cols(handle);
-    pass c;
-};
+    func:destroy = int32(int64:handle) {
+        int64:data = aria_libc_mem_read_i64(handle, MAT_DATA);
+        aria_libc_mem_free(data);
+        aria_libc_mem_free(handle);
+        pass 0i32;
+    };
 
-pub func:matrix_set = int32(int32:handle, int32:r, int32:c, flt64:val) {
-    int32:res = aria_matrix_set(handle, r, c, val);
-    pass res;
-};
+    func:rows = int64(int64:handle) {
+        pass aria_libc_mem_read_i64(handle, MAT_ROWS);
+    };
 
-pub func:matrix_get = flt64(int32:handle, int32:r, int32:c) {
-    flt64:v = aria_matrix_get(handle, r, c);
-    pass v;
-};
+    func:cols = int64(int64:handle) {
+        pass aria_libc_mem_read_i64(handle, MAT_COLS);
+    };
 
-pub func:matrix_identity = int32(int32:n) {
-    int32:h = aria_matrix_identity(n);
-    pass h;
-};
+    func:get = flt64(int64:handle, int64:row, int64:col) {
+        flt64:v = raw mat_read(handle, row, col);
+        pass v;
+    };
 
-pub func:matrix_add = int32(int32:a, int32:b) {
-    int32:h = aria_matrix_add(a, b);
-    pass h;
-};
+    func:set = int32(int64:handle, int64:row, int64:col, flt64:val) {
+        drop mat_write(handle, row, col, val);
+        pass 0i32;
+    };
 
-pub func:matrix_multiply = int32(int32:a, int32:b) {
-    int32:h = aria_matrix_multiply(a, b);
-    pass h;
-};
+    func:identity = int64(int64:n) {
+        int64:m = raw Matrix.create(n, n);
+        int64:i = 0i64;
+        loop(0i64, n, 1i64) {
+            drop mat_write(m, i, i, 1.0);
+            i += 1i64;
+        }
+        pass m;
+    };
 
-pub func:matrix_scale = int32(int32:a, flt64:scalar) {
-    int32:h = aria_matrix_scale(a, scalar);
-    pass h;
-};
+    func:add = int64(int64:a, int64:b) {
+        int64:r = aria_libc_mem_read_i64(a, MAT_ROWS);
+        int64:c = aria_libc_mem_read_i64(a, MAT_COLS);
+        int64:out = raw Matrix.create(r, c);
+        int64:i = 0i64;
+        loop(0i64, r, 1i64) {
+            int64:j = 0i64;
+            loop(0i64, c, 1i64) {
+                flt64:va = raw mat_read(a, i, j);
+                flt64:vb = raw mat_read(b, i, j);
+                drop mat_write(out, i, j, va + vb);
+                j += 1i64;
+            }
+            i += 1i64;
+        }
+        pass out;
+    };
 
-pub func:matrix_transpose = int32(int32:a) {
-    int32:h = aria_matrix_transpose(a);
-    pass h;
-};
+    func:multiply = int64(int64:a, int64:b) {
+        int64:ra = aria_libc_mem_read_i64(a, MAT_ROWS);
+        int64:ca = aria_libc_mem_read_i64(a, MAT_COLS);
+        int64:cb = aria_libc_mem_read_i64(b, MAT_COLS);
+        int64:out = raw Matrix.create(ra, cb);
+        int64:i = 0i64;
+        loop(0i64, ra, 1i64) {
+            int64:j = 0i64;
+            loop(0i64, cb, 1i64) {
+                flt64:s = 0.0;
+                int64:k = 0i64;
+                loop(0i64, ca, 1i64) {
+                    flt64:va = raw mat_read(a, i, k);
+                    flt64:vb = raw mat_read(b, k, j);
+                    s += va * vb;
+                    k += 1i64;
+                }
+                drop mat_write(out, i, j, s);
+                j += 1i64;
+            }
+            i += 1i64;
+        }
+        pass out;
+    };
 
-pub func:matrix_determinant = flt64(int32:a) {
-    flt64:d = aria_matrix_determinant(a);
-    pass d;
-};
+    func:scale = int64(int64:handle, flt64:scalar) {
+        int64:r = aria_libc_mem_read_i64(handle, MAT_ROWS);
+        int64:c = aria_libc_mem_read_i64(handle, MAT_COLS);
+        int64:out = raw Matrix.create(r, c);
+        int64:i = 0i64;
+        loop(0i64, r, 1i64) {
+            int64:j = 0i64;
+            loop(0i64, c, 1i64) {
+                flt64:v = raw mat_read(handle, i, j);
+                drop mat_write(out, i, j, v * scalar);
+                j += 1i64;
+            }
+            i += 1i64;
+        }
+        pass out;
+    };
 
-pub func:matrix_trace = flt64(int32:a) {
-    flt64:t = aria_matrix_trace(a);
-    pass t;
-};
+    func:transpose = int64(int64:handle) {
+        int64:r = aria_libc_mem_read_i64(handle, MAT_ROWS);
+        int64:c = aria_libc_mem_read_i64(handle, MAT_COLS);
+        int64:out = raw Matrix.create(c, r);
+        int64:i = 0i64;
+        loop(0i64, r, 1i64) {
+            int64:j = 0i64;
+            loop(0i64, c, 1i64) {
+                flt64:v = raw mat_read(handle, i, j);
+                drop mat_write(out, j, i, v);
+                j += 1i64;
+            }
+            i += 1i64;
+        }
+        pass out;
+    };
 
-pub func:matrix_equals = int32(int32:a, int32:b, flt64:eps) {
-    int32:r = aria_matrix_equals(a, b, eps);
-    pass r;
+    func:determinant = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, MAT_ROWS);
+        if (n == 1i64) {
+            flt64:v = raw mat_read(handle, 0i64, 0i64);
+            pass v;
+        }
+        if (n == 2i64) {
+            flt64:a = raw mat_read(handle, 0i64, 0i64);
+            flt64:b = raw mat_read(handle, 0i64, 1i64);
+            flt64:c = raw mat_read(handle, 1i64, 0i64);
+            flt64:d = raw mat_read(handle, 1i64, 1i64);
+            pass a * d - b * c;
+        }
+        // Gaussian elimination for n >= 3
+        int64:total = n * n;
+        int64:tmp = aria_libc_mem_malloc(total * 8i64);
+        // Copy matrix into tmp
+        int64:data = aria_libc_mem_read_i64(handle, MAT_DATA);
+        int64:ci = 0i64;
+        loop(0i64, total, 1i64) {
+            int64:bits = aria_libc_mem_read_i64(data, ci * 8i64);
+            aria_libc_mem_write_i64(tmp, ci * 8i64, bits);
+            ci += 1i64;
+        }
+        flt64:det = 1.0;
+        int64:col = 0i64;
+        loop(0i64, n, 1i64) {
+            // Find pivot
+            int64:pivot_off = (col * n + col) * 8i64;
+            int64:pivot_bits = aria_libc_mem_read_i64(tmp, pivot_off);
+            flt64:pivot_val = aria_libc_math_flt64_from_bits(pivot_bits);
+            flt64:abs_piv = aria_libc_math_fabs(pivot_val);
+            if (abs_piv < 0.000000001) {
+                // Try to find a nonzero row below and swap
+                int64:found = 0i64;
+                int64:sr = col + 1i64;
+                loop(0i64, n, 1i64) {
+                    if (found == 0i64) {
+                        if (sr < n) {
+                            int64:sr_off = (sr * n + col) * 8i64;
+                            int64:sr_bits = aria_libc_mem_read_i64(tmp, sr_off);
+                            flt64:sr_val = aria_libc_math_flt64_from_bits(sr_bits);
+                            flt64:abs_sr = aria_libc_math_fabs(sr_val);
+                            if (abs_sr >= 0.000000001) {
+                                // Swap rows col and sr
+                                int64:sc = 0i64;
+                                loop(0i64, n, 1i64) {
+                                    int64:off_a = (col * n + sc) * 8i64;
+                                    int64:off_b = (sr * n + sc) * 8i64;
+                                    int64:ta = aria_libc_mem_read_i64(tmp, off_a);
+                                    int64:tb = aria_libc_mem_read_i64(tmp, off_b);
+                                    aria_libc_mem_write_i64(tmp, off_a, tb);
+                                    aria_libc_mem_write_i64(tmp, off_b, ta);
+                                    sc += 1i64;
+                                }
+                                det = 0.0 - det;
+                                found = 1i64;
+                                // Re-read pivot
+                                pivot_bits = aria_libc_mem_read_i64(tmp, pivot_off);
+                                pivot_val = aria_libc_math_flt64_from_bits(pivot_bits);
+                            }
+                            sr += 1i64;
+                        }
+                    }
+                }
+                if (found == 0i64) {
+                    aria_libc_mem_free(tmp);
+                    pass 0.0;
+                }
+            }
+            det = det * pivot_val;
+            // Eliminate below
+            int64:er = col + 1i64;
+            loop(0i64, n, 1i64) {
+                if (er < n) {
+                    int64:er_off = (er * n + col) * 8i64;
+                    int64:er_bits = aria_libc_mem_read_i64(tmp, er_off);
+                    flt64:er_val = aria_libc_math_flt64_from_bits(er_bits);
+                    flt64:factor = er_val / pivot_val;
+                    int64:ec = col;
+                    loop(0i64, n, 1i64) {
+                        if (ec < n) {
+                            int64:poff = (col * n + ec) * 8i64;
+                            int64:eoff = (er * n + ec) * 8i64;
+                            int64:pb = aria_libc_mem_read_i64(tmp, poff);
+                            int64:eb = aria_libc_mem_read_i64(tmp, eoff);
+                            flt64:pv = aria_libc_math_flt64_from_bits(pb);
+                            flt64:ev = aria_libc_math_flt64_from_bits(eb);
+                            flt64:nv = ev - factor * pv;
+                            int64:nb = aria_libc_math_flt64_bits(nv);
+                            aria_libc_mem_write_i64(tmp, eoff, nb);
+                            ec += 1i64;
+                        }
+                    }
+                    er += 1i64;
+                }
+            }
+            col += 1i64;
+        }
+        aria_libc_mem_free(tmp);
+        pass det;
+    };
+
+    func:trace = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, MAT_ROWS);
+        flt64:s = 0.0;
+        int64:i = 0i64;
+        loop(0i64, n, 1i64) {
+            flt64:v = raw mat_read(handle, i, i);
+            s += v;
+            i += 1i64;
+        }
+        pass s;
+    };
+
+    func:equals = int32(int64:a, int64:b) {
+        int64:ra = aria_libc_mem_read_i64(a, MAT_ROWS);
+        int64:ca = aria_libc_mem_read_i64(a, MAT_COLS);
+        int64:rb = aria_libc_mem_read_i64(b, MAT_ROWS);
+        int64:cb = aria_libc_mem_read_i64(b, MAT_COLS);
+        if (ra != rb) { pass 0i32; }
+        if (ca != cb) { pass 0i32; }
+        int64:da = aria_libc_mem_read_i64(a, MAT_DATA);
+        int64:db = aria_libc_mem_read_i64(b, MAT_DATA);
+        int64:total = ra * ca;
+        int32:eq = 1i32;
+        int64:i = 0i64;
+        loop(0i64, total, 1i64) {
+            int64:ba = aria_libc_mem_read_i64(da, i * 8i64);
+            int64:bb = aria_libc_mem_read_i64(db, i * 8i64);
+            flt64:va = aria_libc_math_flt64_from_bits(ba);
+            flt64:vb = aria_libc_math_flt64_from_bits(bb);
+            flt64:diff = va - vb;
+            flt64:ad = aria_libc_math_fabs(diff);
+            if (ad > 0.000001) { eq = 0i32; }
+            i += 1i64;
+        }
+        pass eq;
+    };
 };

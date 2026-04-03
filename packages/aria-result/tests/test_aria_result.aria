@@ -1,0 +1,88 @@
+// test_aria_result.aria — 12-test suite for aria-result (v0.11.3)
+use "../src/aria_result.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+
+    // T01: ok creates result with is_ok=true
+    int64:r1 = raw Res.success(42i64);
+    int32:ok1 = raw Res.is_ok(r1);
+    if (ok1 == 1i32) { println("[PASS] T01 ok is_ok"); pass_count += 1i32; }
+    if (ok1 != 1i32) { println("[FAIL] T01"); }
+
+    // T02: err creates result with is_err=true
+    int64:r2 = raw Res.err(99i64);
+    int32:er2 = raw Res.is_err(r2);
+    if (er2 == 1i32) { println("[PASS] T02 err is_err"); pass_count += 1i32; }
+    if (er2 != 1i32) { println("[FAIL] T02"); }
+
+    // T03: unwrap ok returns value
+    int64:v3 = raw Res.unwrap(r1);
+    if (v3 == 42i64) { println("[PASS] T03 unwrap ok=42"); pass_count += 1i32; }
+    if (v3 != 42i64) { println("[FAIL] T03"); }
+
+    // T04: unwrap err returns -1
+    int64:v4 = raw Res.unwrap(r2);
+    if (v4 == -1i64) { println("[PASS] T04 unwrap err=-1"); pass_count += 1i32; }
+    if (v4 != -1i64) { println("[FAIL] T04"); }
+
+    // T05: unwrap_or ok returns value
+    int64:v5 = raw Res.unwrap_or(r1, 0i64);
+    if (v5 == 42i64) { println("[PASS] T05 unwrap_or ok"); pass_count += 1i32; }
+    if (v5 != 42i64) { println("[FAIL] T05"); }
+
+    // T06: unwrap_or err returns fallback
+    int64:v6 = raw Res.unwrap_or(r2, 777i64);
+    if (v6 == 777i64) { println("[PASS] T06 unwrap_or err"); pass_count += 1i32; }
+    if (v6 != 777i64) { println("[FAIL] T06"); }
+
+    // T07: error_code
+    int64:ec7 = raw Res.error_code(r2);
+    if (ec7 == 99i64) { println("[PASS] T07 error_code=99"); pass_count += 1i32; }
+    if (ec7 != 99i64) { println("[FAIL] T07"); }
+
+    // T08: and_both — ok AND ok returns second
+    int64:ra8 = raw Res.success(10i64);
+    int64:rb8 = raw Res.success(20i64);
+    int64:and8 = raw Res.and_both(ra8, rb8);
+    int64:v8 = raw Res.unwrap(and8);
+    if (v8 == 20i64) { println("[PASS] T08 and ok,ok"); pass_count += 1i32; }
+    if (v8 != 20i64) { println("[FAIL] T08"); }
+
+    // T09: and_both — err AND ok returns err
+    int64:re9 = raw Res.err(5i64);
+    int64:ro9 = raw Res.success(10i64);
+    int64:and9 = raw Res.and_both(re9, ro9);
+    int32:ie9 = raw Res.is_err(and9);
+    if (ie9 == 1i32) { println("[PASS] T09 and err,ok"); pass_count += 1i32; }
+    if (ie9 != 1i32) { println("[FAIL] T09"); }
+
+    // T10: or_either — err OR ok returns ok
+    int64:or10 = raw Res.or_either(re9, ro9);
+    int32:io10 = raw Res.is_ok(or10);
+    if (io10 == 1i32) { println("[PASS] T10 or err,ok"); pass_count += 1i32; }
+    if (io10 != 1i32) { println("[FAIL] T10"); }
+
+    // T11: map_or — ok maps to ok_val
+    int64:m11 = raw Res.map_or(r1, 100i64, 200i64);
+    if (m11 == 100i64) { println("[PASS] T11 map_or ok"); pass_count += 1i32; }
+    if (m11 != 100i64) { println("[FAIL] T11"); }
+
+    // T12: clone
+    int64:cl12 = raw Res.clone(r1);
+    int64:v12 = raw Res.unwrap(cl12);
+    if (v12 == 42i64) { println("[PASS] T12 clone"); pass_count += 1i32; }
+    if (v12 != 42i64) { println("[FAIL] T12"); }
+
+    int32:d1 = raw Res.destroy(r1);
+    int32:d2 = raw Res.destroy(r2);
+    int32:da8 = raw Res.destroy(ra8);
+    int32:db8 = raw Res.destroy(rb8);
+    int32:de9 = raw Res.destroy(re9);
+    int32:do9 = raw Res.destroy(ro9);
+    int32:dc12 = raw Res.destroy(cl12);
+    println("DONE");
+    exit(0i32);
+};

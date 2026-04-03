@@ -1,11 +1,15 @@
 [package]
-name            = "aria-msgpack"
-version         = "0.3.1"
-description     = "MessagePack binary serialization for Aria — compact alternative to JSON"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+name = "aria-msgpack"
+version = "0.11.2"
+description = "MessagePack binary serialization — Aria + aria-libc_mem"
+license = "MIT"
+repository = "https://github.com/alternative-intelligence-cp/aria-packages"
+categories = ["serialization", "binary"]
 
 [dependencies]
+aria-libc = "0.10.0"
 
 [build]
-link_libraries = ["aria_msgpack_shim"]
+type = "library"
+entry = "src/aria_msgpack.aria"
+link_libraries = ["aria_libc_mem"]

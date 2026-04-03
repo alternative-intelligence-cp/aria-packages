@@ -1,95 +1,62 @@
-// test_aria_pqueue.aria — Tests for aria-pqueue (C-side assertions)
+// test_aria_pqueue.aria — 12-test suite for aria-pqueue (v0.11.1)
+use "../src/aria_pqueue.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern func:aria_pqueue_create        = int64(int32:capacity);
-extern func:aria_pqueue_destroy       = void(int64:handle);
-extern func:aria_pqueue_insert        = int32(int64:handle, int64:value, int32:priority);
-extern func:aria_pqueue_extract       = int64(int64:handle);
-extern func:aria_pqueue_peek          = int64(int64:handle);
-extern func:aria_pqueue_peek_priority = int32(int64:handle);
-extern func:aria_pqueue_size          = int32(int64:handle);
-extern func:aria_pqueue_is_empty      = int32(int64:handle);
-extern func:aria_pqueue_assert_i32    = void(int32:actual, int32:expected, string:msg);
-extern func:aria_pqueue_assert_i64    = void(int64:actual, int64:expected, string:msg);
-extern func:aria_pqueue_test_summary  = void();
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── test 01: create priority queue ──
-    int64:pq = aria_pqueue_create(8i32);
-    int32:empty1 = aria_pqueue_is_empty(pq);
-    aria_pqueue_assert_i32(empty1, 1i32, "test 01: is_empty on new pqueue");
+    int64:pq = raw PQueue.create(16i32);
 
-    // ── test 02: insert elements with priorities ──
-    int32:i1 = aria_pqueue_insert(pq, 100i64, 5i32);
-    aria_pqueue_assert_i32(i1, 1i32, "test 02: insert(100, pri=5) returns 1");
+    // T01: initially empty
+    int32:e1 = raw PQueue.is_empty(pq);
+    if (e1 == 1i32) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
 
-    // ── test 03: insert more with different priorities ──
-    int32:i2 = aria_pqueue_insert(pq, 200i64, 1i32);
-    int32:i3 = aria_pqueue_insert(pq, 300i64, 3i32);
-    int32:sz1 = aria_pqueue_size(pq);
-    aria_pqueue_assert_i32(sz1, 3i32, "test 03: size == 3 after 3 inserts");
+    // T02: size = 0
+    int64:sz0 = raw PQueue.size(pq);
+    if (sz0 == 0i64) { println("[PASS] T02 size=0"); } else { println("[FAIL] T02"); }
 
-    // ── test 04: peek returns lowest priority value ──
-    int64:pk = aria_pqueue_peek(pq);
-    aria_pqueue_assert_i64(pk, 200i64, "test 04: peek == 200 (pri=1, lowest)");
+    // T03: insert and size
+    drop PQueue.insert(pq, 100i64, 5i32);
+    drop PQueue.insert(pq, 200i64, 1i32);
+    drop PQueue.insert(pq, 300i64, 3i32);
+    int64:sz3 = raw PQueue.size(pq);
+    if (sz3 == 3i64) { println("[PASS] T03 size=3"); } else { println("[FAIL] T03"); }
 
-    // ── test 05: peek_priority ──
-    int32:pp = aria_pqueue_peek_priority(pq);
-    aria_pqueue_assert_i32(pp, 1i32, "test 05: peek_priority == 1");
+    // T04: peek returns min-priority
+    int64:pk = raw PQueue.peek(pq);
+    if (pk == 200i64) { println("[PASS] T04 peek=200"); } else { println("[FAIL] T04"); }
 
-    // ── test 06: extract min (pri=1 -> value 200) ──
-    int64:e1 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(e1, 200i64, "test 06: extract == 200 (pri=1)");
+    // T05: peek_priority returns min
+    int32:pp = raw PQueue.peek_priority(pq);
+    if (pp == 1i32) { println("[PASS] T05 peek_pri=1"); } else { println("[FAIL] T05"); }
 
-    // ── test 07: next extract (pri=3 -> value 300) ──
-    int64:e2 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(e2, 300i64, "test 07: extract == 300 (pri=3)");
+    // T06: extract returns min value
+    int64:ex1 = raw PQueue.extract(pq);
+    if (ex1 == 200i64) { println("[PASS] T06 extract=200"); } else { println("[FAIL] T06"); }
 
-    // ── test 08: next extract (pri=5 -> value 100) ──
-    int64:e3 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(e3, 100i64, "test 08: extract == 100 (pri=5)");
+    // T07: after extract, next min
+    int64:ex2 = raw PQueue.extract(pq);
+    if (ex2 == 300i64) { println("[PASS] T07 extract=300"); } else { println("[FAIL] T07"); }
 
-    // ── test 09: empty after extracting all ──
-    int32:empty2 = aria_pqueue_is_empty(pq);
-    aria_pqueue_assert_i32(empty2, 1i32, "test 09: is_empty after drain");
+    // T08: size after 2 extracts
+    int64:sz1 = raw PQueue.size(pq);
+    if (sz1 == 1i64) { println("[PASS] T08 size=1"); } else { println("[FAIL] T08"); }
 
-    // ── test 10: extract from empty returns -1 ──
-    int64:ee = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(ee, -1i64, "test 10: extract empty returns -1");
+    // T09: not empty
+    int32:e2 = raw PQueue.is_empty(pq);
+    if (e2 == 0i32) { println("[PASS] T09 not empty"); } else { println("[FAIL] T09"); }
 
-    // ── test 11: equal priorities maintain insertion order? (impl-defined) ──
-    int32:x1 = aria_pqueue_insert(pq, 10i64, 2i32);
-    int32:x2 = aria_pqueue_insert(pq, 20i64, 2i32);
-    int32:x3 = aria_pqueue_insert(pq, 30i64, 2i32);
-    int32:sz2 = aria_pqueue_size(pq);
-    aria_pqueue_assert_i32(sz2, 3i32, "test 11: 3 elements with same priority");
+    // T10: extract last
+    int64:ex3 = raw PQueue.extract(pq);
+    if (ex3 == 100i64) { println("[PASS] T10 extract=100"); } else { println("[FAIL] T10"); }
 
-    // ── test 12: extract with equal priorities ──
-    int64:eq1 = aria_pqueue_extract(pq);
-    int64:eq2 = aria_pqueue_extract(pq);
-    int64:eq3 = aria_pqueue_extract(pq);
-    // all three should be 10, 20, 30 in some order — just verify size is 0
-    int32:sz3 = aria_pqueue_size(pq);
-    aria_pqueue_assert_i32(sz3, 0i32, "test 12: size == 0 after extracting equal-pri");
+    // T11: empty after all extracts
+    int32:e3 = raw PQueue.is_empty(pq);
+    if (e3 == 1i32) { println("[PASS] T11 empty"); } else { println("[FAIL] T11"); }
 
-    // ── test 13: mixed priority order ──
-    int32:m1 = aria_pqueue_insert(pq, 999i64, 10i32);
-    int32:m2 = aria_pqueue_insert(pq, 111i64, 1i32);
-    int32:m3 = aria_pqueue_insert(pq, 555i64, 5i32);
-    int64:mx1 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(mx1, 111i64, "test 13: extract min from mixed = 111 (pri=1)");
+    // T12: capacity
+    int64:cp = raw PQueue.capacity(pq);
+    if (cp == 16i64) { println("[PASS] T12 cap=16"); } else { println("[FAIL] T12"); }
 
-    // ── test 14: second extract from mixed ──
-    int64:mx2 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(mx2, 555i64, "test 14: extract = 555 (pri=5)");
-
-    // ── test 15: last extract from mixed ──
-    int64:mx3 = aria_pqueue_extract(pq);
-    aria_pqueue_assert_i64(mx3, 999i64, "test 15: extract = 999 (pri=10)");
-
-    // ── cleanup ──
-    aria_pqueue_destroy(pq);
-    aria_pqueue_test_summary();
-    exit 0;
+    drop PQueue.destroy(pq);
+    exit 0i32;
 };

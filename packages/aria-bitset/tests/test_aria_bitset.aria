@@ -1,0 +1,96 @@
+// test_aria_bitset.aria — 12-test suite for aria-bitset (v0.11.3)
+use "../src/aria_bitset.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int64:bs = raw Bitset.create(32i64);
+
+    // T01: initial count is 0
+    int32:c1 = raw Bitset.count(bs);
+    if (c1 == 0i32) { println("[PASS] T01 init count=0"); pass_count += 1i32; }
+    if (c1 != 0i32) { println("[FAIL] T01"); }
+
+    // T02: set and test
+    int32:s2 = raw Bitset.set(bs, 5i64);
+    int32:g2 = raw Bitset.test(bs, 5i64);
+    if (g2 == 1i32) { println("[PASS] T02 set/test"); pass_count += 1i32; }
+    if (g2 != 1i32) { println("[FAIL] T02"); }
+
+    // T03: unset bit reads 0
+    int32:g3 = raw Bitset.test(bs, 10i64);
+    if (g3 == 0i32) { println("[PASS] T03 unset=0"); pass_count += 1i32; }
+    if (g3 != 0i32) { println("[FAIL] T03"); }
+
+    // T04: clear
+    int32:s4 = raw Bitset.set(bs, 10i64);
+    int32:c4 = raw Bitset.clear(bs, 10i64);
+    int32:g4 = raw Bitset.test(bs, 10i64);
+    if (g4 == 0i32) { println("[PASS] T04 clear"); pass_count += 1i32; }
+    if (g4 != 0i32) { println("[FAIL] T04"); }
+
+    // T05: toggle (0→1)
+    int32:t5 = raw Bitset.toggle(bs, 20i64);
+    int32:g5 = raw Bitset.test(bs, 20i64);
+    if (g5 == 1i32) { println("[PASS] T05 toggle 0→1"); pass_count += 1i32; }
+    if (g5 != 1i32) { println("[FAIL] T05"); }
+
+    // T06: toggle (1→0)
+    int32:t6 = raw Bitset.toggle(bs, 20i64);
+    int32:g6 = raw Bitset.test(bs, 20i64);
+    if (g6 == 0i32) { println("[PASS] T06 toggle 1→0"); pass_count += 1i32; }
+    if (g6 != 0i32) { println("[FAIL] T06"); }
+
+    // T07: count after operations (bit 5 still set)
+    int32:c7 = raw Bitset.count(bs);
+    if (c7 == 1i32) { println("[PASS] T07 count=1"); pass_count += 1i32; }
+    if (c7 != 1i32) { println("[FAIL] T07"); }
+
+    // T08: size
+    int64:sz8 = raw Bitset.size(bs);
+    if (sz8 == 32i64) { println("[PASS] T08 size=32"); pass_count += 1i32; }
+    if (sz8 != 32i64) { println("[FAIL] T08"); }
+
+    // T09: union
+    int64:bs2 = raw Bitset.create(32i64);
+    int32:s9 = raw Bitset.set(bs2, 0i64);
+    int32:u9 = raw Bitset.union(bs, bs2);
+    int32:g9 = raw Bitset.test(bs, 0i64);
+    if (g9 == 1i32) { println("[PASS] T09 union"); pass_count += 1i32; }
+    if (g9 != 1i32) { println("[FAIL] T09"); }
+
+    // T10: intersect
+    int64:bs3 = raw Bitset.create(32i64);
+    int32:s10a = raw Bitset.set(bs3, 5i64);
+    int32:i10 = raw Bitset.intersect(bs, bs3);
+    int32:g10a = raw Bitset.test(bs, 5i64);
+    int32:g10b = raw Bitset.test(bs, 0i64);
+    if (g10a == 1i32) { if (g10b == 0i32) { println("[PASS] T10 intersect"); pass_count += 1i32; } }
+
+    // T11: complement
+    int64:bs4 = raw Bitset.create(8i64);
+    int32:s11 = raw Bitset.set(bs4, 2i64);
+    int32:cp11 = raw Bitset.complement(bs4);
+    int32:g11a = raw Bitset.test(bs4, 2i64);
+    int32:g11b = raw Bitset.test(bs4, 0i64);
+    if (g11a == 0i32) { if (g11b == 1i32) { println("[PASS] T11 complement"); pass_count += 1i32; } }
+
+    // T12: equals
+    int64:bsA = raw Bitset.create(8i64);
+    int64:bsB = raw Bitset.create(8i64);
+    int32:sA = raw Bitset.set(bsA, 3i64);
+    int32:sB = raw Bitset.set(bsB, 3i64);
+    int32:eq12 = raw Bitset.equals(bsA, bsB);
+    if (eq12 == 1i32) { println("[PASS] T12 equals"); pass_count += 1i32; }
+    if (eq12 != 1i32) { println("[FAIL] T12"); }
+
+    int32:d1 = raw Bitset.destroy(bs);
+    int32:d2 = raw Bitset.destroy(bs2);
+    int32:d3 = raw Bitset.destroy(bs3);
+    int32:d4 = raw Bitset.destroy(bs4);
+    int32:dA = raw Bitset.destroy(bsA);
+    int32:dB = raw Bitset.destroy(bsB);
+    println("DONE");
+    exit(0i32);
+};

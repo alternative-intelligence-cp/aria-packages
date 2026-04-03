@@ -1,53 +1,276 @@
-// aria_map.aria — String-keyed int64 hash map
-// Handle-based FNV-1a hashmap with automatic rehashing
+// aria_map.aria — Hash Map (string-keyed, int64-valued) (v0.11.1)
+//
+// Pure Aria hash map using FNV-1a hashing and open addressing (linear probe).
+// Import with: use "aria_map.aria".*;
+//
+// Layout: handle → header block (48 bytes)
+//   [0]  capacity       [1]  length
+//   [2]  keys_ptr       [3]  vals_ptr
+//   [4]  flags_ptr (0=empty, 1=live, 2=tombstone)
+//   [5]  key_lens_ptr
+//
+// v0.11.1: Pure Aria rewrite backed by aria-libc_mem.
 
-extern func:aria_map_shim_create = int64();
-extern func:aria_map_shim_destroy = NIL(int64:handle);
-extern func:aria_map_shim_set = NIL(int64:handle, string:key, int64:value);
-extern func:aria_map_shim_get = int64(int64:handle, string:key, int64:default_val);
-extern func:aria_map_shim_has = int64(int64:handle, string:key);
-extern func:aria_map_shim_remove = int64(int64:handle, string:key);
-extern func:aria_map_shim_length = int64(int64:handle);
-extern func:aria_map_shim_clear = NIL(int64:handle);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_calloc      = int64(int64:count, int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_byte   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte  = int64(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_zero        = void(int64:ptr, int64:nbytes);
+}
 
-// --- Public API ---
+extern func:string_length     = int64(string:s);
+extern func:aria_string_byte_at = int32(string:s, int64:idx);
 
-pub func:hmap_new = int64() {
-    int64:h = aria_map_shim_create();
+int64:MAP_HDR      = 48i64;
+int64:MAP_EMPTY    = 0i64;
+int64:MAP_LIVE     = 1i64;
+int64:MAP_TOMB     = 2i64;
+int64:MAP_INIT_CAP = 16i64;
+
+// ── FNV-1a hash ─────────────────────────────────────────────────────────────
+func:fnv1a_hash = int64(string:key, int64:len) {
+    int64:h = 14695981039346656037i64;
+    int64:i = 0i64;
+    loop(0i64, len, 1i64) {
+        int32:b = aria_string_byte_at(key, i);
+        h = h ^ @cast<int64>(b);
+        h = h * 1099511628211i64;
+        i += 1i64;
+    }
     pass h;
 };
 
-pub func:hmap_free = NIL(int64:handle) {
-    aria_map_shim_destroy(handle);
-    pass NIL;
+// ── copy string bytes into a malloc'd buffer ────────────────────────────────
+func:map_copy_string = int64(string:src, int64:len) {
+    int64:buf = aria_libc_mem_malloc(len + 1i64);
+    int64:i = 0i64;
+    loop(0i64, len, 1i64) {
+        int32:b = aria_string_byte_at(src, i);
+        drop aria_libc_mem_write_byte(buf, i, @cast<int64>(b));
+        i += 1i64;
+    }
+    drop aria_libc_mem_write_byte(buf, len, 0i64);
+    pass buf;
 };
 
-pub func:hmap_set = NIL(int64:handle, string:key, int64:value) {
-    aria_map_shim_set(handle, key, value);
-    pass NIL;
+// ── compare string against stored buffer (byte-by-byte) ────────────────────
+func:map_key_equals = int32(string:a, int64:a_len, int64:b_ptr, int64:b_len) {
+    if (a_len != b_len) { pass 0i32; }
+    int64:i = 0i64;
+    loop(0i64, a_len, 1i64) {
+        int32:ba = aria_string_byte_at(a, i);
+        int64:bb = aria_libc_mem_read_byte(b_ptr, i);
+        if (@cast<int64>(ba) != bb) { pass 0i32; }
+        i += 1i64;
+    }
+    pass 1i32;
 };
 
-pub func:hmap_get = int64(int64:handle, string:key, int64:default_val) {
-    int64:val = aria_map_shim_get(handle, key, default_val);
-    pass val;
+// ── header helpers ──────────────────────────────────────────────────────────
+func:map_read_hdr = int64(int64:handle, int64:slot) {
+    pass aria_libc_mem_read_i64(handle, slot * 8i64);
 };
 
-pub func:hmap_has = int64(int64:handle, string:key) {
-    int64:found = aria_map_shim_has(handle, key);
-    pass found;
+func:map_write_hdr = int32(int64:handle, int64:slot, int64:val) {
+    aria_libc_mem_write_i64(handle, slot * 8i64, val);
+    pass 0i32;
 };
 
-pub func:hmap_remove = int64(int64:handle, string:key) {
-    int64:removed = aria_map_shim_remove(handle, key);
-    pass removed;
-};
+Type:Map = {
+    func:create = int64() {
+        int64:hdr = aria_libc_mem_malloc(MAP_HDR);
+        if (hdr == 0i64) { pass 0i64 - 1i64; }
+        int64:cap = MAP_INIT_CAP;
+        int64:keys   = aria_libc_mem_calloc(cap, 8i64);
+        int64:vals   = aria_libc_mem_calloc(cap, 8i64);
+        int64:flags  = aria_libc_mem_calloc(cap, 1i64);
+        int64:klens  = aria_libc_mem_calloc(cap, 8i64);
+        aria_libc_mem_write_i64(hdr, 0i64,  cap);
+        aria_libc_mem_write_i64(hdr, 8i64,  0i64);
+        aria_libc_mem_write_i64(hdr, 16i64, keys);
+        aria_libc_mem_write_i64(hdr, 24i64, vals);
+        aria_libc_mem_write_i64(hdr, 32i64, flags);
+        aria_libc_mem_write_i64(hdr, 40i64, klens);
+        pass hdr;
+    };
 
-pub func:hmap_length = int64(int64:handle) {
-    int64:len = aria_map_shim_length(handle);
-    pass len;
-};
+    func:destroy = int32(int64:handle) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:vals  = raw map_read_hdr(handle, 3i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:klens = raw map_read_hdr(handle, 5i64);
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, i);
+            if (f == MAP_LIVE) {
+                int64:kp = aria_libc_mem_read_i64(keys, i * 8i64);
+                aria_libc_mem_free(kp);
+            }
+            i += 1i64;
+        }
+        aria_libc_mem_free(keys);
+        aria_libc_mem_free(vals);
+        aria_libc_mem_free(flags);
+        aria_libc_mem_free(klens);
+        aria_libc_mem_free(handle);
+        pass 0i32;
+    };
 
-pub func:hmap_clear = NIL(int64:handle) {
-    aria_map_shim_clear(handle);
-    pass NIL;
+    func:set = int32(int64:handle, string:key, int64:value) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:len   = raw map_read_hdr(handle, 1i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:vals  = raw map_read_hdr(handle, 3i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:klens = raw map_read_hdr(handle, 5i64);
+        int64:klen  = string_length(key);
+        int64:h     = raw fnv1a_hash(key, klen);
+        int64:idx   = h % cap;
+        if (idx < 0i64) { idx = 0i64 - idx; }
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, idx);
+            if (f == MAP_LIVE) {
+                int64:ek = aria_libc_mem_read_i64(keys, idx * 8i64);
+                int64:el = aria_libc_mem_read_i64(klens, idx * 8i64);
+                int32:eq = raw map_key_equals(key, klen, ek, el);
+                if (eq == 1i32) {
+                    aria_libc_mem_write_i64(vals, idx * 8i64, value);
+                    pass 0i32;
+                }
+            }
+            if (f == MAP_EMPTY) {
+                int64:kc = raw map_copy_string(key, klen);
+                aria_libc_mem_write_i64(keys, idx * 8i64, kc);
+                aria_libc_mem_write_i64(klens, idx * 8i64, klen);
+                aria_libc_mem_write_i64(vals, idx * 8i64, value);
+                drop aria_libc_mem_write_byte(flags, idx, MAP_LIVE);
+                drop map_write_hdr(handle, 1i64, len + 1i64);
+                pass 0i32;
+            }
+            if (f == MAP_TOMB) {
+                int64:kc = raw map_copy_string(key, klen);
+                aria_libc_mem_write_i64(keys, idx * 8i64, kc);
+                aria_libc_mem_write_i64(klens, idx * 8i64, klen);
+                aria_libc_mem_write_i64(vals, idx * 8i64, value);
+                drop aria_libc_mem_write_byte(flags, idx, MAP_LIVE);
+                drop map_write_hdr(handle, 1i64, len + 1i64);
+                pass 0i32;
+            }
+            idx = (idx + 1i64) % cap;
+            i += 1i64;
+        }
+        pass 0i32 - 1i32;
+    };
+
+    func:get = int64(int64:handle, string:key) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:vals  = raw map_read_hdr(handle, 3i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:klens = raw map_read_hdr(handle, 5i64);
+        int64:klen  = string_length(key);
+        int64:h     = raw fnv1a_hash(key, klen);
+        int64:idx   = h % cap;
+        if (idx < 0i64) { idx = 0i64 - idx; }
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, idx);
+            if (f == MAP_EMPTY) { pass 0i64 - 1i64; }
+            if (f == MAP_LIVE) {
+                int64:ek = aria_libc_mem_read_i64(keys, idx * 8i64);
+                int64:el = aria_libc_mem_read_i64(klens, idx * 8i64);
+                int32:eq = raw map_key_equals(key, klen, ek, el);
+                if (eq == 1i32) {
+                    pass aria_libc_mem_read_i64(vals, idx * 8i64);
+                }
+            }
+            idx = (idx + 1i64) % cap;
+            i += 1i64;
+        }
+        pass 0i64 - 1i64;
+    };
+
+    func:has = int32(int64:handle, string:key) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:klens = raw map_read_hdr(handle, 5i64);
+        int64:klen  = string_length(key);
+        int64:h     = raw fnv1a_hash(key, klen);
+        int64:idx   = h % cap;
+        if (idx < 0i64) { idx = 0i64 - idx; }
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, idx);
+            if (f == MAP_EMPTY) { pass 0i32; }
+            if (f == MAP_LIVE) {
+                int64:ek = aria_libc_mem_read_i64(keys, idx * 8i64);
+                int64:el = aria_libc_mem_read_i64(klens, idx * 8i64);
+                int32:eq = raw map_key_equals(key, klen, ek, el);
+                if (eq == 1i32) { pass 1i32; }
+            }
+            idx = (idx + 1i64) % cap;
+            i += 1i64;
+        }
+        pass 0i32;
+    };
+
+    func:remove = int32(int64:handle, string:key) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:len   = raw map_read_hdr(handle, 1i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:klens = raw map_read_hdr(handle, 5i64);
+        int64:klen  = string_length(key);
+        int64:h     = raw fnv1a_hash(key, klen);
+        int64:idx   = h % cap;
+        if (idx < 0i64) { idx = 0i64 - idx; }
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, idx);
+            if (f == MAP_EMPTY) { pass 0i32 - 1i32; }
+            if (f == MAP_LIVE) {
+                int64:ek = aria_libc_mem_read_i64(keys, idx * 8i64);
+                int64:el = aria_libc_mem_read_i64(klens, idx * 8i64);
+                int32:eq = raw map_key_equals(key, klen, ek, el);
+                if (eq == 1i32) {
+                    aria_libc_mem_free(ek);
+                    drop aria_libc_mem_write_byte(flags, idx, MAP_TOMB);
+                    drop map_write_hdr(handle, 1i64, len - 1i64);
+                    pass 0i32;
+                }
+            }
+            idx = (idx + 1i64) % cap;
+            i += 1i64;
+        }
+        pass 0i32 - 1i32;
+    };
+
+    func:length = int64(int64:handle) {
+        pass raw map_read_hdr(handle, 1i64);
+    };
+
+    func:clear = int32(int64:handle) {
+        int64:cap   = raw map_read_hdr(handle, 0i64);
+        int64:keys  = raw map_read_hdr(handle, 2i64);
+        int64:flags = raw map_read_hdr(handle, 4i64);
+        int64:i = 0i64;
+        loop(0i64, cap, 1i64) {
+            int64:f = aria_libc_mem_read_byte(flags, i);
+            if (f == MAP_LIVE) {
+                int64:kp = aria_libc_mem_read_i64(keys, i * 8i64);
+                aria_libc_mem_free(kp);
+            }
+            i += 1i64;
+        }
+        aria_libc_mem_zero(flags, cap);
+        drop map_write_hdr(handle, 1i64, 0i64);
+        pass 0i32;
+    };
 };

@@ -1,49 +1,77 @@
-// test_aria_compress.aria — Compression tests (6 tests)
+// test_aria_compress.aria — 12-test suite for aria-compress (v0.11.2)
+use "../src/aria_compress.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern "aria_compress_shim" {
-    func:aria_compress_deflate    = int32(string:data, int32:len);
-    func:aria_compress_inflate    = int32(string:data, int32:len);
-    func:aria_compress_gzip       = int32(string:data, int32:len);
-    func:aria_compress_gunzip     = int32(string:data, int32:len);
-    func:aria_compress_get_result = string();
-    func:aria_compress_get_length = int32();
-    func:aria_compress_get_error  = int32();
-    func:aria_compress_roundtrip  = int32(string:data, int32:len);
-    func:aria_compress_version    = string();
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // T01: version string exists
-    string:ver = aria_compress_version();
-    drop println("[PASS] T01 version");
+    int32:pass_count = 0i32;
 
-    // T02: deflate compresses data
-    int32:clen = aria_compress_deflate("Hello World! This is a test of compression in Aria language.", 60i32);
-    if (clen > 0i32) { drop println("[PASS] T02 deflate"); }
-    if (clen <= 0i32) { drop println("[FAIL] T02 deflate"); }
+    // T01: version non-empty
+    string:ver = raw Compress.version();
+    int64:vlen = string_length(ver);
+    if (vlen > 0i64) { println("[PASS] T01 version"); pass_count += 1i32; }
+    if (vlen <= 0i64) { println("[FAIL] T01"); }
 
-    // T03: compressed size < original for repetitive data
-    int32:clen3 = aria_compress_deflate("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 98i32);
-    int32:clen4 = aria_compress_get_length();
-    if (clen4 < 98i32) { drop println("[PASS] T03 deflate smaller"); }
-    if (clen4 >= 98i32) { drop println("[FAIL] T03 deflate smaller"); }
+    // T02: deflate returns compressed length > 0
+    int32:d2 = raw Compress.deflate("hello world", 11i32);
+    if (d2 > 0i32) { println("[PASS] T02 deflate>0"); pass_count += 1i32; }
+    if (d2 <= 0i32) { println("[FAIL] T02"); }
 
-    // T04: roundtrip preserves data
-    int32:rt = aria_compress_roundtrip("The quick brown fox jumps over the lazy dog.", 44i32);
-    if (rt == 44i32) { drop println("[PASS] T04 roundtrip length"); }
-    if (rt != 44i32) { drop println("[FAIL] T04 roundtrip length"); }
+    // T03: get_length after deflate > 0
+    int32:gl3 = raw Compress.get_length();
+    if (gl3 > 0i32) { println("[PASS] T03 get_length"); pass_count += 1i32; }
+    if (gl3 <= 0i32) { println("[FAIL] T03"); }
 
-    // T05: roundtrip result length matches
-    int32:rl = aria_compress_get_length();
-    if (rl == 44i32) { drop println("[PASS] T05 roundtrip result"); }
-    if (rl != 44i32) { drop println("[FAIL] T05 roundtrip result"); }
+    // T04: get_result after deflate non-empty
+    string:gr4 = raw Compress.get_result();
+    int64:gl4 = string_length(gr4);
+    if (gl4 > 0i64) { println("[PASS] T04 get_result"); pass_count += 1i32; }
+    if (gl4 <= 0i64) { println("[FAIL] T04"); }
 
-    // T06: gzip compresses
-    int32:gz = aria_compress_gzip("Aria gzip test data for compression.", 36i32);
-    if (gz > 0i32) { drop println("[PASS] T06 gzip"); }
-    if (gz <= 0i32) { drop println("[FAIL] T06 gzip"); }
+    // T05: roundtrip returns length > 0
+    int32:rt5 = raw Compress.roundtrip("test data", 9i32);
+    if (rt5 > 0i32) { println("[PASS] T05 roundtrip>0"); pass_count += 1i32; }
+    if (rt5 <= 0i32) { println("[FAIL] T05"); }
 
-    exit 0;
+    // T06: roundtrip result matches original
+    string:rr6 = raw Compress.get_result();
+    if (rr6 == "test data") { println("[PASS] T06 roundtrip match"); pass_count += 1i32; }
+    if (rr6 != "test data") { println("[FAIL] T06"); }
+
+    // T07: gzip returns compressed length > 0
+    int32:g7 = raw Compress.gzip("hello gzip", 10i32);
+    if (g7 > 0i32) { println("[PASS] T07 gzip>0"); pass_count += 1i32; }
+    if (g7 <= 0i32) { println("[FAIL] T07"); }
+
+    // T08: get_error after success is 0
+    int32:e8 = raw Compress.get_error();
+    if (e8 == 0i32) { println("[PASS] T08 no error"); pass_count += 1i32; }
+    if (e8 != 0i32) { println("[FAIL] T08"); }
+
+    // T09: deflate compressed shorter than original for long string
+    int32:d9 = raw Compress.deflate("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 40i32);
+    if (d9 > 0i32) { if (d9 < 40i32) { println("[PASS] T09 smaller"); pass_count += 1i32; } }
+
+    // T10: roundtrip longer string
+    int32:rt10 = raw Compress.roundtrip("the quick brown fox jumps over the lazy dog", 44i32);
+    string:rr10 = raw Compress.get_result();
+    if (rr10 == "the quick brown fox jumps over the lazy dog") { println("[PASS] T10 long roundtrip"); pass_count += 1i32; }
+    if (rr10 != "the quick brown fox jumps over the lazy dog") { println("[FAIL] T10"); }
+
+    // T11: inflate after deflate
+    int32:d11 = raw Compress.deflate("inflate me", 10i32);
+    string:comp11 = raw Compress.get_result();
+    int32:i11 = raw Compress.inflate(comp11, d11);
+    string:dec11 = raw Compress.get_result();
+    if (dec11 == "inflate me") { println("[PASS] T11 inflate"); pass_count += 1i32; }
+    if (dec11 != "inflate me") { println("[FAIL] T11"); }
+
+    // T12: gzip get_length matches return value
+    int32:g12 = raw Compress.gzip("length check", 12i32);
+    int32:gl12 = raw Compress.get_length();
+    if (gl12 == g12) { println("[PASS] T12 gzip length"); pass_count += 1i32; }
+    if (gl12 != g12) { println("[FAIL] T12"); }
+
+    println("DONE");
+    exit(0i32);
 };

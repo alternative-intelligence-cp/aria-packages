@@ -1,0 +1,157 @@
+// aria_deque.aria — Double-ended queue (v0.11.3)
+//
+// Pure Aria + aria-libc_mem.
+// Import with: use "aria_deque.aria".*;
+//
+// Circular buffer with O(1) push/pop at both ends.
+// Header layout: [cap:i64 @ 0][size:i64 @ 8][head:i64 @ 16][tail:i64 @ 24][data_ptr:i64 @ 32]
+// Data is a separate malloc'd array of cap * 8 bytes (int64 elements).
+//
+// v0.11.3: New pure Aria package.
+
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:bytes);
+    func:aria_libc_mem_free        = int32(int64:ptr);
+    func:aria_libc_mem_zero        = int32(int64:ptr, int64:bytes);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+}
+
+// ── header read/write helpers ───────────────────────────────────────────────
+
+func:dq_cap = int64(int64:dq) { pass aria_libc_mem_read_i64(dq, 0i64); };
+func:dq_size = int64(int64:dq) { pass aria_libc_mem_read_i64(dq, 8i64); };
+func:dq_head = int64(int64:dq) { pass aria_libc_mem_read_i64(dq, 16i64); };
+func:dq_tail = int64(int64:dq) { pass aria_libc_mem_read_i64(dq, 24i64); };
+func:dq_data = int64(int64:dq) { pass aria_libc_mem_read_i64(dq, 32i64); };
+
+func:dq_set_size = int32(int64:dq, int64:v) { aria_libc_mem_write_i64(dq, 8i64, v); pass 0i32; };
+func:dq_set_head = int32(int64:dq, int64:v) { aria_libc_mem_write_i64(dq, 16i64, v); pass 0i32; };
+func:dq_set_tail = int32(int64:dq, int64:v) { aria_libc_mem_write_i64(dq, 24i64, v); pass 0i32; };
+
+// modulo without % operator: a mod b = a - (a / b) * b
+func:dq_mod = int64(int64:a, int64:b) {
+    int64:d = a / b;
+    pass a - d * b;
+};
+
+// ── core functions ──────────────────────────────────────────────────────────
+
+func:deque_create = int64(int64:cap) {
+    int64:hdr = aria_libc_mem_malloc(40i64);
+    int32:zh = aria_libc_mem_zero(hdr, 40i64);
+    int64:data = aria_libc_mem_malloc(cap * 8i64);
+    int32:zd = aria_libc_mem_zero(data, cap * 8i64);
+    aria_libc_mem_write_i64(hdr, 0i64, cap);
+    aria_libc_mem_write_i64(hdr, 8i64, 0i64);
+    aria_libc_mem_write_i64(hdr, 16i64, 0i64);
+    aria_libc_mem_write_i64(hdr, 24i64, 0i64);
+    aria_libc_mem_write_i64(hdr, 32i64, data);
+    pass hdr;
+};
+
+func:deque_destroy = int32(int64:dq) {
+    int64:data = dq_data(dq);
+    int32:fd = aria_libc_mem_free(data);
+    pass aria_libc_mem_free(dq);
+};
+
+func:deque_push_back = int32(int64:dq, int64:val) {
+    int64:sz = dq_size(dq);
+    int64:cap = dq_cap(dq);
+    if (sz >= cap) { pass -1i32; }
+    int64:tail = dq_tail(dq);
+    int64:data = dq_data(dq);
+    aria_libc_mem_write_i64(data, tail * 8i64, val);
+    int64:new_tail = dq_mod(tail + 1i64, cap);
+    int32:st = dq_set_tail(dq, new_tail);
+    int32:ss = dq_set_size(dq, sz + 1i64);
+    pass 0i32;
+};
+
+func:deque_push_front = int32(int64:dq, int64:val) {
+    int64:sz = dq_size(dq);
+    int64:cap = dq_cap(dq);
+    if (sz >= cap) { pass -1i32; }
+    int64:head = dq_head(dq);
+    int64:new_head = dq_mod(head - 1i64 + cap, cap);
+    int64:data = dq_data(dq);
+    aria_libc_mem_write_i64(data, new_head * 8i64, val);
+    int32:sh = dq_set_head(dq, new_head);
+    int32:ss = dq_set_size(dq, sz + 1i64);
+    pass 0i32;
+};
+
+func:deque_pop_back = int64(int64:dq) {
+    int64:sz = dq_size(dq);
+    if (sz == 0i64) { pass -1i64; }
+    int64:cap = dq_cap(dq);
+    int64:tail = dq_tail(dq);
+    int64:new_tail = dq_mod(tail - 1i64 + cap, cap);
+    int64:data = dq_data(dq);
+    int64:val = aria_libc_mem_read_i64(data, new_tail * 8i64);
+    int32:st = dq_set_tail(dq, new_tail);
+    int32:ss = dq_set_size(dq, sz - 1i64);
+    pass val;
+};
+
+func:deque_pop_front = int64(int64:dq) {
+    int64:sz = dq_size(dq);
+    if (sz == 0i64) { pass -1i64; }
+    int64:cap = dq_cap(dq);
+    int64:head = dq_head(dq);
+    int64:data = dq_data(dq);
+    int64:val = aria_libc_mem_read_i64(data, head * 8i64);
+    int64:new_head = dq_mod(head + 1i64, cap);
+    int32:sh = dq_set_head(dq, new_head);
+    int32:ss = dq_set_size(dq, sz - 1i64);
+    pass val;
+};
+
+func:deque_peek_front = int64(int64:dq) {
+    int64:sz = dq_size(dq);
+    if (sz == 0i64) { pass -1i64; }
+    int64:head = dq_head(dq);
+    int64:data = dq_data(dq);
+    pass aria_libc_mem_read_i64(data, head * 8i64);
+};
+
+func:deque_peek_back = int64(int64:dq) {
+    int64:sz = dq_size(dq);
+    if (sz == 0i64) { pass -1i64; }
+    int64:cap = dq_cap(dq);
+    int64:tail = dq_tail(dq);
+    int64:back = dq_mod(tail - 1i64 + cap, cap);
+    int64:data = dq_data(dq);
+    pass aria_libc_mem_read_i64(data, back * 8i64);
+};
+
+func:deque_is_empty = int32(int64:dq) {
+    int64:sz = dq_size(dq);
+    if (sz == 0i64) { pass 1i32; }
+    pass 0i32;
+};
+
+func:deque_clear = int32(int64:dq) {
+    int32:ss = dq_set_size(dq, 0i64);
+    int32:sh = dq_set_head(dq, 0i64);
+    int32:st = dq_set_tail(dq, 0i64);
+    pass 0i32;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Deque = {
+    func:create = int64(int64:cap) { pass raw deque_create(cap); };
+    func:destroy = int32(int64:dq) { pass raw deque_destroy(dq); };
+    func:push_back = int32(int64:dq, int64:val) { pass raw deque_push_back(dq, val); };
+    func:push_front = int32(int64:dq, int64:val) { pass raw deque_push_front(dq, val); };
+    func:pop_back = int64(int64:dq) { pass raw deque_pop_back(dq); };
+    func:pop_front = int64(int64:dq) { pass raw deque_pop_front(dq); };
+    func:peek_front = int64(int64:dq) { pass raw deque_peek_front(dq); };
+    func:peek_back = int64(int64:dq) { pass raw deque_peek_back(dq); };
+    func:size = int64(int64:dq) { pass raw dq_size(dq); };
+    func:capacity = int64(int64:dq) { pass raw dq_cap(dq); };
+    func:is_empty = int32(int64:dq) { pass raw deque_is_empty(dq); };
+    func:clear = int32(int64:dq) { pass raw deque_clear(dq); };
+};

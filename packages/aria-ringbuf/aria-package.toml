@@ -1,11 +1,12 @@
 [package]
-name            = "aria-ringbuf"
-version         = "0.3.0"
-description     = "Fixed-size ring buffer (circular buffer) for Aria — handle-based, int64 elements"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
-
-[dependencies]
+name = "aria-ringbuf"
+version = "0.11.1"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Fixed-capacity circular buffer (ring buffer) with FIFO semantics"
+keywords = ["ring-buffer", "circular-buffer", "queue", "data-structure"]
+categories = ["data-structures"]
 
 [build]
-link_libraries = ["aria_ringbuf_shim"]
+type = "library"
+entry = "src/aria_ringbuf.aria"

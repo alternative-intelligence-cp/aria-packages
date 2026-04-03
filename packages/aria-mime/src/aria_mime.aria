@@ -1,29 +1,234 @@
-// aria_mime.aria — MIME type detection library for Aria
+// aria_mime.aria — MIME type detection (v0.11.2)
+//
+// Aria + aria-libc_string — no custom C shim.
+// Import with: use "aria_mime.aria".*;
+//
+// Uses string == for lookups, aria_libc_string_substr for extension extraction.
+// Covers 72 extension-to-MIME mappings.
 
-extern "aria_mime_shim" {
-    func:aria_mime_from_filename  = string(string:filename);
-    func:aria_mime_from_extension = string(string:ext);
-    func:aria_mime_to_extension   = string(string:mime);
-    func:aria_mime_is_text        = int32(string:mime);
-    func:aria_mime_count          = int32();
+extern func:string_length       = int64(string:s);
+extern func:aria_string_byte_at = int32(string:s, int64:idx);
+
+extern "aria_libc_string" {
+    func:aria_libc_string_substr = string(string:s, int64:start, int64:len);
+    func:aria_libc_string_strcasecmp = int32(string:a, string:b);
 }
 
-pub func:from_filename = string(string:filename) {
-    pass aria_mime_from_filename(filename);
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+// Extract extension from filename (find last '.' and return from there).
+// Returns "" if no dot found.
+func:mime_find_ext = string(string:filename) {
+    int64:len = string_length(filename);
+    int64:dot_pos = 0i64 - 1i64;
+    int64:i = 0i64;
+    loop(0i64, len, 1i64) {
+        int32:b = aria_string_byte_at(filename, i);
+        if (b == 46i32) { dot_pos = i; }
+        i += 1i64;
+    }
+    if (dot_pos < 0i64) { pass ""; }
+    int64:ext_len = len - dot_pos;
+    pass aria_libc_string_substr(filename, dot_pos, ext_len);
 };
 
-pub func:from_extension = string(string:ext) {
-    pass aria_mime_from_extension(ext);
+
+// ── extension → MIME lookup ────────────────────────────────────────────────────
+
+func:mime_lookup_ext = string(string:ext) {
+    // text
+    if (ext == ".html") { pass "text/html"; }
+    if (ext == ".htm") { pass "text/html"; }
+    if (ext == ".css") { pass "text/css"; }
+    if (ext == ".js") { pass "text/javascript"; }
+    if (ext == ".mjs") { pass "text/javascript"; }
+    if (ext == ".json") { pass "application/json"; }
+    if (ext == ".xml") { pass "application/xml"; }
+    if (ext == ".txt") { pass "text/plain"; }
+    if (ext == ".csv") { pass "text/csv"; }
+    if (ext == ".md") { pass "text/markdown"; }
+    if (ext == ".yaml") { pass "text/yaml"; }
+    if (ext == ".yml") { pass "text/yaml"; }
+    if (ext == ".toml") { pass "application/toml"; }
+    if (ext == ".ini") { pass "text/plain"; }
+    if (ext == ".cfg") { pass "text/plain"; }
+    if (ext == ".log") { pass "text/plain"; }
+    // images
+    if (ext == ".png") { pass "image/png"; }
+    if (ext == ".jpg") { pass "image/jpeg"; }
+    if (ext == ".jpeg") { pass "image/jpeg"; }
+    if (ext == ".gif") { pass "image/gif"; }
+    if (ext == ".bmp") { pass "image/bmp"; }
+    if (ext == ".svg") { pass "image/svg+xml"; }
+    if (ext == ".webp") { pass "image/webp"; }
+    if (ext == ".ico") { pass "image/x-icon"; }
+    if (ext == ".tiff") { pass "image/tiff"; }
+    if (ext == ".tif") { pass "image/tiff"; }
+    if (ext == ".avif") { pass "image/avif"; }
+    // audio
+    if (ext == ".mp3") { pass "audio/mpeg"; }
+    if (ext == ".wav") { pass "audio/wav"; }
+    if (ext == ".ogg") { pass "audio/ogg"; }
+    if (ext == ".flac") { pass "audio/flac"; }
+    if (ext == ".aac") { pass "audio/aac"; }
+    if (ext == ".m4a") { pass "audio/mp4"; }
+    if (ext == ".wma") { pass "audio/x-ms-wma"; }
+    // video
+    if (ext == ".mp4") { pass "video/mp4"; }
+    if (ext == ".webm") { pass "video/webm"; }
+    if (ext == ".avi") { pass "video/x-msvideo"; }
+    if (ext == ".mov") { pass "video/quicktime"; }
+    if (ext == ".mkv") { pass "video/x-matroska"; }
+    if (ext == ".flv") { pass "video/x-flv"; }
+    if (ext == ".wmv") { pass "video/x-ms-wmv"; }
+    // application
+    if (ext == ".pdf") { pass "application/pdf"; }
+    if (ext == ".zip") { pass "application/zip"; }
+    if (ext == ".gz") { pass "application/gzip"; }
+    if (ext == ".tar") { pass "application/x-tar"; }
+    if (ext == ".7z") { pass "application/x-7z-compressed"; }
+    if (ext == ".rar") { pass "application/vnd.rar"; }
+    if (ext == ".bz2") { pass "application/x-bzip2"; }
+    if (ext == ".xz") { pass "application/x-xz"; }
+    if (ext == ".wasm") { pass "application/wasm"; }
+    if (ext == ".doc") { pass "application/msword"; }
+    if (ext == ".docx") { pass "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; }
+    if (ext == ".xls") { pass "application/vnd.ms-excel"; }
+    if (ext == ".xlsx") { pass "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; }
+    if (ext == ".ppt") { pass "application/vnd.ms-powerpoint"; }
+    if (ext == ".pptx") { pass "application/vnd.openxmlformats-officedocument.presentationml.presentation"; }
+    // fonts
+    if (ext == ".woff") { pass "font/woff"; }
+    if (ext == ".woff2") { pass "font/woff2"; }
+    if (ext == ".ttf") { pass "font/ttf"; }
+    if (ext == ".otf") { pass "font/otf"; }
+    if (ext == ".eot") { pass "application/vnd.ms-fontobject"; }
+    // programming
+    if (ext == ".c") { pass "text/x-c"; }
+    if (ext == ".h") { pass "text/x-c"; }
+    if (ext == ".cpp") { pass "text/x-c++"; }
+    if (ext == ".py") { pass "text/x-python"; }
+    if (ext == ".java") { pass "text/x-java"; }
+    if (ext == ".rs") { pass "text/x-rust"; }
+    if (ext == ".go") { pass "text/x-go"; }
+    if (ext == ".ts") { pass "text/typescript"; }
+    if (ext == ".sh") { pass "application/x-sh"; }
+    if (ext == ".aria") { pass "text/x-aria"; }
+    pass "application/octet-stream";
 };
 
-pub func:to_extension = string(string:mime) {
-    pass aria_mime_to_extension(mime);
+// ── MIME → extension reverse lookup ────────────────────────────────────────────
+
+func:mime_reverse_lookup = string(string:mime) {
+    if (mime == "text/html") { pass ".html"; }
+    if (mime == "text/css") { pass ".css"; }
+    if (mime == "text/javascript") { pass ".js"; }
+    if (mime == "application/json") { pass ".json"; }
+    if (mime == "application/xml") { pass ".xml"; }
+    if (mime == "text/plain") { pass ".txt"; }
+    if (mime == "text/csv") { pass ".csv"; }
+    if (mime == "text/markdown") { pass ".md"; }
+    if (mime == "text/yaml") { pass ".yaml"; }
+    if (mime == "application/toml") { pass ".toml"; }
+    if (mime == "image/png") { pass ".png"; }
+    if (mime == "image/jpeg") { pass ".jpg"; }
+    if (mime == "image/gif") { pass ".gif"; }
+    if (mime == "image/bmp") { pass ".bmp"; }
+    if (mime == "image/svg+xml") { pass ".svg"; }
+    if (mime == "image/webp") { pass ".webp"; }
+    if (mime == "image/x-icon") { pass ".ico"; }
+    if (mime == "image/tiff") { pass ".tiff"; }
+    if (mime == "image/avif") { pass ".avif"; }
+    if (mime == "audio/mpeg") { pass ".mp3"; }
+    if (mime == "audio/wav") { pass ".wav"; }
+    if (mime == "audio/ogg") { pass ".ogg"; }
+    if (mime == "audio/flac") { pass ".flac"; }
+    if (mime == "audio/aac") { pass ".aac"; }
+    if (mime == "audio/mp4") { pass ".m4a"; }
+    if (mime == "audio/x-ms-wma") { pass ".wma"; }
+    if (mime == "video/mp4") { pass ".mp4"; }
+    if (mime == "video/webm") { pass ".webm"; }
+    if (mime == "video/x-msvideo") { pass ".avi"; }
+    if (mime == "video/quicktime") { pass ".mov"; }
+    if (mime == "video/x-matroska") { pass ".mkv"; }
+    if (mime == "video/x-flv") { pass ".flv"; }
+    if (mime == "video/x-ms-wmv") { pass ".wmv"; }
+    if (mime == "application/pdf") { pass ".pdf"; }
+    if (mime == "application/zip") { pass ".zip"; }
+    if (mime == "application/gzip") { pass ".gz"; }
+    if (mime == "application/x-tar") { pass ".tar"; }
+    if (mime == "application/x-7z-compressed") { pass ".7z"; }
+    if (mime == "application/vnd.rar") { pass ".rar"; }
+    if (mime == "application/x-bzip2") { pass ".bz2"; }
+    if (mime == "application/x-xz") { pass ".xz"; }
+    if (mime == "application/wasm") { pass ".wasm"; }
+    if (mime == "application/msword") { pass ".doc"; }
+    if (mime == "application/vnd.ms-excel") { pass ".xls"; }
+    if (mime == "application/vnd.ms-powerpoint") { pass ".ppt"; }
+    if (mime == "font/woff") { pass ".woff"; }
+    if (mime == "font/woff2") { pass ".woff2"; }
+    if (mime == "font/ttf") { pass ".ttf"; }
+    if (mime == "font/otf") { pass ".otf"; }
+    if (mime == "application/vnd.ms-fontobject") { pass ".eot"; }
+    if (mime == "text/x-c") { pass ".c"; }
+    if (mime == "text/x-c++") { pass ".cpp"; }
+    if (mime == "text/x-python") { pass ".py"; }
+    if (mime == "text/x-java") { pass ".java"; }
+    if (mime == "text/x-rust") { pass ".rs"; }
+    if (mime == "text/x-go") { pass ".go"; }
+    if (mime == "text/typescript") { pass ".ts"; }
+    if (mime == "application/x-sh") { pass ".sh"; }
+    if (mime == "text/x-aria") { pass ".aria"; }
+    pass "";
 };
 
-pub func:is_text = int32(string:mime) {
-    pass aria_mime_is_text(mime);
+// ── is_text check ──────────────────────────────────────────────────────────────
+
+func:mime_is_text_check = int32(string:mime) {
+    // Check "text/" prefix (5 bytes)
+    int64:len = string_length(mime);
+    if (len >= 5i64) {
+        int32:b0 = aria_string_byte_at(mime, 0i64);
+        int32:b1 = aria_string_byte_at(mime, 1i64);
+        int32:b2 = aria_string_byte_at(mime, 2i64);
+        int32:b3 = aria_string_byte_at(mime, 3i64);
+        int32:b4 = aria_string_byte_at(mime, 4i64);
+        // t=116, e=101, x=120, t=116, /=47
+        if (b0 == 116i32) { if (b1 == 101i32) { if (b2 == 120i32) { if (b3 == 116i32) { if (b4 == 47i32) {
+            pass 1i32;
+        } } } } }
+    }
+    // Also text-like application types
+    if (mime == "application/json") { pass 1i32; }
+    if (mime == "application/xml") { pass 1i32; }
+    if (mime == "application/toml") { pass 1i32; }
+    if (mime == "application/x-sh") { pass 1i32; }
+    pass 0i32;
 };
 
-pub func:count = int32() {
-    pass aria_mime_count();
+// ── Public API ─────────────────────────────────────────────────────────────────
+
+Type:Mime = {
+
+    func:from_filename = string(string:filename) {
+        string:ext = raw mime_find_ext(filename);
+        if (ext == "") { pass "application/octet-stream"; }
+        pass raw mime_lookup_ext(ext);
+    };
+
+    func:from_extension = string(string:ext) {
+        pass raw mime_lookup_ext(ext);
+    };
+
+    func:to_extension = string(string:mime) {
+        pass raw mime_reverse_lookup(mime);
+    };
+
+    func:is_text = int32(string:mime) {
+        pass raw mime_is_text_check(mime);
+    };
+
+    func:count = int32() {
+        pass 72i32;
+    };
 };

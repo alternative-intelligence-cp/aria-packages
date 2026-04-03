@@ -1,67 +1,128 @@
-// aria_ringbuf.aria — Ring buffer (circular buffer) for Aria
+// aria_ringbuf.aria — Ring Buffer / Circular Buffer (v0.11.1)
 //
-// Handle-based fixed-size ring buffer with int64 elements.
-// FIFO order: push to back, pop from front.
-// Requires: libaria_ringbuf_shim.so
+// Fixed-capacity FIFO ring buffer storing int64 values.
+// Import with: use "aria_ringbuf.aria".*;
+//
+// Layout: handle → header block
+//   [0] capacity   (int64, max elements)
+//   [1] size       (int64, current count)
+//   [2] head       (int64, read index)
+//   [3] tail       (int64, write index)
+//   [4] data_ptr   (int64, pointer to data array: capacity * 8 bytes)
+//
+// v0.11.1: Pure Aria rewrite (was extern-only C shim).
 
-extern "aria_ringbuf_shim" {
-    func:aria_ringbuf_create   = int64(int32:capacity);
-    func:aria_ringbuf_destroy  = void(int64:handle);
-    func:aria_ringbuf_push     = int32(int64:handle, int64:value);
-    func:aria_ringbuf_pop      = int64(int64:handle);
-    func:aria_ringbuf_peek     = int64(int64:handle);
-    func:aria_ringbuf_size     = int32(int64:handle);
-    func:aria_ringbuf_capacity = int32(int64:handle);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_calloc      = int64(int64:count, int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
 }
 
-extern "aria_ringbuf_shim" {
-    func:aria_ringbuf_is_full  = int32(int64:handle);
-    func:aria_ringbuf_is_empty = int32(int64:handle);
-}
+int64:RB_HDR = 40i64;
 
-// ── public API ──────────────────────────────────────────────────────
-
-pub func:ringbuf_create = int64(int32:capacity) {
-    int64:h = aria_ringbuf_create(capacity);
-    pass h;
+func:rb_read_hdr = int64(int64:h, int64:slot) {
+    pass aria_libc_mem_read_i64(h, slot * 8i64);
+};
+func:rb_write_hdr = int32(int64:h, int64:slot, int64:val) {
+    aria_libc_mem_write_i64(h, slot * 8i64, val);
+    pass 0i32;
 };
 
-pub func:ringbuf_destroy = NIL(int64:handle) {
-    aria_ringbuf_destroy(handle);
-    pass NIL;
-};
+Type:RingBuf = {
+    // create(capacity) — allocate a new ring buffer.
+    func:create = int64(int64:capacity) {
+        int64:hdr = aria_libc_mem_malloc(RB_HDR);
+        if (hdr == 0i64) { pass 0i64 - 1i64; }
+        int64:data = aria_libc_mem_calloc(capacity, 8i64);
+        if (data == 0i64) {
+            aria_libc_mem_free(hdr);
+            pass 0i64 - 1i64;
+        }
+        drop rb_write_hdr(hdr, 0i64, capacity);
+        drop rb_write_hdr(hdr, 1i64, 0i64);
+        drop rb_write_hdr(hdr, 2i64, 0i64);
+        drop rb_write_hdr(hdr, 3i64, 0i64);
+        drop rb_write_hdr(hdr, 4i64, data);
+        pass hdr;
+    };
 
-pub func:ringbuf_push = int32(int64:handle, int64:value) {
-    int32:r = aria_ringbuf_push(handle, value);
-    pass r;
-};
+    // destroy(handle) — free all memory.
+    func:destroy = int32(int64:handle) {
+        int64:data = raw rb_read_hdr(handle, 4i64);
+        aria_libc_mem_free(data);
+        aria_libc_mem_free(handle);
+        pass 0i32;
+    };
 
-pub func:ringbuf_pop = int64(int64:handle) {
-    int64:v = aria_ringbuf_pop(handle);
-    pass v;
-};
+    // push(handle, value) — enqueue at tail. Returns 1 on success, 0 if full.
+    func:push = int32(int64:handle, int64:value) {
+        int64:cap  = raw rb_read_hdr(handle, 0i64);
+        int64:sz   = raw rb_read_hdr(handle, 1i64);
+        if (sz >= cap) { pass 0i32; }
+        int64:tail = raw rb_read_hdr(handle, 3i64);
+        int64:data = raw rb_read_hdr(handle, 4i64);
+        aria_libc_mem_write_i64(data, tail * 8i64, value);
+        int64:new_tail = (tail + 1i64) % cap;
+        drop rb_write_hdr(handle, 3i64, new_tail);
+        drop rb_write_hdr(handle, 1i64, sz + 1i64);
+        pass 1i32;
+    };
 
-pub func:ringbuf_peek = int64(int64:handle) {
-    int64:v = aria_ringbuf_peek(handle);
-    pass v;
-};
+    // pop(handle) — dequeue from head. Returns -1 if empty.
+    func:pop = int64(int64:handle) {
+        int64:sz = raw rb_read_hdr(handle, 1i64);
+        if (sz <= 0i64) { pass 0i64 - 1i64; }
+        int64:head = raw rb_read_hdr(handle, 2i64);
+        int64:cap  = raw rb_read_hdr(handle, 0i64);
+        int64:data = raw rb_read_hdr(handle, 4i64);
+        int64:val  = aria_libc_mem_read_i64(data, head * 8i64);
+        int64:new_head = (head + 1i64) % cap;
+        drop rb_write_hdr(handle, 2i64, new_head);
+        drop rb_write_hdr(handle, 1i64, sz - 1i64);
+        pass val;
+    };
 
-pub func:ringbuf_size = int32(int64:handle) {
-    int32:r = aria_ringbuf_size(handle);
-    pass r;
-};
+    // peek(handle) — return head value without removing. Returns -1 if empty.
+    func:peek = int64(int64:handle) {
+        int64:sz = raw rb_read_hdr(handle, 1i64);
+        if (sz <= 0i64) { pass 0i64 - 1i64; }
+        int64:head = raw rb_read_hdr(handle, 2i64);
+        int64:data = raw rb_read_hdr(handle, 4i64);
+        pass aria_libc_mem_read_i64(data, head * 8i64);
+    };
 
-pub func:ringbuf_capacity = int32(int64:handle) {
-    int32:r = aria_ringbuf_capacity(handle);
-    pass r;
-};
+    // size(handle) — current element count.
+    func:size = int32(int64:handle) {
+        pass @cast<int32>(raw rb_read_hdr(handle, 1i64));
+    };
 
-pub func:ringbuf_is_full = int32(int64:handle) {
-    int32:r = aria_ringbuf_is_full(handle);
-    pass r;
-};
+    // capacity(handle)
+    func:capacity = int32(int64:handle) {
+        pass @cast<int32>(raw rb_read_hdr(handle, 0i64));
+    };
 
-pub func:ringbuf_is_empty = int32(int64:handle) {
-    int32:r = aria_ringbuf_is_empty(handle);
-    pass r;
+    // is_full(handle) — returns 1 if full.
+    func:is_full = int32(int64:handle) {
+        int64:sz  = raw rb_read_hdr(handle, 1i64);
+        int64:cap = raw rb_read_hdr(handle, 0i64);
+        if (sz >= cap) { pass 1i32; }
+        pass 0i32;
+    };
+
+    // is_empty(handle) — returns 1 if empty.
+    func:is_empty = int32(int64:handle) {
+        int64:sz = raw rb_read_hdr(handle, 1i64);
+        if (sz == 0i64) { pass 1i32; }
+        pass 0i32;
+    };
+
+    // clear(handle) — reset to empty state.
+    func:clear = int32(int64:handle) {
+        drop rb_write_hdr(handle, 1i64, 0i64);
+        drop rb_write_hdr(handle, 2i64, 0i64);
+        drop rb_write_hdr(handle, 3i64, 0i64);
+        pass 0i32;
+    };
 };

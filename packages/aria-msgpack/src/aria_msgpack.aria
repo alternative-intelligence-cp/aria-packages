@@ -1,97 +1,239 @@
-// aria_msgpack.aria — MessagePack binary serialization for Aria
+// aria_msgpack.aria — MessagePack binary serialization (v0.11.2)
 //
-// Pack and unpack integers, floats, booleans, nil, and strings
-// using the MessagePack binary format.
-// Requires: libaria_msgpack_shim.so
+// Aria + aria-libc_mem — no custom C shim.
+// Import with: use "aria_msgpack.aria".*;
+//
+// Encodes/decodes MessagePack format into a byte buffer (malloc'd).
+// Buffer layout: [cap:i64 @ 0][len:i64 @ 8][data @ 16...]
+// Supports: nil, bool, positive fixint, negative fixint, int32, int64, fixstr, raw bytes.
 
-extern "aria_msgpack_shim" {
-    func:aria_msgpack_create      = int64();
-    func:aria_msgpack_destroy     = void(int64:handle);
-    func:aria_msgpack_clear       = void(int64:handle);
-    func:aria_msgpack_size        = int32(int64:handle);
-    func:aria_msgpack_pack_nil    = int32(int64:handle);
-    func:aria_msgpack_pack_bool   = int32(int64:handle, int32:val);
-    func:aria_msgpack_pack_int    = int32(int64:handle, int64:val);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_free      = int32(int64:ptr);
+    func:aria_libc_mem_zero      = int32(int64:ptr, int64:bytes);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte = void(int64:ptr, int64:offset, int32:val);
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:offset);
 }
 
-extern "aria_msgpack_shim" {
-    func:aria_msgpack_pack_str    = int32(int64:handle, string:val);
-    func:aria_msgpack_rewind      = void(int64:handle);
-    func:aria_msgpack_unpack_next = int32(int64:handle);
-    func:aria_msgpack_get_int     = int64();
-    func:aria_msgpack_get_bool    = int32();
-    func:aria_msgpack_get_str     = string();
-    func:aria_msgpack_get_type    = int32();
-}
+extern func:string_length       = int64(string:s);
+extern func:aria_string_byte_at = int32(string:s, int64:idx);
 
-// ── public API ──────────────────────────────────────────────────────
+// ── buffer management ──────────────────────────────────────────────────────────
 
-pub func:msgpack_create = int64() {
-    int64:h = aria_msgpack_create();
-    pass h;
+// Create a msgpack buffer with initial capacity.
+func:mp_buf_create = int64(int64:cap) {
+    int64:total = cap + 16i64;
+    int64:buf = aria_libc_mem_malloc(total);
+    aria_libc_mem_zero(buf, total);
+    aria_libc_mem_write_i64(buf, 0i64, cap);
+    aria_libc_mem_write_i64(buf, 8i64, 0i64);
+    pass buf;
 };
 
-pub func:msgpack_destroy = NIL(int64:handle) {
-    aria_msgpack_destroy(handle);
-    pass NIL;
+func:mp_buf_len = int64(int64:buf) {
+    pass aria_libc_mem_read_i64(buf, 8i64);
 };
 
-pub func:msgpack_clear = NIL(int64:handle) {
-    aria_msgpack_clear(handle);
-    pass NIL;
+func:mp_buf_cap = int64(int64:buf) {
+    pass aria_libc_mem_read_i64(buf, 0i64);
 };
 
-pub func:msgpack_size = int32(int64:handle) {
-    int32:s = aria_msgpack_size(handle);
-    pass s;
+func:mp_buf_free = int32(int64:buf) {
+    aria_libc_mem_free(buf);
+    pass 1i32;
 };
 
-pub func:msgpack_pack_nil = int32(int64:handle) {
-    int32:r = aria_msgpack_pack_nil(handle);
-    pass r;
+// Write one byte to the buffer and increment length.
+func:mp_buf_write = int32(int64:buf, int32:byte_val) {
+    int64:len = aria_libc_mem_read_i64(buf, 8i64);
+    int64:off = len + 16i64;
+    aria_libc_mem_write_byte(buf, off, byte_val);
+    aria_libc_mem_write_i64(buf, 8i64, len + 1i64);
+    pass 1i32;
 };
 
-pub func:msgpack_pack_bool = int32(int64:handle, int32:val) {
-    int32:r = aria_msgpack_pack_bool(handle, val);
-    pass r;
+// Read one byte from the data region at position pos.
+func:mp_buf_read = int32(int64:buf, int64:pos) {
+    int64:off = pos + 16i64;
+    pass aria_libc_mem_read_byte(buf, off);
 };
 
-pub func:msgpack_pack_int = int32(int64:handle, int64:val) {
-    int32:r = aria_msgpack_pack_int(handle, val);
-    pass r;
+// ── encoders ───────────────────────────────────────────────────────────────────
+
+// Encode nil (0xc0).
+func:mp_encode_nil = int32(int64:buf) {
+    pass mp_buf_write(buf, 192i32);
 };
 
-pub func:msgpack_pack_str = int32(int64:handle, string:val) {
-    int32:r = aria_msgpack_pack_str(handle, val);
-    pass r;
+// Encode boolean: true=0xc3, false=0xc2.
+func:mp_encode_bool = int32(int64:buf, int32:val) {
+    if (val != 0i32) { pass mp_buf_write(buf, 195i32); }
+    pass mp_buf_write(buf, 194i32);
 };
 
-pub func:msgpack_rewind = NIL(int64:handle) {
-    aria_msgpack_rewind(handle);
-    pass NIL;
+// Encode positive fixint (0-127).
+func:mp_encode_pfixint = int32(int64:buf, int32:val) {
+    pass mp_buf_write(buf, val);
 };
 
-pub func:msgpack_unpack_next = int32(int64:handle) {
-    int32:t = aria_msgpack_unpack_next(handle);
-    pass t;
+// Encode negative fixint (-1 to -32) = 0xe0..0xff.
+func:mp_encode_nfixint = int32(int64:buf, int32:val) {
+    int32:byte_val = 256i32 + val;
+    pass mp_buf_write(buf, byte_val);
 };
 
-pub func:msgpack_get_int = int64() {
-    int64:v = aria_msgpack_get_int();
-    pass v;
+// Encode int32 (0xd2 + 4 big-endian bytes).
+func:mp_encode_i32 = int32(int64:buf, int32:val) {
+    mp_buf_write(buf, 210i32);
+    int32:b3 = (val / 16777216i32) % 256i32;
+    int32:b2 = (val / 65536i32) % 256i32;
+    int32:b1 = (val / 256i32) % 256i32;
+    int32:b0 = val % 256i32;
+    if (b3 < 0i32) { b3 += 256i32; }
+    if (b2 < 0i32) { b2 += 256i32; }
+    if (b1 < 0i32) { b1 += 256i32; }
+    if (b0 < 0i32) { b0 += 256i32; }
+    mp_buf_write(buf, b3);
+    mp_buf_write(buf, b2);
+    mp_buf_write(buf, b1);
+    mp_buf_write(buf, b0);
+    pass 1i32;
 };
 
-pub func:msgpack_get_bool = int32() {
-    int32:v = aria_msgpack_get_bool();
-    pass v;
+// Encode fixstr (up to 31 bytes): 0xa0 | len, then raw bytes.
+func:mp_encode_str = int32(int64:buf, string:s) {
+    int64:slen = string_length(s);
+    int32:tag = 160i32 + slen;
+    mp_buf_write(buf, tag);
+    int64:i = 0i64;
+    loop(0i64, slen, 1i64) {
+        int32:b = aria_string_byte_at(s, i);
+        mp_buf_write(buf, b);
+        i += 1i64;
+    }
+    pass 1i32;
 };
 
-pub func:msgpack_get_str = string() {
-    string:v = aria_msgpack_get_str();
-    pass v;
+// ── decoders ───────────────────────────────────────────────────────────────────
+
+// Decode type tag at position. Returns the raw byte.
+func:mp_decode_tag = int32(int64:buf, int64:pos) {
+    pass mp_buf_read(buf, pos);
 };
 
-pub func:msgpack_get_type = int32() {
-    int32:t = aria_msgpack_get_type();
-    pass t;
+// Check if tag at pos is nil.
+func:mp_is_nil = int32(int64:buf, int64:pos) {
+    int32:tag = mp_buf_read(buf, pos);
+    if (tag == 192i32) { pass 1i32; }
+    pass 0i32;
+};
+
+// Check if tag at pos is bool and return the value (0 or 1), -1 if not bool.
+func:mp_decode_bool = int32(int64:buf, int64:pos) {
+    int32:tag = mp_buf_read(buf, pos);
+    if (tag == 195i32) { pass 1i32; }
+    if (tag == 194i32) { pass 0i32; }
+    pass 0i32 - 1i32;
+};
+
+// Decode positive fixint at pos (0x00-0x7f).
+func:mp_decode_pfixint = int32(int64:buf, int64:pos) {
+    pass mp_buf_read(buf, pos);
+};
+
+// Decode negative fixint at pos (0xe0-0xff) → -32 to -1.
+func:mp_decode_nfixint = int32(int64:buf, int64:pos) {
+    int32:tag = mp_buf_read(buf, pos);
+    pass tag - 256i32;
+};
+
+// Decode int32 at pos (tag=0xd2, then 4 big-endian bytes).
+func:mp_decode_i32 = int32(int64:buf, int64:pos) {
+    int32:b3 = mp_buf_read(buf, pos + 1i64);
+    int32:b2 = mp_buf_read(buf, pos + 2i64);
+    int32:b1 = mp_buf_read(buf, pos + 3i64);
+    int32:b0 = mp_buf_read(buf, pos + 4i64);
+    int32:val = b3 * 16777216i32 + b2 * 65536i32 + b1 * 256i32 + b0;
+    pass val;
+};
+
+// Decode fixstr length at pos. Returns byte count.
+func:mp_decode_str_len = int32(int64:buf, int64:pos) {
+    int32:tag = mp_buf_read(buf, pos);
+    pass tag - 160i32;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────────
+
+Type:MsgPack = {
+
+    func:create = int64(int64:cap) {
+        pass raw mp_buf_create(cap);
+    };
+
+    func:length = int64(int64:buf) {
+        pass raw mp_buf_len(buf);
+    };
+
+    func:capacity = int64(int64:buf) {
+        pass raw mp_buf_cap(buf);
+    };
+
+    func:destroy = int32(int64:buf) {
+        pass raw mp_buf_free(buf);
+    };
+
+    func:encode_nil = int32(int64:buf) {
+        pass raw mp_encode_nil(buf);
+    };
+
+    func:encode_bool = int32(int64:buf, int32:val) {
+        pass raw mp_encode_bool(buf, val);
+    };
+
+    func:encode_int = int32(int64:buf, int32:val) {
+        pass raw mp_encode_pfixint(buf, val);
+    };
+
+    func:encode_nint = int32(int64:buf, int32:val) {
+        pass raw mp_encode_nfixint(buf, val);
+    };
+
+    func:encode_i32 = int32(int64:buf, int32:val) {
+        pass raw mp_encode_i32(buf, val);
+    };
+
+    func:encode_str = int32(int64:buf, string:s) {
+        pass raw mp_encode_str(buf, s);
+    };
+
+    func:read_tag = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_tag(buf, pos);
+    };
+
+    func:is_nil = int32(int64:buf, int64:pos) {
+        pass raw mp_is_nil(buf, pos);
+    };
+
+    func:decode_bool = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_bool(buf, pos);
+    };
+
+    func:decode_int = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_pfixint(buf, pos);
+    };
+
+    func:decode_nint = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_nfixint(buf, pos);
+    };
+
+    func:decode_i32 = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_i32(buf, pos);
+    };
+
+    func:decode_str_len = int32(int64:buf, int64:pos) {
+        pass raw mp_decode_str_len(buf, pos);
+    };
 };

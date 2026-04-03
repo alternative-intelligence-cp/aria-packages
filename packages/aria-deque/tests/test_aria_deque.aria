@@ -1,0 +1,80 @@
+// test_aria_deque.aria — 12-test suite for aria-deque (v0.11.3)
+use "../src/aria_deque.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+    int64:dq = raw Deque.create(8i64);
+
+    // T01: initial size is 0
+    int64:sz1 = raw Deque.size(dq);
+    if (sz1 == 0i64) { println("[PASS] T01 init size=0"); pass_count += 1i32; }
+    if (sz1 != 0i64) { println("[FAIL] T01"); }
+
+    // T02: is_empty initially
+    int32:e2 = raw Deque.is_empty(dq);
+    if (e2 == 1i32) { println("[PASS] T02 is_empty"); pass_count += 1i32; }
+    if (e2 != 1i32) { println("[FAIL] T02"); }
+
+    // T03: push_back and peek_back
+    int32:pb3 = raw Deque.push_back(dq, 10i64);
+    int64:pk3 = raw Deque.peek_back(dq);
+    if (pk3 == 10i64) { println("[PASS] T03 push/peek back"); pass_count += 1i32; }
+    if (pk3 != 10i64) { println("[FAIL] T03"); }
+
+    // T04: push_front and peek_front
+    int32:pf4 = raw Deque.push_front(dq, 20i64);
+    int64:pk4 = raw Deque.peek_front(dq);
+    if (pk4 == 20i64) { println("[PASS] T04 push/peek front"); pass_count += 1i32; }
+    if (pk4 != 20i64) { println("[FAIL] T04"); }
+
+    // T05: size after 2 pushes
+    int64:sz5 = raw Deque.size(dq);
+    if (sz5 == 2i64) { println("[PASS] T05 size=2"); pass_count += 1i32; }
+    if (sz5 != 2i64) { println("[FAIL] T05"); }
+
+    // T06: pop_front returns front element
+    int64:v6 = raw Deque.pop_front(dq);
+    if (v6 == 20i64) { println("[PASS] T06 pop_front=20"); pass_count += 1i32; }
+    if (v6 != 20i64) { println("[FAIL] T06"); }
+
+    // T07: pop_back returns back element
+    int64:v7 = raw Deque.pop_back(dq);
+    if (v7 == 10i64) { println("[PASS] T07 pop_back=10"); pass_count += 1i32; }
+    if (v7 != 10i64) { println("[FAIL] T07"); }
+
+    // T08: empty after 2 pops
+    int32:e8 = raw Deque.is_empty(dq);
+    if (e8 == 1i32) { println("[PASS] T08 empty again"); pass_count += 1i32; }
+    if (e8 != 1i32) { println("[FAIL] T08"); }
+
+    // T09: capacity
+    int64:cap9 = raw Deque.capacity(dq);
+    if (cap9 == 8i64) { println("[PASS] T09 cap=8"); pass_count += 1i32; }
+    if (cap9 != 8i64) { println("[FAIL] T09"); }
+
+    // T10: FIFO order (push_back 1,2,3 then pop_front)
+    int32:pb10a = raw Deque.push_back(dq, 1i64);
+    int32:pb10b = raw Deque.push_back(dq, 2i64);
+    int32:pb10c = raw Deque.push_back(dq, 3i64);
+    int64:v10 = raw Deque.pop_front(dq);
+    if (v10 == 1i64) { println("[PASS] T10 FIFO order"); pass_count += 1i32; }
+    if (v10 != 1i64) { println("[FAIL] T10"); }
+
+    // T11: LIFO order (pop_back after push_back)
+    int64:v11 = raw Deque.pop_back(dq);
+    if (v11 == 3i64) { println("[PASS] T11 LIFO order"); pass_count += 1i32; }
+    if (v11 != 3i64) { println("[FAIL] T11"); }
+
+    // T12: clear
+    int32:pb12 = raw Deque.push_back(dq, 99i64);
+    int32:cl12 = raw Deque.clear(dq);
+    int64:sz12 = raw Deque.size(dq);
+    if (sz12 == 0i64) { println("[PASS] T12 clear"); pass_count += 1i32; }
+    if (sz12 != 0i64) { println("[FAIL] T12"); }
+
+    int32:dd = raw Deque.destroy(dq);
+    println("DONE");
+    exit(0i32);
+};

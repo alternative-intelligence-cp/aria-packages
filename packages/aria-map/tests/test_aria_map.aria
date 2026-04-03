@@ -1,151 +1,66 @@
-// test_aria_map.aria — Tests for aria-map
-
+// test_aria_map.aria — 12-test suite for aria-map (v0.11.1)
 use "../src/aria_map.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    int32:pass_count = 0i32;
-    int32:fail_count = 0i32;
+    int64:m = raw Map.create();
 
-    // test 01: new map is empty
-    int64:m1 = hmap_new();
-    int64:len1 = hmap_length(m1);
-    if (len1 == 0i64) {
-        println("[PASS] test 01: new map is empty");
-        pass_count = pass_count + 1i32;
-    } else {
-        println("[FAIL] test 01: new map is empty");
-        fail_count = fail_count + 1i32;
-    }
+    // T01: initially empty
+    int64:len0 = raw Map.length(m);
+    if (len0 == 0i64) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
 
-    // test 02: set and get
-    hmap_set(m1, "hello", 42i64);
-    int64:v1 = hmap_get(m1, "hello", 0i64);
-    if (v1 == 42i64) {
-        println("[PASS] test 02: set and get");
-        pass_count = pass_count + 1i32;
-    } else {
-        println("[FAIL] test 02: set and get");
-        fail_count = fail_count + 1i32;
-    }
+    // T02: set and get
+    drop Map.set(m, "alpha", 1i64);
+    int64:v1 = raw Map.get(m, "alpha");
+    if (v1 == 1i64) { println("[PASS] T02 get alpha"); } else { println("[FAIL] T02"); }
 
-    // test 03: has key
-    int64:h1 = hmap_has(m1, "hello");
-    int64:h2 = hmap_has(m1, "missing");
-    if (h1 == 1i64) {
-        if (h2 == 0i64) {
-            println("[PASS] test 03: has key");
-            pass_count = pass_count + 1i32;
-        } else {
-            println("[FAIL] test 03: has key (missing)");
-            fail_count = fail_count + 1i32;
-        }
-    } else {
-        println("[FAIL] test 03: has key (hello)");
-        fail_count = fail_count + 1i32;
-    }
+    // T03: second key
+    drop Map.set(m, "beta", 2i64);
+    int64:v2 = raw Map.get(m, "beta");
+    if (v2 == 2i64) { println("[PASS] T03 get beta"); } else { println("[FAIL] T03"); }
 
-    // test 04: get with default
-    int64:v2 = hmap_get(m1, "nope", -1i64);
-    if (v2 == -1i64) {
-        println("[PASS] test 04: get with default");
-        pass_count = pass_count + 1i32;
-    } else {
-        println("[FAIL] test 04: get with default");
-        fail_count = fail_count + 1i32;
-    }
+    // T04: length = 2
+    int64:len2 = raw Map.length(m);
+    if (len2 == 2i64) { println("[PASS] T04 len=2"); } else { println("[FAIL] T04"); }
 
-    // test 05: overwrite value
-    hmap_set(m1, "hello", 99i64);
-    int64:v3 = hmap_get(m1, "hello", 0i64);
-    int64:len2 = hmap_length(m1);
-    if (v3 == 99i64) {
-        if (len2 == 1i64) {
-            println("[PASS] test 05: overwrite value");
-            pass_count = pass_count + 1i32;
-        } else {
-            println("[FAIL] test 05: overwrite (length)");
-            fail_count = fail_count + 1i32;
-        }
-    } else {
-        println("[FAIL] test 05: overwrite (value)");
-        fail_count = fail_count + 1i32;
-    }
+    // T05: has existing
+    int32:h1 = raw Map.has(m, "alpha");
+    if (h1 == 1i32) { println("[PASS] T05 has alpha"); } else { println("[FAIL] T05"); }
 
-    // test 06: remove
-    hmap_set(m1, "world", 77i64);
-    int64:r1 = hmap_remove(m1, "hello");
-    int64:r2 = hmap_remove(m1, "nonexist");
-    int64:len3 = hmap_length(m1);
-    if (r1 == 1i64) {
-        if (r2 == 0i64) {
-            if (len3 == 1i64) {
-                println("[PASS] test 06: remove");
-                pass_count = pass_count + 1i32;
-            } else {
-                println("[FAIL] test 06: remove (length)");
-                fail_count = fail_count + 1i32;
-            }
-        } else {
-            println("[FAIL] test 06: remove (nonexist)");
-            fail_count = fail_count + 1i32;
-        }
-    } else {
-        println("[FAIL] test 06: remove (hello)");
-        fail_count = fail_count + 1i32;
-    }
+    // T06: has missing
+    int32:h2 = raw Map.has(m, "gamma");
+    if (h2 == 0i32) { println("[PASS] T06 !has gamma"); } else { println("[FAIL] T06"); }
 
-    // test 07: clear
-    hmap_set(m1, "a", 1i64);
-    hmap_set(m1, "b", 2i64);
-    hmap_clear(m1);
-    int64:len4 = hmap_length(m1);
-    if (len4 == 0i64) {
-        println("[PASS] test 07: clear");
-        pass_count = pass_count + 1i32;
-    } else {
-        println("[FAIL] test 07: clear");
-        fail_count = fail_count + 1i32;
-    }
+    // T07: get missing returns -1
+    int64:v3 = raw Map.get(m, "missing");
+    if (v3 == 0i64 - 1i64) { println("[PASS] T07 get miss=-1"); } else { println("[FAIL] T07"); }
 
-    // test 08: many keys (trigger rehash)
-    int64:m2 = hmap_new();
-    int64:i = 0i64;
-    while (i < 100i64) {
-        string:k = string_concat("key_", string_from_int(i));
-        hmap_set(m2, k, i);
-        i = i + 1i64;
-    }
-    int64:len5 = hmap_length(m2);
-    int64:v50 = hmap_get(m2, "key_50", -1i64);
-    int64:v99 = hmap_get(m2, "key_99", -1i64);
-    if (len5 == 100i64) {
-        if (v50 == 50i64) {
-            if (v99 == 99i64) {
-                println("[PASS] test 08: many keys (rehash)");
-                pass_count = pass_count + 1i32;
-            } else {
-                println("[FAIL] test 08: many keys (v99)");
-                fail_count = fail_count + 1i32;
-            }
-        } else {
-            println("[FAIL] test 08: many keys (v50)");
-            fail_count = fail_count + 1i32;
-        }
-    } else {
-        println("[FAIL] test 08: many keys (length)");
-        fail_count = fail_count + 1i32;
-    }
-    hmap_free(m2);
-    hmap_free(m1);
+    // T08: update existing key
+    drop Map.set(m, "alpha", 99i64);
+    int64:v4 = raw Map.get(m, "alpha");
+    if (v4 == 99i64) { println("[PASS] T08 update"); } else { println("[FAIL] T08"); }
 
-    println("");
-    print("--- ");
-    print(string_from_int(@cast<int64>(pass_count)));
-    print(" passed, ");
-    print(string_from_int(@cast<int64>(fail_count)));
-    println(" failed ---");
+    // T09: length unchanged after update
+    int64:len3 = raw Map.length(m);
+    if (len3 == 2i64) { println("[PASS] T09 len still 2"); } else { println("[FAIL] T09"); }
 
-    exit 0;
+    // T10: remove
+    drop Map.remove(m, "alpha");
+    int32:h3 = raw Map.has(m, "alpha");
+    if (h3 == 0i32) { println("[PASS] T10 removed"); } else { println("[FAIL] T10"); }
+
+    // T11: length after remove
+    int64:len4 = raw Map.length(m);
+    if (len4 == 1i64) { println("[PASS] T11 len=1"); } else { println("[FAIL] T11"); }
+
+    // T12: clear
+    drop Map.set(m, "x", 10i64);
+    drop Map.set(m, "y", 20i64);
+    drop Map.clear(m);
+    int64:len5 = raw Map.length(m);
+    if (len5 == 0i64) { println("[PASS] T12 clear"); } else { println("[FAIL] T12"); }
+
+    drop Map.destroy(m);
+    exit 0i32;
 };

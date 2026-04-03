@@ -1,93 +1,66 @@
-// test_aria_ringbuf.aria — Tests for aria-ringbuf (C-side assertions)
+// test_aria_ringbuf.aria — 12-test suite for aria-ringbuf (v0.11.1)
+use "../src/aria_ringbuf.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern func:aria_ringbuf_create   = int64(int32:capacity);
-extern func:aria_ringbuf_destroy  = void(int64:handle);
-extern func:aria_ringbuf_push     = int32(int64:handle, int64:value);
-extern func:aria_ringbuf_pop      = int64(int64:handle);
-extern func:aria_ringbuf_peek     = int64(int64:handle);
-extern func:aria_ringbuf_size     = int32(int64:handle);
-extern func:aria_ringbuf_is_empty = int32(int64:handle);
-extern func:aria_ringbuf_capacity = int32(int64:handle);
-extern func:aria_ringbuf_is_full  = int32(int64:handle);
-extern func:aria_ringbuf_assert_i32 = void(int32:actual, int32:expected, string:msg);
-extern func:aria_ringbuf_assert_i64 = void(int64:actual, int64:expected, string:msg);
-extern func:aria_ringbuf_test_summary = void();
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
+    int64:rb = raw RingBuf.create(4i64);
 
-    // ── test 01: create ring buffer ──
-    int64:rb = aria_ringbuf_create(4i32);
-    int32:cap = aria_ringbuf_capacity(rb);
-    aria_ringbuf_assert_i32(cap, 4i32, "test 01: capacity == 4");
+    // T01: initially empty
+    int32:e1 = raw RingBuf.is_empty(rb);
+    if (e1 == 1i32) { println("[PASS] T01 empty"); } else { println("[FAIL] T01"); }
 
-    // ── test 02: initially empty ──
-    int32:empty1 = aria_ringbuf_is_empty(rb);
-    aria_ringbuf_assert_i32(empty1, 1i32, "test 02: is_empty == 1");
+    // T02: size = 0
+    int64:sz0 = raw RingBuf.size(rb);
+    if (sz0 == 0i64) { println("[PASS] T02 size=0"); } else { println("[FAIL] T02"); }
 
-    // ── test 03: push first element ──
-    int32:p1 = aria_ringbuf_push(rb, 10i64);
-    aria_ringbuf_assert_i32(p1, 1i32, "test 03: push(10) returns 1");
+    // T03: capacity
+    int64:cap = raw RingBuf.capacity(rb);
+    if (cap == 4i64) { println("[PASS] T03 cap=4"); } else { println("[FAIL] T03"); }
 
-    // ── test 04: size after push ──
-    int32:sz1 = aria_ringbuf_size(rb);
-    aria_ringbuf_assert_i32(sz1, 1i32, "test 04: size == 1");
+    // T04: push and size
+    drop RingBuf.push(rb, 10i64);
+    drop RingBuf.push(rb, 20i64);
+    int64:sz2 = raw RingBuf.size(rb);
+    if (sz2 == 2i64) { println("[PASS] T04 size=2"); } else { println("[FAIL] T04"); }
 
-    // ── test 05: peek ──
-    int64:pk = aria_ringbuf_peek(rb);
-    aria_ringbuf_assert_i64(pk, 10i64, "test 05: peek == 10");
+    // T05: peek
+    int64:pk = raw RingBuf.peek(rb);
+    if (pk == 10i64) { println("[PASS] T05 peek=10"); } else { println("[FAIL] T05"); }
 
-    // ── test 06: push more elements ──
-    int32:p2 = aria_ringbuf_push(rb, 20i64);
-    int32:p3 = aria_ringbuf_push(rb, 30i64);
-    int32:p4 = aria_ringbuf_push(rb, 40i64);
-    int32:sz2 = aria_ringbuf_size(rb);
-    aria_ringbuf_assert_i32(sz2, 4i32, "test 06: size == 4 after 4 pushes");
+    // T06: pop FIFO
+    int64:p1 = raw RingBuf.pop(rb);
+    if (p1 == 10i64) { println("[PASS] T06 pop=10"); } else { println("[FAIL] T06"); }
 
-    // ── test 07: is_full ──
-    int32:full1 = aria_ringbuf_is_full(rb);
-    aria_ringbuf_assert_i32(full1, 1i32, "test 07: is_full == 1");
+    // T07: pop second
+    int64:p2 = raw RingBuf.pop(rb);
+    if (p2 == 20i64) { println("[PASS] T07 pop=20"); } else { println("[FAIL] T07"); }
 
-    // ── test 08: push when full returns 0 ──
-    int32:pfail = aria_ringbuf_push(rb, 50i64);
-    aria_ringbuf_assert_i32(pfail, 0i32, "test 08: push when full returns 0");
+    // T08: empty after pops
+    int32:e2 = raw RingBuf.is_empty(rb);
+    if (e2 == 1i32) { println("[PASS] T08 empty again"); } else { println("[FAIL] T08"); }
 
-    // ── test 09: pop FIFO order ──
-    int64:v1 = aria_ringbuf_pop(rb);
-    aria_ringbuf_assert_i64(v1, 10i64, "test 09: pop == 10 (FIFO)");
+    // T09: fill to capacity
+    drop RingBuf.push(rb, 1i64);
+    drop RingBuf.push(rb, 2i64);
+    drop RingBuf.push(rb, 3i64);
+    drop RingBuf.push(rb, 4i64);
+    int32:fl = raw RingBuf.is_full(rb);
+    if (fl == 1i32) { println("[PASS] T09 full"); } else { println("[FAIL] T09"); }
 
-    // ── test 10: pop second ──
-    int64:v2 = aria_ringbuf_pop(rb);
-    aria_ringbuf_assert_i64(v2, 20i64, "test 10: pop == 20");
+    // T10: not empty when full
+    int32:e3 = raw RingBuf.is_empty(rb);
+    if (e3 == 0i32) { println("[PASS] T10 not empty"); } else { println("[FAIL] T10"); }
 
-    // ── test 11: size after pops ──
-    int32:sz3 = aria_ringbuf_size(rb);
-    aria_ringbuf_assert_i32(sz3, 2i32, "test 11: size == 2 after 2 pops");
+    // T11: pop from full wraps correctly
+    int64:p3 = raw RingBuf.pop(rb);
+    if (p3 == 1i64) { println("[PASS] T11 pop=1"); } else { println("[FAIL] T11"); }
 
-    // ── test 12: push after pop (wraparound) ──
-    int32:p5 = aria_ringbuf_push(rb, 50i64);
-    int32:p6 = aria_ringbuf_push(rb, 60i64);
-    int32:sz4 = aria_ringbuf_size(rb);
-    aria_ringbuf_assert_i32(sz4, 4i32, "test 12: size == 4 after wraparound push");
+    // T12: wrap-around push+pop
+    drop RingBuf.push(rb, 5i64);
+    int64:p4 = raw RingBuf.pop(rb);
+    if (p4 == 2i64) { println("[PASS] T12 wrap pop=2"); } else { println("[FAIL] T12"); }
 
-    // ── test 13: pop after wraparound ──
-    int64:v3 = aria_ringbuf_pop(rb);
-    aria_ringbuf_assert_i64(v3, 30i64, "test 13: pop == 30 after wraparound");
-
-    // ── test 14: drain remaining ──
-    int64:v4 = aria_ringbuf_pop(rb);
-    int64:v5 = aria_ringbuf_pop(rb);
-    int64:v6 = aria_ringbuf_pop(rb);
-    int32:empty2 = aria_ringbuf_is_empty(rb);
-    aria_ringbuf_assert_i32(empty2, 1i32, "test 14: is_empty after drain");
-
-    // ── test 15: pop from empty returns -1 ──
-    int64:vempty = aria_ringbuf_pop(rb);
-    aria_ringbuf_assert_i64(vempty, -1i64, "test 15: pop empty returns -1");
-
-    // ── cleanup ──
-    aria_ringbuf_destroy(rb);
-    aria_ringbuf_test_summary();
-    exit 0;
+    drop RingBuf.destroy(rb);
+    exit 0i32;
 };

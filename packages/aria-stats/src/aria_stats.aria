@@ -1,123 +1,302 @@
-// aria_stats.aria — Statistics functions for Aria
+// aria_stats.aria — Descriptive Statistics (v0.11.1)
 //
-// Handle-based dataset: push values, compute statistics.
-// Requires: libaria_stats_shim.so
+// Streaming statistics collector backed by aria-libc_mem + aria-libc_math.
+// Import with: use "aria_stats.aria".*;
+//
+// Handle-based: Stats.create(cap) → push values → query mean/median/etc.
+//
+// v0.11.1: Rewritten from C shim to aria-libc backed.
 
-extern "aria_stats_shim" {
-    func:aria_stats_create      = int32();
-    func:aria_stats_destroy     = void(int32:handle);
-    func:aria_stats_clear       = int32(int32:handle);
-    func:aria_stats_push        = int32(int32:handle, flt64:value);
-    func:aria_stats_count       = int32(int32:handle);
-    func:aria_stats_get         = flt64(int32:handle, int32:idx);
-    func:aria_stats_mean        = flt64(int32:handle);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_calloc    = int64(int64:count, int64:size);
+    func:aria_libc_mem_free      = void(int64:ptr);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_zero      = void(int64:ptr, int64:bytes);
 }
 
-extern "aria_stats_shim" {
-    func:aria_stats_median      = flt64(int32:handle);
-    func:aria_stats_mode        = flt64(int32:handle);
-    func:aria_stats_variance    = flt64(int32:handle);
-    func:aria_stats_stddev      = flt64(int32:handle);
-    func:aria_stats_min         = flt64(int32:handle);
-    func:aria_stats_max         = flt64(int32:handle);
+extern "aria_libc_math" {
+    func:aria_libc_math_sqrt = flt64(flt64:x);
 }
 
-extern "aria_stats_shim" {
-    func:aria_stats_range       = flt64(int32:handle);
-    func:aria_stats_percentile  = flt64(int32:handle, flt64:p);
-    func:aria_stats_sum         = flt64(int32:handle);
-    func:aria_stats_correlation = flt64(int32:h1, int32:h2);
-    func:aria_stats_covariance  = flt64(int32:h1, int32:h2);
+extern "aria_libc_math" {
+    func:aria_libc_math_flt64_bits      = int64(flt64:v);
+    func:aria_libc_math_flt64_from_bits = flt64(int64:bits);
 }
 
-// ── public API ──────────────────────────────────────────────────────
+fixed int64:ST_HDR_CAP   = 0i64;
+fixed int64:ST_HDR_COUNT = 8i64;
+fixed int64:ST_HDR_DATA  = 16i64;
+fixed int64:ST_HDR_SORT  = 24i64;
 
-pub func:stats_create = int32() {
-    int32:h = aria_stats_create();
-    pass h;
+// ── internal: insertion sort with flag-variable loop-break ──────────────────
+func:stats_ensure_sorted = int32(int64:hdr) {
+    int64:sorted = aria_libc_mem_read_i64(hdr, ST_HDR_SORT);
+    if (sorted == 1i64) { pass 0i32; }
+    int64:n = aria_libc_mem_read_i64(hdr, ST_HDR_COUNT);
+    int64:data = aria_libc_mem_read_i64(hdr, ST_HDR_DATA);
+    int64:i = 1i64;
+    loop(1i64, n, 1i64) {
+        int64:key_bits = aria_libc_mem_read_i64(data, i * 8i64);
+        flt64:key = aria_libc_math_flt64_from_bits(key_bits);
+        int64:j = i - 1i64;
+        int64:inner_done = 0i64;
+        loop(0i64, i, 1i64) {
+            if (inner_done == 0i64) {
+                if (j < 0i64) {
+                    inner_done = 1i64;
+                } else {
+                    int64:vj_bits = aria_libc_mem_read_i64(data, j * 8i64);
+                    flt64:vj = aria_libc_math_flt64_from_bits(vj_bits);
+                    if (vj <= key) {
+                        inner_done = 1i64;
+                    } else {
+                        aria_libc_mem_write_i64(data, (j + 1i64) * 8i64, vj_bits);
+                        j -= 1i64;
+                    }
+                }
+            }
+        }
+        aria_libc_mem_write_i64(data, (j + 1i64) * 8i64, key_bits);
+        i += 1i64;
+    }
+    aria_libc_mem_write_i64(hdr, ST_HDR_SORT, 1i64);
+    pass 0i32;
 };
 
-pub func:stats_destroy = NIL(int32:handle) {
-    aria_stats_destroy(handle);
-    pass NIL;
-};
+Type:Stats = {
+    func:create = int64(int64:cap) {
+        int64:hdr = aria_libc_mem_malloc(32i64);
+        int64:data = aria_libc_mem_calloc(cap, 8i64);
+        aria_libc_mem_write_i64(hdr, ST_HDR_CAP,   cap);
+        aria_libc_mem_write_i64(hdr, ST_HDR_COUNT,  0i64);
+        aria_libc_mem_write_i64(hdr, ST_HDR_DATA,   data);
+        aria_libc_mem_write_i64(hdr, ST_HDR_SORT,   0i64);
+        pass hdr;
+    };
 
-pub func:stats_clear = int32(int32:handle) {
-    int32:r = aria_stats_clear(handle);
-    pass r;
-};
+    func:destroy = int32(int64:handle) {
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        aria_libc_mem_free(data);
+        aria_libc_mem_free(handle);
+        pass 0i32;
+    };
 
-pub func:stats_push = int32(int32:handle, flt64:value) {
-    int32:r = aria_stats_push(handle, value);
-    pass r;
-};
+    func:push = int32(int64:handle, flt64:val) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:bits = aria_libc_math_flt64_bits(val);
+        aria_libc_mem_write_i64(data, n * 8i64, bits);
+        aria_libc_mem_write_i64(handle, ST_HDR_COUNT, n + 1i64);
+        aria_libc_mem_write_i64(handle, ST_HDR_SORT, 0i64);
+        pass 0i32;
+    };
 
-pub func:stats_count = int32(int32:handle) {
-    int32:n = aria_stats_count(handle);
-    pass n;
-};
+    func:clear = int32(int64:handle) {
+        aria_libc_mem_write_i64(handle, ST_HDR_COUNT, 0i64);
+        aria_libc_mem_write_i64(handle, ST_HDR_SORT, 0i64);
+        pass 0i32;
+    };
 
-pub func:stats_get = flt64(int32:handle, int32:idx) {
-    flt64:v = aria_stats_get(handle, idx);
-    pass v;
-};
+    func:count = int64(int64:handle) {
+        pass aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+    };
 
-pub func:stats_mean = flt64(int32:handle) {
-    flt64:v = aria_stats_mean(handle);
-    pass v;
-};
+    func:get = flt64(int64:handle, int64:idx) {
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:bits = aria_libc_mem_read_i64(data, idx * 8i64);
+        pass aria_libc_math_flt64_from_bits(bits);
+    };
 
-pub func:stats_median = flt64(int32:handle) {
-    flt64:v = aria_stats_median(handle);
-    pass v;
-};
+    func:sum = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        flt64:s = 0.0;
+        int64:i = 0i64;
+        loop(0i64, n, 1i64) {
+            int64:bits = aria_libc_mem_read_i64(data, i * 8i64);
+            s += aria_libc_math_flt64_from_bits(bits);
+            i += 1i64;
+        }
+        pass s;
+    };
 
-pub func:stats_mode = flt64(int32:handle) {
-    flt64:v = aria_stats_mode(handle);
-    pass v;
-};
+    func:mean = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        flt64:s = raw Stats.sum(handle);
+        flt64:fn = @cast<flt64>(n);
+        pass s / fn;
+    };
 
-pub func:stats_variance = flt64(int32:handle) {
-    flt64:v = aria_stats_variance(handle);
-    pass v;
-};
+    func:median = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        drop stats_ensure_sorted(handle);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:mid = n / 2i64;
+        int64:bits = aria_libc_mem_read_i64(data, mid * 8i64);
+        if (n % 2i64 == 1i64) {
+            pass aria_libc_math_flt64_from_bits(bits);
+        }
+        int64:bits2 = aria_libc_mem_read_i64(data, (mid - 1i64) * 8i64);
+        flt64:a = aria_libc_math_flt64_from_bits(bits);
+        flt64:b = aria_libc_math_flt64_from_bits(bits2);
+        pass (a + b) / 2.0;
+    };
 
-pub func:stats_stddev = flt64(int32:handle) {
-    flt64:v = aria_stats_stddev(handle);
-    pass v;
-};
+    func:mode = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        drop stats_ensure_sorted(handle);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:best_bits = aria_libc_mem_read_i64(data, 0i64);
+        int64:best_count = 1i64;
+        int64:cur_bits = best_bits;
+        int64:cur_count = 1i64;
+        int64:i = 1i64;
+        loop(1i64, n, 1i64) {
+            int64:bits = aria_libc_mem_read_i64(data, i * 8i64);
+            if (bits == cur_bits) {
+                cur_count += 1i64;
+            } else {
+                if (cur_count > best_count) {
+                    best_count = cur_count;
+                    best_bits = cur_bits;
+                }
+                cur_bits = bits;
+                cur_count = 1i64;
+            }
+            i += 1i64;
+        }
+        if (cur_count > best_count) {
+            best_bits = cur_bits;
+        }
+        pass aria_libc_math_flt64_from_bits(best_bits);
+    };
 
-pub func:stats_min = flt64(int32:handle) {
-    flt64:v = aria_stats_min(handle);
-    pass v;
-};
+    func:variance = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        flt64:m = raw Stats.mean(handle);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        flt64:sumSq = 0.0;
+        int64:i = 0i64;
+        loop(0i64, n, 1i64) {
+            int64:bits = aria_libc_mem_read_i64(data, i * 8i64);
+            flt64:v = aria_libc_math_flt64_from_bits(bits);
+            flt64:d = v - m;
+            sumSq += d * d;
+            i += 1i64;
+        }
+        flt64:fn = @cast<flt64>(n);
+        pass sumSq / fn;
+    };
 
-pub func:stats_max = flt64(int32:handle) {
-    flt64:v = aria_stats_max(handle);
-    pass v;
-};
+    func:stddev = flt64(int64:handle) {
+        flt64:v = raw Stats.variance(handle);
+        pass aria_libc_math_sqrt(v);
+    };
 
-pub func:stats_range = flt64(int32:handle) {
-    flt64:v = aria_stats_range(handle);
-    pass v;
-};
+    func:min = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:bits = aria_libc_mem_read_i64(data, 0i64);
+        flt64:m = aria_libc_math_flt64_from_bits(bits);
+        int64:i = 1i64;
+        loop(1i64, n, 1i64) {
+            int64:b = aria_libc_mem_read_i64(data, i * 8i64);
+            flt64:v = aria_libc_math_flt64_from_bits(b);
+            if (v < m) { m = v; }
+            i += 1i64;
+        }
+        pass m;
+    };
 
-pub func:stats_percentile = flt64(int32:handle, flt64:p) {
-    flt64:v = aria_stats_percentile(handle, p);
-    pass v;
-};
+    func:max = flt64(int64:handle) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:bits = aria_libc_mem_read_i64(data, 0i64);
+        flt64:m = aria_libc_math_flt64_from_bits(bits);
+        int64:i = 1i64;
+        loop(1i64, n, 1i64) {
+            int64:b = aria_libc_mem_read_i64(data, i * 8i64);
+            flt64:v = aria_libc_math_flt64_from_bits(b);
+            if (v > m) { m = v; }
+            i += 1i64;
+        }
+        pass m;
+    };
 
-pub func:stats_sum = flt64(int32:handle) {
-    flt64:v = aria_stats_sum(handle);
-    pass v;
-};
+    func:range = flt64(int64:handle) {
+        flt64:lo = raw Stats.min(handle);
+        flt64:hi = raw Stats.max(handle);
+        pass hi - lo;
+    };
 
-pub func:stats_correlation = flt64(int32:h1, int32:h2) {
-    flt64:v = aria_stats_correlation(h1, h2);
-    pass v;
-};
+    func:percentile = flt64(int64:handle, flt64:p) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        drop stats_ensure_sorted(handle);
+        int64:data = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        flt64:fn = @cast<flt64>(n);
+        flt64:rank = (p / 100.0) * fn;
+        int64:idx = 0i64;
+        if (rank >= 1.0) {
+            if (rank > fn) {
+                idx = n - 1i64;
+            } else {
+                int64:k = 0i64;
+                int64:found = 0i64;
+                loop(0i64, n, 1i64) {
+                    if (found == 0i64) {
+                        flt64:fk = @cast<flt64>(k + 1i64);
+                        if (fk >= rank) {
+                            idx = k;
+                            found = 1i64;
+                        }
+                        k += 1i64;
+                    }
+                }
+                if (found == 0i64) {
+                    idx = n - 1i64;
+                }
+            }
+        }
+        int64:bits = aria_libc_mem_read_i64(data, idx * 8i64);
+        pass aria_libc_math_flt64_from_bits(bits);
+    };
 
-pub func:stats_covariance = flt64(int32:h1, int32:h2) {
-    flt64:v = aria_stats_covariance(h1, h2);
-    pass v;
+    func:covariance = flt64(int64:handle, int64:other) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        flt64:m1 = raw Stats.mean(handle);
+        flt64:m2 = raw Stats.mean(other);
+        int64:d1 = aria_libc_mem_read_i64(handle, ST_HDR_DATA);
+        int64:d2 = aria_libc_mem_read_i64(other, ST_HDR_DATA);
+        flt64:s = 0.0;
+        int64:i = 0i64;
+        loop(0i64, n, 1i64) {
+            int64:b1 = aria_libc_mem_read_i64(d1, i * 8i64);
+            int64:b2 = aria_libc_mem_read_i64(d2, i * 8i64);
+            flt64:v1 = aria_libc_math_flt64_from_bits(b1);
+            flt64:v2 = aria_libc_math_flt64_from_bits(b2);
+            s += (v1 - m1) * (v2 - m2);
+            i += 1i64;
+        }
+        flt64:fn = @cast<flt64>(n);
+        pass s / fn;
+    };
+
+    func:correlation = flt64(int64:handle, int64:other) {
+        int64:n = aria_libc_mem_read_i64(handle, ST_HDR_COUNT);
+        if (n == 0i64) { pass 0.0; }
+        flt64:cov = raw Stats.covariance(handle, other);
+        flt64:sd1 = raw Stats.stddev(handle);
+        flt64:sd2 = raw Stats.stddev(other);
+        flt64:denom = sd1 * sd2;
+        if (denom == 0.0) { pass 0.0; }
+        pass cov / denom;
+    };
 };

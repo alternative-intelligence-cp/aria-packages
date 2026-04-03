@@ -1,4 +1,7 @@
-// aria_compress.aria — Compression/decompression library for Aria
+// aria_compress.aria — Compression/decompression library for Aria (v0.11.2)
+//
+// Keeps C shim for zlib integration.
+// Import with: use "aria_compress.aria".*;
 
 extern "aria_compress_shim" {
     func:aria_compress_deflate   = int32(string:data, int32:len);
@@ -12,38 +15,45 @@ extern "aria_compress_shim" {
     func:aria_compress_version    = string();
 }
 
-pub func:deflate = int32(string:data, int32:len) {
-    pass aria_compress_deflate(data, len);
-};
+extern func:string_length = int64(string:s);
 
-pub func:inflate = int32(string:data, int32:len) {
-    pass aria_compress_inflate(data, len);
-};
+// ── Type wrapper ───────────────────────────────────────────────────────────────
 
-pub func:gzip = int32(string:data, int32:len) {
-    pass aria_compress_gzip(data, len);
-};
+Type:Compress = {
 
-pub func:gunzip = int32(string:data, int32:len) {
-    pass aria_compress_gunzip(data, len);
-};
+    func:deflate = int32(string:data, int32:len) {
+        pass aria_compress_deflate(data, len);
+    };
 
-pub func:get_result = string() {
-    pass aria_compress_get_result();
-};
+    func:inflate = int32(string:data, int32:len) {
+        pass aria_compress_inflate(data, len);
+    };
 
-pub func:get_length = int32() {
-    pass aria_compress_get_length();
-};
+    func:gzip = int32(string:data, int32:len) {
+        pass aria_compress_gzip(data, len);
+    };
 
-pub func:get_error = int32() {
-    pass aria_compress_get_error();
-};
+    func:gunzip = int32(string:data, int32:len) {
+        pass aria_compress_gunzip(data, len);
+    };
 
-pub func:roundtrip = int32(string:data, int32:len) {
-    pass aria_compress_roundtrip(data, len);
-};
+    func:get_result = string() {
+        pass aria_compress_get_result();
+    };
 
-pub func:version = string() {
-    pass aria_compress_version();
+    func:get_length = int32() {
+        pass aria_compress_get_length();
+    };
+
+    func:get_error = int32() {
+        pass aria_compress_get_error();
+    };
+
+    func:roundtrip = int32(string:data, int32:len) {
+        pass aria_compress_roundtrip(data, len);
+    };
+
+    func:version = string() {
+        pass aria_compress_version();
+    };
 };

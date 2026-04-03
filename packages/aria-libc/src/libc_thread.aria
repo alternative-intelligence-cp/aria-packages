@@ -1,0 +1,92 @@
+/* aria-libc :: thread — Threading, synchronization, channels, actors, pools & shared memory
+ * Wraps: pthreads (thread, mutex, condvar, rwlock), channels, actors, thread pools, mmap
+ * v0.11.0: New shim for concurrency stdlib migration
+ */
+/* Function pointer params require standalone extern (extern block parser limitation) */
+extern func:aria_libc_thread_spawn = int64(wild ?*:func, int64:arg);
+extern func:aria_libc_actor_spawn = int64(wild ?*:behavior_func);
+extern func:aria_libc_pool_submit = int32(int64:handle, wild ?*:func, int64:arg);
+extern "aria_libc_thread" {
+    /* ── Thread ────────────────────────────────────────────────────── */
+    func:aria_libc_thread_join                 = int32(int64:handle);
+    func:aria_libc_thread_detach               = int32(int64:handle);
+    func:aria_libc_thread_yield                = void();
+    func:aria_libc_thread_sleep_ns             = void(int64:ns);
+    func:aria_libc_thread_sleep_ms             = void(int64:ms);
+    func:aria_libc_thread_set_name             = void(string:name);
+    func:aria_libc_thread_hardware_concurrency = int32();
+    func:aria_libc_thread_current_id           = int64();
+
+    /* ── Mutex ─────────────────────────────────────────────────────── */
+    func:aria_libc_mutex_create   = int64(int32:mutex_type);
+    func:aria_libc_mutex_lock     = int32(int64:handle);
+    func:aria_libc_mutex_trylock  = int32(int64:handle);
+    func:aria_libc_mutex_unlock   = int32(int64:handle);
+    func:aria_libc_mutex_destroy  = int32(int64:handle);
+
+    /* ── Condition Variable ────────────────────────────────────────── */
+    func:aria_libc_condvar_create    = int64();
+    func:aria_libc_condvar_wait      = int32(int64:cv_handle, int64:mutex_handle);
+    func:aria_libc_condvar_timedwait = int32(int64:cv_handle, int64:mutex_handle, int64:timeout_ns);
+    func:aria_libc_condvar_signal    = int32(int64:handle);
+    func:aria_libc_condvar_broadcast = int32(int64:handle);
+    func:aria_libc_condvar_destroy   = int32(int64:handle);
+
+    /* ── Read-Write Lock ───────────────────────────────────────────── */
+    func:aria_libc_rwlock_create     = int64();
+    func:aria_libc_rwlock_rdlock     = int32(int64:handle);
+    func:aria_libc_rwlock_tryrdlock  = int32(int64:handle);
+    func:aria_libc_rwlock_wrlock     = int32(int64:handle);
+    func:aria_libc_rwlock_trywrlock  = int32(int64:handle);
+    func:aria_libc_rwlock_unlock     = int32(int64:handle);
+    func:aria_libc_rwlock_destroy    = int32(int64:handle);
+
+    /* ── Channel ───────────────────────────────────────────────────── */
+    func:aria_libc_channel_create            = int64(int32:capacity);
+    func:aria_libc_channel_create_unbuffered = int64();
+    func:aria_libc_channel_create_oneshot    = int64();
+    func:aria_libc_channel_get_mode          = int32(int64:handle);
+    func:aria_libc_channel_capacity          = int32(int64:handle);
+    func:aria_libc_channel_send              = int32(int64:handle, int64:value);
+    func:aria_libc_channel_try_send          = int32(int64:handle, int64:value);
+    func:aria_libc_channel_recv              = int64(int64:handle);
+    func:aria_libc_channel_try_recv          = int64(int64:handle);
+    func:aria_libc_channel_count             = int32(int64:handle);
+    func:aria_libc_channel_close             = int32(int64:handle);
+    func:aria_libc_channel_destroy           = int32(int64:handle);
+    func:aria_libc_channel_is_closed         = bool(int64:handle);
+    func:aria_libc_channel_select2           = int32(int64:ch0, int64:ch1, int64:timeout_ms);
+    func:aria_libc_channel_select3           = int32(int64:ch0, int64:ch1, int64:ch2, int64:timeout_ms);
+    func:aria_libc_channel_select4           = int32(int64:ch0, int64:ch1, int64:ch2, int64:ch3, int64:timeout_ms);
+
+    /* ── Actor ─────────────────────────────────────────────────────── */
+
+    func:aria_libc_actor_send     = int32(int64:actor_handle, int64:message);
+    func:aria_libc_actor_try_send = int32(int64:actor_handle, int64:message);
+    func:aria_libc_actor_mailbox  = int64(int64:actor_handle);
+    func:aria_libc_actor_pending  = int32(int64:actor_handle);
+    func:aria_libc_actor_is_alive = int32(int64:actor_handle);
+    func:aria_libc_actor_stop     = int32(int64:actor_handle);
+    func:aria_libc_actor_destroy  = int32(int64:actor_handle);
+    func:aria_libc_set_reply_channel = void(int64:ch);
+    func:aria_libc_get_reply_channel = int64();
+    func:aria_libc_reply          = int32(int64:value);
+
+    /* ── Thread Pool ───────────────────────────────────────────────── */
+    func:aria_libc_pool_create       = int64(int32:num_workers);
+
+    func:aria_libc_pool_shutdown     = int32(int64:handle);
+    func:aria_libc_pool_active_tasks = int64(int64:handle);
+    func:aria_libc_pool_pending_tasks = int64(int64:handle);
+    func:aria_libc_pool_worker_count = int32(int64:handle);
+    func:aria_libc_pool_wait_idle    = int32(int64:handle);
+
+    /* ── Shared Memory ─────────────────────────────────────────────── */
+    func:aria_libc_shm_create      = int64(int64:size);
+    func:aria_libc_shm_destroy     = int32(int64:handle);
+    func:aria_libc_shm_write_int64 = int32(int64:handle, int64:offset, int64:value);
+    func:aria_libc_shm_read_int64  = int64(int64:handle, int64:offset);
+    func:aria_libc_shm_size        = int64(int64:handle);
+}
+
+func:failsafe = int32(tbb32:err) { exit 1; };

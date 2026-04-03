@@ -1,67 +1,176 @@
-// aria_pqueue.aria — Priority queue (min-heap) for Aria
+// aria_pqueue.aria — Priority Queue / Min-Heap (v0.11.1)
 //
-// Handle-based priority queue. Elements have int64 values with int32 priorities.
-// Lower priority number = extracted first (min-heap).
-// Requires: libaria_pqueue_shim.so
+// Pure Aria min-heap. Each entry is (int64 value, int32 priority).
+// Extract always returns the lowest-priority element.
+// Import with: use "aria_pqueue.aria".*;
+//
+// Layout: handle → header block
+//   [0] capacity   (int64)
+//   [1] size       (int64)
+//   [2] vals_ptr   (int64, pointer: capacity * 8 bytes)
+//   [3] pris_ptr   (int64, pointer: capacity * 4 bytes)
+//
+// v0.11.1: Pure Aria rewrite (was extern-only C shim).
 
-extern "aria_pqueue_shim" {
-    func:aria_pqueue_create        = int64(int32:capacity);
-    func:aria_pqueue_destroy       = void(int64:handle);
-    func:aria_pqueue_insert        = int32(int64:handle, int64:value, int32:priority);
-    func:aria_pqueue_extract       = int64(int64:handle);
-    func:aria_pqueue_peek          = int64(int64:handle);
-    func:aria_pqueue_peek_priority = int32(int64:handle);
-    func:aria_pqueue_size          = int32(int64:handle);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_calloc      = int64(int64:count, int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i32    = int32(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i32   = void(int64:ptr, int64:offset, int32:val);
 }
 
-extern "aria_pqueue_shim" {
-    func:aria_pqueue_is_empty = int32(int64:handle);
-    func:aria_pqueue_capacity = int32(int64:handle);
-}
+int64:PQ_HDR = 32i64;
 
-// ── public API ──────────────────────────────────────────────────────
-
-pub func:pqueue_create = int64(int32:capacity) {
-    int64:h = aria_pqueue_create(capacity);
-    pass h;
+func:pq_read_hdr = int64(int64:h, int64:slot) {
+    pass aria_libc_mem_read_i64(h, slot * 8i64);
+};
+func:pq_write_hdr = int32(int64:h, int64:slot, int64:val) {
+    aria_libc_mem_write_i64(h, slot * 8i64, val);
+    pass 0i32;
 };
 
-pub func:pqueue_destroy = NIL(int64:handle) {
-    aria_pqueue_destroy(handle);
-    pass NIL;
+// swap entries at indices a and b
+func:pq_swap = int32(int64:vals, int64:pris, int64:a, int64:b) {
+    int64:va = aria_libc_mem_read_i64(vals, a * 8i64);
+    int64:vb = aria_libc_mem_read_i64(vals, b * 8i64);
+    aria_libc_mem_write_i64(vals, a * 8i64, vb);
+    aria_libc_mem_write_i64(vals, b * 8i64, va);
+    int32:pa = aria_libc_mem_read_i32(pris, a * 4i64);
+    int32:pb = aria_libc_mem_read_i32(pris, b * 4i64);
+    aria_libc_mem_write_i32(pris, a * 4i64, pb);
+    aria_libc_mem_write_i32(pris, b * 4i64, pa);
+    pass 0i32;
 };
 
-pub func:pqueue_insert = int32(int64:handle, int64:value, int32:priority) {
-    int32:r = aria_pqueue_insert(handle, value, priority);
-    pass r;
+// sift up from index i
+func:pq_sift_up = int32(int64:vals, int64:pris, int64:i) {
+    loop(1i64, i + 1i64, 1i64) {
+        if (i <= 0i64) { pass 0i32; }
+        int64:parent = (i - 1i64) / 2i64;
+        int32:pi = aria_libc_mem_read_i32(pris, i * 4i64);
+        int32:pp = aria_libc_mem_read_i32(pris, parent * 4i64);
+        if (pi >= pp) { pass 0i32; }
+        drop pq_swap(vals, pris, i, parent);
+        i = parent;
+    }
+    pass 0i32;
 };
 
-pub func:pqueue_extract = int64(int64:handle) {
-    int64:v = aria_pqueue_extract(handle);
-    pass v;
+// sift down from index i, heap size = n
+func:pq_sift_down = int32(int64:vals, int64:pris, int64:i, int64:n) {
+    loop(0i64, n, 1i64) {
+        int64:smallest = i;
+        int64:left  = 2i64 * i + 1i64;
+        int64:right = 2i64 * i + 2i64;
+        if (left < n) {
+            int32:pl = aria_libc_mem_read_i32(pris, left * 4i64);
+            int32:ps = aria_libc_mem_read_i32(pris, smallest * 4i64);
+            if (pl < ps) { smallest = left; }
+        }
+        if (right < n) {
+            int32:pr = aria_libc_mem_read_i32(pris, right * 4i64);
+            int32:ps = aria_libc_mem_read_i32(pris, smallest * 4i64);
+            if (pr < ps) { smallest = right; }
+        }
+        if (smallest == i) { pass 0i32; }
+        drop pq_swap(vals, pris, i, smallest);
+        i = smallest;
+    }
+    pass 0i32;
 };
 
-pub func:pqueue_peek = int64(int64:handle) {
-    int64:v = aria_pqueue_peek(handle);
-    pass v;
-};
+Type:PQueue = {
+    // create(capacity) — allocate a new priority queue.
+    func:create = int64(int32:capacity) {
+        int64:cap = @cast<int64>(capacity);
+        int64:hdr = aria_libc_mem_malloc(PQ_HDR);
+        if (hdr == 0i64) { pass 0i64 - 1i64; }
+        int64:vals = aria_libc_mem_calloc(cap, 8i64);
+        int64:pris = aria_libc_mem_calloc(cap, 4i64);
+        drop pq_write_hdr(hdr, 0i64, cap);
+        drop pq_write_hdr(hdr, 1i64, 0i64);
+        drop pq_write_hdr(hdr, 2i64, vals);
+        drop pq_write_hdr(hdr, 3i64, pris);
+        pass hdr;
+    };
 
-pub func:pqueue_peek_priority = int32(int64:handle) {
-    int32:p = aria_pqueue_peek_priority(handle);
-    pass p;
-};
+    // destroy(handle) — free all memory.
+    func:destroy = int32(int64:handle) {
+        int64:vals = raw pq_read_hdr(handle, 2i64);
+        int64:pris = raw pq_read_hdr(handle, 3i64);
+        aria_libc_mem_free(vals);
+        aria_libc_mem_free(pris);
+        aria_libc_mem_free(handle);
+        pass 0i32;
+    };
 
-pub func:pqueue_size = int32(int64:handle) {
-    int32:r = aria_pqueue_size(handle);
-    pass r;
-};
+    // insert(handle, value, priority) — add element. Returns 0 on success, -1 if full.
+    func:insert = int32(int64:handle, int64:value, int32:priority) {
+        int64:cap  = raw pq_read_hdr(handle, 0i64);
+        int64:sz   = raw pq_read_hdr(handle, 1i64);
+        if (sz >= cap) { pass 0i32 - 1i32; }
+        int64:vals = raw pq_read_hdr(handle, 2i64);
+        int64:pris = raw pq_read_hdr(handle, 3i64);
+        aria_libc_mem_write_i64(vals, sz * 8i64, value);
+        aria_libc_mem_write_i32(pris, sz * 4i64, priority);
+        drop pq_sift_up(vals, pris, sz);
+        drop pq_write_hdr(handle, 1i64, sz + 1i64);
+        pass 0i32;
+    };
 
-pub func:pqueue_is_empty = int32(int64:handle) {
-    int32:r = aria_pqueue_is_empty(handle);
-    pass r;
-};
+    // extract(handle) — remove and return min-priority value. Returns -1 if empty.
+    func:extract = int64(int64:handle) {
+        int64:sz = raw pq_read_hdr(handle, 1i64);
+        if (sz <= 0i64) { pass 0i64 - 1i64; }
+        int64:vals = raw pq_read_hdr(handle, 2i64);
+        int64:pris = raw pq_read_hdr(handle, 3i64);
+        int64:result = aria_libc_mem_read_i64(vals, 0i64);
+        int64:last = sz - 1i64;
+        // move last to root
+        int64:lv = aria_libc_mem_read_i64(vals, last * 8i64);
+        int32:lp = aria_libc_mem_read_i32(pris, last * 4i64);
+        aria_libc_mem_write_i64(vals, 0i64, lv);
+        aria_libc_mem_write_i32(pris, 0i64, lp);
+        drop pq_write_hdr(handle, 1i64, last);
+        if (last > 0i64) {
+            drop pq_sift_down(vals, pris, 0i64, last);
+        }
+        pass result;
+    };
 
-pub func:pqueue_capacity = int32(int64:handle) {
-    int32:r = aria_pqueue_capacity(handle);
-    pass r;
+    // peek(handle) — return min value without removing. Returns -1 if empty.
+    func:peek = int64(int64:handle) {
+        int64:sz = raw pq_read_hdr(handle, 1i64);
+        if (sz <= 0i64) { pass 0i64 - 1i64; }
+        int64:vals = raw pq_read_hdr(handle, 2i64);
+        pass aria_libc_mem_read_i64(vals, 0i64);
+    };
+
+    // peek_priority(handle) — return min priority without removing.
+    func:peek_priority = int32(int64:handle) {
+        int64:sz = raw pq_read_hdr(handle, 1i64);
+        if (sz <= 0i64) { pass 0i32 - 1i32; }
+        int64:pris = raw pq_read_hdr(handle, 3i64);
+        pass aria_libc_mem_read_i32(pris, 0i64);
+    };
+
+    // size(handle)
+    func:size = int32(int64:handle) {
+        pass @cast<int32>(raw pq_read_hdr(handle, 1i64));
+    };
+
+    // is_empty(handle) — returns 1 if empty, 0 otherwise.
+    func:is_empty = int32(int64:handle) {
+        int64:sz = raw pq_read_hdr(handle, 1i64);
+        if (sz == 0i64) { pass 1i32; }
+        pass 0i32;
+    };
+
+    // capacity(handle)
+    func:capacity = int32(int64:handle) {
+        pass @cast<int32>(raw pq_read_hdr(handle, 0i64));
+    };
 };

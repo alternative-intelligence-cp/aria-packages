@@ -1,270 +1,129 @@
-// aria_mock.aria — Test mocking framework (pure Aria, uses aria-libc)
+// aria_mock.aria — Lightweight mock/stub framework (v0.11.2)
 //
-// Handle table at global slot 2: 32 pointers (256 bytes)
-// Each mock block (1488 bytes):
-//   0:   in_use (i64)
-//   8:   name_len (i64)
-//   16:  name data (64 bytes)
-//   80:  call_count (i64)
-//   88:  return_type (i64, 0=none 1=int 2=str)
-//   96:  return_int (i64)
-//   104: return_str_len (i64)
-//   112: return_str data (64 bytes)
-//   176: expect_exact (i64, -1=no expectation)
-//   184: expect_min (i64, -1=no min)
-//   192: expect_max (i64, -1=no max)
-//   208: call records (16 × 80 bytes)
-//     each call: int_arg(8) + str_len(8) + str_data(64) = 80 bytes
+// Aria + aria-libc_mem — no custom C shim.
+// Import with: use "aria_mock.aria".*;
+//
+// Supports up to 64 mocks. Each mock tracks call count and a stored int64 value.
+// Memory layout: 64 slots × 16 bytes = 1024 bytes.
+//   slot[i] = { call_count: int64 (offset 0), value: int64 (offset 8) }
 
 extern "aria_libc_mem" {
-    func:aria_libc_mem_malloc     = int64(int64:size);
-    func:aria_libc_mem_free       = void(int64:ptr);
-    func:aria_libc_mem_zero       = void(int64:ptr, int64:n);
-    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
-    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
-    func:aria_libc_mem_get_global = int64(int32:idx);
-    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
+    func:aria_libc_mem_malloc    = int64(int64:bytes);
+    func:aria_libc_mem_free      = int32(int64:ptr);
+    func:aria_libc_mem_zero      = int32(int64:ptr, int64:bytes);
+    func:aria_libc_mem_write_i64 = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_read_i64  = int64(int64:ptr, int64:offset);
 }
 
-extern "aria_libc_string" {
-    func:aria_libc_string_strlen      = int64(string:s);
-    func:aria_libc_string_strcmp       = int32(string:a, string:b);
-    func:aria_libc_string_copy_to_buf = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
-    func:aria_libc_string_from_buf    = string(int64:buf, int64:off, int64:sz);
-}
+// ── internal state ─────────────────────────────────────────────────────────────
 
-// ── internal: ensure handle table ───────────────────────────────
+// Global base pointer from malloc(1024) = 64 slots × 16 bytes each.
+// Slot layout: offset = id * 16; call_count at +0, value at +8.
 
-func:_ensure_table = NIL() {
-    int64:tbl = aria_libc_mem_get_global(2i32);
-    if (tbl == 0i64) {
-        int64:t = aria_libc_mem_malloc(256i64);
-        aria_libc_mem_zero(t, 256i64);
-        aria_libc_mem_set_global(2i32, t);
-    }
-    pass NIL;
+func:mock_init_storage = int64() {
+    int64:base = aria_libc_mem_malloc(1024i64);
+    aria_libc_mem_zero(base, 1024i64);
+    pass base;
 };
 
-func:_get_mock = int64(int32:h) {
-    int64:tbl = aria_libc_mem_get_global(2i32);
-    if (tbl == 0i64) { pass 0i64; }
-    int64:off = @cast<int64>(h) * 8i64;
-    int64:ptr = aria_libc_mem_read_i64(tbl, off);
-    pass ptr;
+// ── core operations ────────────────────────────────────────────────────────────
+
+// Record a call on mock id (increment call count).
+func:mock_call = int32(int64:base, int64:id) {
+    int64:off = id * 16i64;
+    int64:count = aria_libc_mem_read_i64(base, off);
+    int64:new_count = count + 1i64;
+    aria_libc_mem_write_i64(base, off, new_count);
+    pass 1i32;
 };
 
-// ── lifecycle ───────────────────────────────────────────────────
-
-pub func:mock_create = int32(string:name) {
-    drop _ensure_table();
-    int64:tbl = aria_libc_mem_get_global(2i32);
-    int32:found = 0i32 - 1i32;
-    loop(0i64, 32i64, 1i64) {
-        int64:off = $ * 8i64;
-        int64:ptr = aria_libc_mem_read_i64(tbl, off);
-        if (ptr == 0i64) {
-            if (found < 0i32) {
-                found = @cast<int32>($);
-            }
-        }
-    }
-    if (found < 0i32) { pass found; }
-
-    int64:blk = aria_libc_mem_malloc(1488i64);
-    aria_libc_mem_zero(blk, 1488i64);
-    aria_libc_mem_write_i64(blk, 0i64, 1i64);
-
-    int64:nlen = aria_libc_string_strlen(name);
-    if (nlen > 63i64) { nlen = 63i64; }
-    aria_libc_mem_write_i64(blk, 8i64, nlen);
-    aria_libc_string_copy_to_buf(blk, 16i64, name, 0i64, nlen);
-
-    aria_libc_mem_write_i64(blk, 176i64, 0i64 - 1i64);
-    aria_libc_mem_write_i64(blk, 184i64, 0i64 - 1i64);
-    aria_libc_mem_write_i64(blk, 192i64, 0i64 - 1i64);
-
-    int64:toff = @cast<int64>(found) * 8i64;
-    aria_libc_mem_write_i64(tbl, toff, blk);
-    pass found;
+// Get call count for mock id.
+func:mock_call_count = int64(int64:base, int64:id) {
+    int64:off = id * 16i64;
+    pass aria_libc_mem_read_i64(base, off);
 };
 
-pub func:mock_destroy = NIL(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_free(blk);
-        int64:tbl = aria_libc_mem_get_global(2i32);
-        int64:off = @cast<int64>(handle) * 8i64;
-        aria_libc_mem_write_i64(tbl, off, 0i64);
-    }
-    pass NIL;
+// Set a stored value on mock id.
+func:mock_set_value = int32(int64:base, int64:id, int64:val) {
+    int64:off = id * 16i64 + 8i64;
+    aria_libc_mem_write_i64(base, off, val);
+    pass 1i32;
 };
 
-pub func:mock_reset = NIL(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 80i64, 0i64);
-        aria_libc_mem_write_i64(blk, 88i64, 0i64);
-        aria_libc_mem_write_i64(blk, 96i64, 0i64);
-        aria_libc_mem_write_i64(blk, 104i64, 0i64);
-    }
-    pass NIL;
+// Get stored value from mock id.
+func:mock_get_value = int64(int64:base, int64:id) {
+    int64:off = id * 16i64 + 8i64;
+    pass aria_libc_mem_read_i64(base, off);
 };
 
-pub func:mock_get_name = string(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass ""; }
-    int64:nlen = aria_libc_mem_read_i64(blk, 8i64);
-    if (nlen <= 0i64) { pass ""; }
-    pass aria_libc_string_from_buf(blk, 16i64, nlen);
+// Reset a single mock slot.
+func:mock_reset_one = int32(int64:base, int64:id) {
+    int64:off = id * 16i64;
+    aria_libc_mem_write_i64(base, off, 0i64);
+    aria_libc_mem_write_i64(base, off + 8i64, 0i64);
+    pass 1i32;
 };
 
-// ── return value stubbing ───────────────────────────────────────
-
-pub func:mock_returns_int = NIL(int32:handle, int64:val) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 88i64, 1i64);
-        aria_libc_mem_write_i64(blk, 96i64, val);
-    }
-    pass NIL;
-};
-
-pub func:mock_returns_str = NIL(int32:handle, string:val) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 88i64, 2i64);
-        int64:slen = aria_libc_string_strlen(val);
-        if (slen > 63i64) { slen = 63i64; }
-        aria_libc_mem_write_i64(blk, 104i64, slen);
-        aria_libc_string_copy_to_buf(blk, 112i64, val, 0i64, slen);
-    }
-    pass NIL;
-};
-
-// ── call recording ──────────────────────────────────────────────
-
-func:_record_call = int64(int64:blk) {
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    aria_libc_mem_write_i64(blk, 80i64, cc + 1i64);
-    int64:rt = aria_libc_mem_read_i64(blk, 88i64);
-    if (rt == 1i64) {
-        pass aria_libc_mem_read_i64(blk, 96i64);
-    }
-    pass 0i64;
-};
-
-pub func:mock_call = int64(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i64; }
-    pass raw _record_call(blk);
-};
-
-pub func:mock_call_with_int = int64(int32:handle, int64:arg) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i64; }
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    if (cc < 16i64) {
-        int64:rec_off = 208i64 + cc * 80i64;
-        aria_libc_mem_write_i64(blk, rec_off, arg);
-    }
-    pass raw _record_call(blk);
-};
-
-pub func:mock_call_with_str = int64(int32:handle, string:arg) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i64; }
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    if (cc < 16i64) {
-        int64:rec_off = 208i64 + cc * 80i64;
-        int64:slen = aria_libc_string_strlen(arg);
-        if (slen > 63i64) { slen = 63i64; }
-        aria_libc_mem_write_i64(blk, rec_off + 8i64, slen);
-        aria_libc_string_copy_to_buf(blk, rec_off + 16i64, arg, 0i64, slen);
-    }
-    pass raw _record_call(blk);
-};
-
-// ── call inspection ─────────────────────────────────────────────
-
-pub func:mock_call_count = int32(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i32; }
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    pass @cast<int32>(cc);
-};
-
-pub func:mock_call_arg_int = int64(int32:handle, int32:call_idx, int32:arg_idx) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i64; }
-    int64:ci = @cast<int64>(call_idx);
-    if (ci < 0i64) { pass 0i64; }
-    if (ci >= 16i64) { pass 0i64; }
-    int64:rec_off = 208i64 + ci * 80i64;
-    pass aria_libc_mem_read_i64(blk, rec_off);
-};
-
-pub func:mock_call_arg_str = string(int32:handle, int32:call_idx, int32:arg_idx) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass ""; }
-    int64:ci = @cast<int64>(call_idx);
-    if (ci < 0i64) { pass ""; }
-    if (ci >= 16i64) { pass ""; }
-    int64:rec_off = 208i64 + ci * 80i64;
-    int64:slen = aria_libc_mem_read_i64(blk, rec_off + 8i64);
-    if (slen <= 0i64) { pass ""; }
-    pass aria_libc_string_from_buf(blk, rec_off + 16i64, slen);
-};
-
-pub func:mock_was_called = int32(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i32; }
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    if (cc > 0i64) { pass 1i32; }
+// Verify call count matches expected.
+func:mock_verify = int32(int64:base, int64:id, int64:expected) {
+    int64:actual = mock_call_count(base, id);
+    if (actual == expected) { pass 1i32; }
     pass 0i32;
 };
 
-// ── expectations ────────────────────────────────────────────────
-
-pub func:mock_expect_calls = NIL(int32:handle, int32:n) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 176i64, @cast<int64>(n));
-    }
-    pass NIL;
-};
-
-pub func:mock_expect_min = NIL(int32:handle, int32:n) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 184i64, @cast<int64>(n));
-    }
-    pass NIL;
-};
-
-pub func:mock_expect_max = NIL(int32:handle, int32:n) {
-    int64:blk = raw _get_mock(handle);
-    if (blk != 0i64) {
-        aria_libc_mem_write_i64(blk, 192i64, @cast<int64>(n));
-    }
-    pass NIL;
-};
-
-pub func:mock_verify = int32(int32:handle) {
-    int64:blk = raw _get_mock(handle);
-    if (blk == 0i64) { pass 0i32; }
-    int64:cc = aria_libc_mem_read_i64(blk, 80i64);
-    int64:exact = aria_libc_mem_read_i64(blk, 176i64);
-    int64:mn = aria_libc_mem_read_i64(blk, 184i64);
-    int64:mx = aria_libc_mem_read_i64(blk, 192i64);
-    int64:neg1 = 0i64 - 1i64;
-    if (exact != neg1) {
-        if (cc != exact) { pass 0i32; }
-    }
-    if (mn != neg1) {
-        if (cc < mn) { pass 0i32; }
-    }
-    if (mx != neg1) {
-        if (cc > mx) { pass 0i32; }
-    }
+// Reset all 64 slots.
+func:mock_reset_all = int32(int64:base) {
+    aria_libc_mem_zero(base, 1024i64);
     pass 1i32;
+};
+
+// Free the mock storage.
+func:mock_destroy = int32(int64:base) {
+    aria_libc_mem_free(base);
+    pass 1i32;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────────
+
+Type:Mock = {
+
+    func:create = int64() {
+        pass raw mock_init_storage();
+    };
+
+    func:call = int32(int64:base, int64:id) {
+        pass raw mock_call(base, id);
+    };
+
+    func:call_count = int64(int64:base, int64:id) {
+        pass raw mock_call_count(base, id);
+    };
+
+    func:set_value = int32(int64:base, int64:id, int64:val) {
+        pass raw mock_set_value(base, id, val);
+    };
+
+    func:get_value = int64(int64:base, int64:id) {
+        pass raw mock_get_value(base, id);
+    };
+
+    func:reset = int32(int64:base, int64:id) {
+        pass raw mock_reset_one(base, id);
+    };
+
+    func:reset_all = int32(int64:base) {
+        pass raw mock_reset_all(base);
+    };
+
+    func:verify = int32(int64:base, int64:id, int64:expected) {
+        pass raw mock_verify(base, id, expected);
+    };
+
+    func:destroy = int32(int64:base) {
+        pass raw mock_destroy(base);
+    };
+
+    func:max_slots = int32() {
+        pass 64i32;
+    };
 };

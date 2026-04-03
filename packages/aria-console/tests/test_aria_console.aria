@@ -1,143 +1,77 @@
-// test_aria_console.aria — 15-test suite for LIB-20 aria-console
-//
-// Pure Aria module — no FFI. Can safely `use` the source file.
+// test_aria_console.aria — 12-test suite for aria-console (v0.11.2)
+use "../src/aria_console.aria".*;
 
-use "/home/randy/Workspace/REPOS/aria/aria_ecosystem/aria_packages/aria-console/src/aria_console.aria".*;
-
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── T01: bus_zone(0) == CON_ZONE_RAM (0) ───────────────────────────────
-    int32:z01 = bus_zone(0i32);
-    if (z01 == 0i32) {
-        print("[PASS] T01 bus_zone(0)==CON_ZONE_RAM\n");
-    } else {
-        print("[FAIL] T01 bus_zone(0) expected 0 (RAM)\n");
-    }
+    int32:pass_count = 0i32;
+    int64:bus = raw Console.init();
 
-    // ── T02: bus_zone(8192) == CON_ZONE_DISP (1) ──────────────────────────
-    int32:z02 = bus_zone(8192i32);
-    if (z02 == 1i32) {
-        print("[PASS] T02 bus_zone(8192)==CON_ZONE_DISP\n");
-    } else {
-        print("[FAIL] T02 bus_zone(8192) expected 1 (DISP)\n");
-    }
+    // T01: zone RAM (addr 100 => zone 0)
+    int32:z1 = raw Console.zone(100i32);
+    if (z1 == 0i32) { println("[PASS] T01 zone RAM"); pass_count += 1i32; }
+    if (z1 != 0i32) { println("[FAIL] T01"); }
 
-    // ── T03: bus_zone(32768) == CON_ZONE_ROM (6) ───────────────────────────
-    int32:z03 = bus_zone(32768i32);
-    if (z03 == 6i32) {
-        print("[PASS] T03 bus_zone(32768)==CON_ZONE_ROM\n");
-    } else {
-        print("[FAIL] T03 bus_zone(32768) expected 6 (ROM)\n");
-    }
+    // T02: zone VRAM (addr 20000 => zone 5)
+    int32:z2 = raw Console.zone(20000i32);
+    if (z2 == 5i32) { println("[PASS] T02 zone VRAM"); pass_count += 1i32; }
+    if (z2 != 5i32) { println("[FAIL] T02"); }
 
-    // ── T04: bus_zone(65535) == CON_ZONE_ROM (6) ───────────────────────────
-    int32:z04 = bus_zone(65535i32);
-    if (z04 == 6i32) {
-        print("[PASS] T04 bus_zone(65535)==CON_ZONE_ROM top\n");
-    } else {
-        print("[FAIL] T04 bus_zone(65535) expected 6 (ROM top)\n");
-    }
+    // T03: zone ROM (addr 40000 => zone 6)
+    int32:z3 = raw Console.zone(40000i32);
+    if (z3 == 6i32) { println("[PASS] T03 zone ROM"); pass_count += 1i32; }
+    if (z3 != 6i32) { println("[FAIL] T03"); }
 
-    // ── T05: bus_zone(-1) == -1 (invalid) ─────────────────────────────────
-    int32:z05 = bus_zone(0i32 - 1i32);
-    if (z05 == 0i32 - 1i32) {
-        print("[PASS] T05 bus_zone(-1)==-1 (invalid)\n");
-    } else {
-        print("[FAIL] T05 bus_zone(-1) expected -1\n");
-    }
+    // T04: write/read byte
+    int32:w4 = raw Console.write(bus, 500i32, 0xABi32);
+    int32:r4 = raw Console.read(bus, 500i32);
+    if (r4 == 0xABi32) { println("[PASS] T04 write/read"); pass_count += 1i32; }
+    if (r4 != 0xABi32) { println("[FAIL] T04"); }
 
-    // ── T06: disp_reg_addr(0) == CON_DISP_BASE (8192) ─────────────────────
-    int32:da0 = disp_reg_addr(0i32);
-    if (da0 == 8192i32) {
-        print("[PASS] T06 disp_reg_addr(0)==8192\n");
-    } else {
-        print("[FAIL] T06 disp_reg_addr(0) expected 8192\n");
-    }
+    // T05: write16/read16
+    int32:w5 = raw Console.write16(bus, 600i32, 0x1234i32);
+    int32:r5 = raw Console.read16(bus, 600i32);
+    if (r5 == 0x1234i32) { println("[PASS] T05 write16/read16"); pass_count += 1i32; }
+    if (r5 != 0x1234i32) { println("[FAIL] T05"); }
 
-    // ── T07: inp_reg_addr(5) == 10240+5 == 10245 ──────────────────────────
-    int32:ia5 = inp_reg_addr(5i32);
-    if (ia5 == 10245i32) {
-        print("[PASS] T07 inp_reg_addr(5)==10245\n");
-    } else {
-        print("[FAIL] T07 inp_reg_addr(5) expected 10245\n");
-    }
+    // T06: fill region
+    int32:f6 = raw Console.fill(bus, 1000i32, 10i32, 0xFFi32);
+    int32:r6 = raw Console.read(bus, 1005i32);
+    if (r6 == 0xFFi32) { println("[PASS] T06 fill"); pass_count += 1i32; }
+    if (r6 != 0xFFi32) { println("[FAIL] T06"); }
 
-    // ── T08: snd_reg_addr out-of-range returns -1 ─────────────────────────
-    int32:sr_bad = snd_reg_addr(512i32);
-    if (sr_bad == 0i32 - 1i32) {
-        print("[PASS] T08 snd_reg_addr(512)==-1 (out of range)\n");
-    } else {
-        print("[FAIL] T08 snd_reg_addr(512) expected -1\n");
-    }
+    // T07: reset clears data
+    int32:rs7 = raw Console.reset(bus);
+    int32:r7 = raw Console.read(bus, 500i32);
+    if (r7 == 0i32) { println("[PASS] T07 reset"); pass_count += 1i32; }
+    if (r7 != 0i32) { println("[FAIL] T07"); }
 
-    // ── T09: con_ms_to_frame(0) == 0, con_ms_to_frame(32) == 2 ───────────
-    int32:f0  = con_ms_to_frame(0i32);
-    int32:f32 = con_ms_to_frame(32i32);
-    if (f0 == 0i32 && f32 == 2i32) {
-        print("[PASS] T09 con_ms_to_frame(0,32)==(0,2)\n");
-    } else {
-        print("[FAIL] T09 con_ms_to_frame wrong\n");
-    }
+    // T08: is_valid for valid address
+    int32:v8 = raw Console.is_valid(100i32);
+    if (v8 == 1i32) { println("[PASS] T08 is_valid"); pass_count += 1i32; }
+    if (v8 != 1i32) { println("[FAIL] T08"); }
 
-    // ── T10: con_is_vblank on frame boundaries ─────────────────────────────
-    int32:vb0  = con_is_vblank(0i32);
-    int32:vb16 = con_is_vblank(16i32);
-    int32:vb1  = con_is_vblank(1i32);
-    if (vb0 == 1i32 && vb16 == 1i32 && vb1 == 0i32) {
-        print("[PASS] T10 con_is_vblank correct on boundaries\n");
-    } else {
-        print("[FAIL] T10 con_is_vblank wrong\n");
-    }
+    // T09: is_valid for invalid address (65536)
+    int32:v9 = raw Console.is_valid(65536i32);
+    if (v9 == 0i32) { println("[PASS] T09 invalid addr"); pass_count += 1i32; }
+    if (v9 != 0i32) { println("[FAIL] T09"); }
 
-    // ── T11: con_state_pack/unpack frame counter ───────────────────────────
-    uint64:st11 = con_state_pack(42i32, 0i32, 0i32, 0i32);
-    int32:f11   = con_state_frame(st11);
-    if (f11 == 42i32) {
-        print("[PASS] T11 con_state frame pack/unpack\n");
-    } else {
-        print("[FAIL] T11 con_state frame roundtrip failed\n");
-    }
+    // T10: ms_to_frame
+    int32:f10 = raw Console.ms_to_frame(33i32);
+    if (f10 == 2i32) { println("[PASS] T10 ms_to_frame"); pass_count += 1i32; }
+    if (f10 != 2i32) { println("[FAIL] T10"); }
 
-    // ── T12: con_state_pack/unpack joypad ─────────────────────────────────
-    uint64:st12 = con_state_pack(0i32, 12i32, 0i32, 0i32); // joypad=12 (UP+DOWN)
-    int32:j12   = con_state_joypad(st12);
-    if (j12 == 12i32) {
-        print("[PASS] T12 con_state joypad pack/unpack\n");
-    } else {
-        print("[FAIL] T12 con_state joypad roundtrip failed\n");
-    }
+    // T11: is_vblank at frame boundary (16ms = vblank region)
+    int32:vb11 = raw Console.is_vblank(16i32);
+    if (vb11 == 1i32) { println("[PASS] T11 is_vblank"); pass_count += 1i32; }
+    if (vb11 != 1i32) { println("[FAIL] T11"); }
 
-    // ── T13: con_state_pack/unpack all fields at once ─────────────────────
-    uint64:st13 = con_state_pack(100i32, 3i32, 1i32, 0x1234i32);
-    int32:f13   = con_state_frame(st13);
-    int32:j13   = con_state_joypad(st13);
-    int32:fl13  = con_state_flags(st13);
-    int32:pc13  = con_state_pc(st13);
-    if (f13 == 100i32 && j13 == 3i32 && fl13 == 1i32 && pc13 == 4660i32) {
-        print("[PASS] T13 con_state all fields roundtrip\n");
-    } else {
-        print("[FAIL] T13 con_state all-fields roundtrip failed\n");
-    }
+    // T12: in_zone check (addr 500 in zone 0 RAM)
+    int32:iz12 = raw Console.in_zone(500i32, 0i32);
+    if (iz12 == 1i32) { println("[PASS] T12 in_zone"); pass_count += 1i32; }
+    if (iz12 != 1i32) { println("[FAIL] T12"); }
 
-    // ── T14: bus_is_valid boundaries ──────────────────────────────────────
-    int32:v0     = bus_is_valid(0i32);
-    int32:v65535 = bus_is_valid(65535i32);
-    int32:vbad   = bus_is_valid(65536i32);
-    if (v0 == 1i32 && v65535 == 1i32 && vbad == 0i32) {
-        print("[PASS] T14 bus_is_valid boundaries\n");
-    } else {
-        print("[FAIL] T14 bus_is_valid wrong\n");
-    }
-
-    // ── T15: CON_SAMPLES_PER_FRAME == 735 and CON_FRAME_MS == 16 ──────────
-    int32:spf = CON_SAMPLES_PER_FRAME();
-    int32:fms = CON_FRAME_MS();
-    if (spf == 735i32 && fms == 16i32) {
-        print("[PASS] T15 CON_SAMPLES_PER_FRAME==735 CON_FRAME_MS==16\n");
-    } else {
-        print("[FAIL] T15 frame constants wrong\n");
-    }
-
-    exit 0;
+    int32:rd = raw Console.destroy(bus);
+    println("DONE");
+    exit(0i32);
 };

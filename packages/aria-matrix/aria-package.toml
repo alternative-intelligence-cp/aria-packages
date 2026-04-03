@@ -1,12 +1,7 @@
 [package]
-name            = "aria-matrix"
-version         = "0.3.2"
-description     = "Matrix operations for Aria — create, multiply, transpose, determinant, invert"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
-aria_version    = ">=0.3.0"
-
-[dependencies]
-
-[build]
-link_libraries = ["aria_matrix_shim"]
+name = "aria-matrix"
+version = "0.11.1"
+description = "Dense matrix operations — add, multiply, transpose, determinant, trace"
+entry = "src/aria_matrix.aria"
+type = "pure"
+deps = ["aria-libc_mem"]

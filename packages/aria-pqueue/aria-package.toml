@@ -1,11 +1,12 @@
 [package]
-name            = "aria-pqueue"
-version         = "0.3.0"
-description     = "Priority queue for Aria — min-heap based, handle-based, int64 elements with int32 priorities"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
-
-[dependencies]
+name = "aria-pqueue"
+version = "0.11.1"
+authors = ["Aria Language Project"]
+license = "MIT"
+description = "Priority queue (min-heap) with int64 values and int32 priorities"
+keywords = ["priority-queue", "min-heap", "data-structure"]
+categories = ["data-structures"]
 
 [build]
-link_libraries = ["aria_pqueue_shim"]
+type = "library"
+entry = "src/aria_pqueue.aria"
