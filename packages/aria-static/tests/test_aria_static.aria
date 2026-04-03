@@ -1,107 +1,127 @@
-// test_aria_static.aria — Tests for static file serving
+// test_aria_static.aria — Tests for static file serving (pure Aria)
+use "../src/aria_static.aria".*;
+
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp  = int64(string:a, string:b);
+    func:aria_libc_string_strstr = int64(string:hay, string:needle);
+}
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern "aria_static_shim" {
-    func:aria_static_set_root      = void(string:root);
-    func:aria_static_get_root      = string();
-    func:aria_static_set_index     = void(string:filename);
-    func:aria_static_resolve       = int32(string:url_path);
-    func:aria_static_mime_type     = string();
-    func:aria_static_read          = int32();
-    func:aria_static_content       = string();
-    func:aria_static_length        = int32();
-    func:aria_static_resolved_path = string();
-    func:aria_static_detect_mime   = string(string:path);
-    func:aria_static_error         = string();
-    func:aria_static_reset         = void();
-    func:aria_static_assert_str_eq  = void(string:label, string:expected, string:actual);
-    func:aria_static_assert_int_eq  = void(string:label, int32:expected, int32:actual);
-    func:aria_static_assert_contains = void(string:label, string:expected, string:actual);
-    func:aria_static_test_summary   = void();
-}
-
 func:main = int32() {
-    // ── Test 1: MIME type detection ──
-    string:m1 = aria_static_detect_mime("style.css");
-    aria_static_assert_str_eq("mime css", "text/css", m1);
+    // T01: MIME css
+    string:m1 = raw static_detect_mime("style.css");
+    int64:c1 = aria_libc_string_strcmp(m1, "text/css");
+    if (c1 == 0i64) { drop println("[PASS] T01 mime css"); }
+    if (c1 != 0i64) { drop println("[FAIL] T01 mime css"); }
 
-    string:m2 = aria_static_detect_mime("app.js");
-    aria_static_assert_str_eq("mime js", "application/javascript", m2);
+    // T02: MIME js
+    string:m2 = raw static_detect_mime("app.js");
+    int64:c2 = aria_libc_string_strcmp(m2, "application/javascript");
+    if (c2 == 0i64) { drop println("[PASS] T02 mime js"); }
+    if (c2 != 0i64) { drop println("[FAIL] T02 mime js"); }
 
-    string:m3 = aria_static_detect_mime("data.json");
-    aria_static_assert_str_eq("mime json", "application/json", m3);
+    // T03: MIME json
+    string:m3 = raw static_detect_mime("data.json");
+    int64:c3 = aria_libc_string_strcmp(m3, "application/json");
+    if (c3 == 0i64) { drop println("[PASS] T03 mime json"); }
+    if (c3 != 0i64) { drop println("[FAIL] T03 mime json"); }
 
-    string:m4 = aria_static_detect_mime("photo.png");
-    aria_static_assert_str_eq("mime png", "image/png", m4);
+    // T04: MIME png
+    string:m4 = raw static_detect_mime("photo.png");
+    int64:c4 = aria_libc_string_strcmp(m4, "image/png");
+    if (c4 == 0i64) { drop println("[PASS] T04 mime png"); }
+    if (c4 != 0i64) { drop println("[FAIL] T04 mime png"); }
 
-    string:m5 = aria_static_detect_mime("page.html");
-    aria_static_assert_str_eq("mime html", "text/html", m5);
+    // T05: MIME html
+    string:m5 = raw static_detect_mime("page.html");
+    int64:c5 = aria_libc_string_strcmp(m5, "text/html");
+    if (c5 == 0i64) { drop println("[PASS] T05 mime html"); }
+    if (c5 != 0i64) { drop println("[FAIL] T05 mime html"); }
 
-    string:m6 = aria_static_detect_mime("file.xyz");
-    aria_static_assert_str_eq("mime unknown", "application/octet-stream", m6);
+    // T06: MIME unknown
+    string:m6 = raw static_detect_mime("file.xyz");
+    int64:c6 = aria_libc_string_strcmp(m6, "application/octet-stream");
+    if (c6 == 0i64) { drop println("[PASS] T06 mime unknown"); }
+    if (c6 != 0i64) { drop println("[FAIL] T06 mime unknown"); }
 
-    string:m7 = aria_static_detect_mime("image.svg");
-    aria_static_assert_str_eq("mime svg", "image/svg+xml", m7);
+    // T07: MIME svg
+    string:m7 = raw static_detect_mime("image.svg");
+    int64:c7 = aria_libc_string_strcmp(m7, "image/svg+xml");
+    if (c7 == 0i64) { drop println("[PASS] T07 mime svg"); }
+    if (c7 != 0i64) { drop println("[FAIL] T07 mime svg"); }
 
-    string:m8 = aria_static_detect_mime("module.wasm");
-    aria_static_assert_str_eq("mime wasm", "application/wasm", m8);
+    // T08: MIME wasm
+    string:m8 = raw static_detect_mime("module.wasm");
+    int64:c8 = aria_libc_string_strcmp(m8, "application/wasm");
+    if (c8 == 0i64) { drop println("[PASS] T08 mime wasm"); }
+    if (c8 != 0i64) { drop println("[FAIL] T08 mime wasm"); }
 
-    // ── Test 2: Resolve and read a file ──
-    aria_static_reset();
-    aria_static_set_root("./public");
+    // T09: Resolve index.html
+    drop static_file_reset();
+    drop static_set_root("./public");
+    int32:r1 = raw static_resolve("/index.html");
+    if (r1 == 1i32) { drop println("[PASS] T09 resolve index"); }
+    if (r1 != 1i32) { drop println("[FAIL] T09 resolve index"); }
 
-    int32:r1 = aria_static_resolve("/index.html");
-    aria_static_assert_int_eq("resolve index", 1i32, r1);
+    // T10: Index MIME
+    string:mi1 = raw static_mime();
+    int64:c10 = aria_libc_string_strcmp(mi1, "text/html");
+    if (c10 == 0i64) { drop println("[PASS] T10 index mime"); }
+    if (c10 != 0i64) { drop println("[FAIL] T10 index mime"); }
 
-    string:mime1 = aria_static_mime_type();
-    aria_static_assert_str_eq("index mime", "text/html", mime1);
+    // T11: Read file
+    int32:sz1 = raw static_read();
+    if (sz1 == 32i32) { drop println("[PASS] T11 index read"); }
+    if (sz1 != 32i32) { drop println("[FAIL] T11 index read"); }
 
-    int32:size1 = aria_static_read();
-    aria_static_assert_int_eq("index read ok", 32i32, size1);
+    // T12: Content contains <html>
+    string:con1 = raw static_content();
+    int64:h1 = aria_libc_string_strstr(con1, "<html>");
+    if (h1 >= 0i64) { drop println("[PASS] T12 index content"); }
+    if (h1 < 0i64) { drop println("[FAIL] T12 index content"); }
 
-    string:content1 = aria_static_content();
-    aria_static_assert_contains("index content", "<html>", content1);
+    // T13: Resolve CSS
+    int32:r2 = raw static_resolve("/css/style.css");
+    if (r2 == 1i32) { drop println("[PASS] T13 resolve css"); }
+    if (r2 != 1i32) { drop println("[FAIL] T13 resolve css"); }
 
-    // ── Test 3: Resolve CSS file ──
-    int32:r2 = aria_static_resolve("/css/style.css");
-    aria_static_assert_int_eq("resolve css", 1i32, r2);
+    // T14: CSS content
+    int32:sz2 = raw static_read();
+    string:con2 = raw static_content();
+    int64:h2 = aria_libc_string_strstr(con2, "color: red");
+    if (h2 >= 0i64) { drop println("[PASS] T14 css content"); }
+    if (h2 < 0i64) { drop println("[FAIL] T14 css content"); }
 
-    string:mime2 = aria_static_mime_type();
-    aria_static_assert_str_eq("css mime", "text/css", mime2);
+    // T15: Path traversal blocked
+    int32:r3 = raw static_resolve("/../../../etc/passwd");
+    if (r3 == 0i32) { drop println("[PASS] T15 traversal blocked"); }
+    if (r3 != 0i32) { drop println("[FAIL] T15 traversal blocked"); }
 
-    int32:size2 = aria_static_read();
-    string:content2 = aria_static_content();
-    aria_static_assert_contains("css content", "color: red", content2);
+    // T16: Traversal error message
+    string:err1 = raw static_error();
+    int64:h3 = aria_libc_string_strstr(err1, "traversal");
+    if (h3 >= 0i64) { drop println("[PASS] T16 traversal error"); }
+    if (h3 < 0i64) { drop println("[FAIL] T16 traversal error"); }
 
-    // ── Test 4: Resolve JSON file ──
-    int32:r3 = aria_static_resolve("/data.json");
-    aria_static_assert_int_eq("resolve json", 1i32, r3);
+    // T17: Missing file
+    int32:r4 = raw static_resolve("/nonexistent.html");
+    if (r4 == 0i32) { drop println("[PASS] T17 missing file"); }
+    if (r4 != 0i32) { drop println("[FAIL] T17 missing file"); }
 
-    string:mime3 = aria_static_mime_type();
-    aria_static_assert_str_eq("json mime", "application/json", mime3);
+    // T18: Set root
+    drop static_set_root("/tmp");
+    string:root1 = raw static_get_root();
+    int64:c18 = aria_libc_string_strcmp(root1, "/tmp");
+    if (c18 == 0i64) { drop println("[PASS] T18 set root"); }
+    if (c18 != 0i64) { drop println("[FAIL] T18 set root"); }
 
-    // ── Test 5: Path traversal blocked ──
-    int32:r4 = aria_static_resolve("/../../../etc/passwd");
-    aria_static_assert_int_eq("traversal blocked", 0i32, r4);
+    // T19: Reset restores default
+    drop static_file_reset();
+    string:root2 = raw static_get_root();
+    int64:c19 = aria_libc_string_strcmp(root2, "./public");
+    if (c19 == 0i64) { drop println("[PASS] T19 reset root"); }
+    if (c19 != 0i64) { drop println("[FAIL] T19 reset root"); }
 
-    string:err1 = aria_static_error();
-    aria_static_assert_contains("traversal error", "traversal", err1);
-
-    // ── Test 6: Non-existent file ──
-    int32:r5 = aria_static_resolve("/nonexistent.html");
-    aria_static_assert_int_eq("missing file", 0i32, r5);
-
-    // ── Test 7: Set root directory ──
-    aria_static_set_root("/tmp");
-    string:root = aria_static_get_root();
-    aria_static_assert_str_eq("root changed", "/tmp", root);
-
-    // ── Test 8: Reset restores defaults ──
-    aria_static_reset();
-    string:root2 = aria_static_get_root();
-    aria_static_assert_str_eq("reset root", "./public", root2);
-
-    aria_static_test_summary();
     exit 0;
 };

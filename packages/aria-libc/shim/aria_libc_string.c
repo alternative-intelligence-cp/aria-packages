@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <stdio.h>
 
 /* ── Length & Compare ────────────────────────────────────────────── */
 
@@ -181,4 +182,53 @@ const char *aria_libc_string_from_buf(int64_t buf_ptr, int64_t offset,
     memcpy(g_buf, (const char *)(uintptr_t)(buf_ptr + offset), (size_t)len);
     g_buf[len] = '\0';
     return g_buf;
+}
+
+/* ── Index-of helpers (return position, or -1 if not found) ──── */
+
+int64_t aria_libc_string_indexof(const char *s, const char *needle) {
+    if (!s || !needle) return -1;
+    const char *p = strstr(s, needle);
+    return p ? (int64_t)(p - s) : -1;
+}
+
+int64_t aria_libc_string_char_indexof(const char *s, int32_t c) {
+    if (!s) return -1;
+    const char *p = strchr(s, c);
+    return p ? (int64_t)(p - s) : -1;
+}
+
+int64_t aria_libc_string_last_char_indexof(const char *s, int32_t c) {
+    if (!s) return -1;
+    const char *p = strrchr(s, c);
+    return p ? (int64_t)(p - s) : -1;
+}
+
+int64_t aria_libc_string_char_indexof_from(const char *s, int32_t c, int64_t from) {
+    if (!s || from < 0) return -1;
+    int64_t slen = (int64_t)strlen(s);
+    if (from >= slen) return -1;
+    const char *p = strchr(s + from, c);
+    return p ? (int64_t)(p - s) : -1;
+}
+
+int64_t aria_libc_string_indexof_from(const char *s, const char *needle, int64_t from) {
+    if (!s || !needle || from < 0) return -1;
+    int64_t slen = (int64_t)strlen(s);
+    if (from >= slen) return -1;
+    const char *p = strstr(s + from, needle);
+    return p ? (int64_t)(p - s) : -1;
+}
+
+/* ── Number to string ──────────────────────────────────────────── */
+static char g_num_buf[64];
+
+const char *aria_libc_string_from_i64(int64_t val) {
+    snprintf(g_num_buf, sizeof(g_num_buf), "%ld", val);
+    return g_num_buf;
+}
+
+const char *aria_libc_string_from_f64(double val) {
+    snprintf(g_num_buf, sizeof(g_num_buf), "%.15g", val);
+    return g_num_buf;
 }

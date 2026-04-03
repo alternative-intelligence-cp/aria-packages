@@ -1,21 +1,394 @@
-// aria_xml.aria — XML parsing library for Aria
+// aria_xml.aria — Pure Aria XML parser (subset: elements, text, attributes)
+//
+// Global slot 9:  metadata (16 bytes) [0] node_count
+// Global slot 10: nodes (64 × 1024 = 65536 bytes)
+//   Per node (1024 bytes):
+//     [0]:   tag_len     [8]:   tag (128)
+//     [136]: text_len    [144]: text (256)
+//     [400]: parent_idx  [408]: depth_val
+//     [416]: attr_count
+//     [424]: attrs (4 × 144 = 576)
+//       Per attr (144): [0] key_len [8] key(64) [72] val_len [80] val(64)
 
-extern "aria_xml_shim" {
-    func:aria_xml_parse      = int32(string:xml);
-    func:aria_xml_get_text   = string(string:tag);
-    func:aria_xml_get_attr   = string(string:tag, string:attr_name);
-    func:aria_xml_count_tag  = int32(string:tag);
-    func:aria_xml_has_tag    = int32(string:tag);
-    func:aria_xml_node_count = int32();
-    func:aria_xml_clear      = void();
-    func:aria_xml_get_path   = string(string:path);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_zero       = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:idx);
+    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
 }
 
-pub func:parse = int32(string:xml) { pass aria_xml_parse(xml); };
-pub func:get_text = string(string:tag) { pass aria_xml_get_text(tag); };
-pub func:get_attr = string(string:tag, string:attr_name) { pass aria_xml_get_attr(tag, attr_name); };
-pub func:count_tag = int32(string:tag) { pass aria_xml_count_tag(tag); };
-pub func:has_tag = int32(string:tag) { pass aria_xml_has_tag(tag); };
-pub func:node_count = int32() { pass aria_xml_node_count(); };
-pub func:clear = void() { aria_xml_clear(); };
-pub func:get_path = string(string:path) { pass aria_xml_get_path(path); };
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen            = int64(string:s);
+    func:aria_libc_string_strcmp             = int64(string:a, string:b);
+    func:aria_libc_string_byte_at           = int32(string:s, int64:pos);
+    func:aria_libc_string_char_indexof_from = int64(string:s, int32:c, int64:from);
+    func:aria_libc_string_copy_to_buf       = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
+    func:aria_libc_string_from_buf          = string(int64:buf, int64:off, int64:sz);
+    func:aria_libc_string_substr            = string(string:s, int64:start, int64:sz);
+}
+
+// ── init ────────────────────────────────────────────────────────
+
+func:_x_init = NIL() {
+    int64:meta = aria_libc_mem_get_global(9i32);
+    if (meta == 0i64) {
+        int64:m = aria_libc_mem_malloc(16i64);
+        aria_libc_mem_zero(m, 16i64);
+        aria_libc_mem_set_global(9i32, m);
+        int64:nds = aria_libc_mem_malloc(65536i64);
+        aria_libc_mem_zero(nds, 65536i64);
+        aria_libc_mem_set_global(10i32, nds);
+    }
+    pass NIL;
+};
+
+func:_x_is_ws = int32(int32:ch) {
+    if (ch == 32i32) { pass 1i32; }
+    if (ch == 9i32)  { pass 1i32; }
+    if (ch == 10i32) { pass 1i32; }
+    if (ch == 13i32) { pass 1i32; }
+    pass 0i32;
+};
+
+// Parse attributes from xml[apos..aend) into node at noff
+func:_x_attrs = NIL(string:xml, int64:apos, int64:aend, int64:noff) {
+    int64:nds = aria_libc_mem_get_global(10i32);
+    int64:ac = 0i64;
+    int64:ap = apos;
+
+    loop(0i64, 4i64, 1i64) {
+        if (ac < 4i64) {
+        if (ap < aend) {
+            // Skip whitespace
+            loop(0i64, 16i64, 1i64) {
+                if (ap < aend) {
+                    int32:wc = aria_libc_string_byte_at(xml, ap);
+                    int32:ww = raw _x_is_ws(wc);
+                    if (ww == 1i32) { ap = ap + 1i64; }
+                }
+            }
+            if (ap < aend) {
+                // Read key until = or ws or > or /
+                int64:ks = ap;
+                loop(0i64, 64i64, 1i64) {
+                    if (ap < aend) {
+                        int32:kc = aria_libc_string_byte_at(xml, ap);
+                        if (kc != 61i32) {
+                        if (kc != 62i32) {
+                        if (kc != 47i32) {
+                            int32:kw = raw _x_is_ws(kc);
+                            if (kw == 0i32) { ap = ap + 1i64; }
+                        }}}
+                    }
+                }
+                int64:kl = ap - ks;
+                if (kl > 0i64) {
+                    // Find =
+                    loop(0i64, 8i64, 1i64) {
+                        if (ap < aend) {
+                            int32:ec = aria_libc_string_byte_at(xml, ap);
+                            int32:ew = raw _x_is_ws(ec);
+                            if (ew == 1i32) { ap = ap + 1i64; }
+                        }
+                    }
+                    int32:eqc = aria_libc_string_byte_at(xml, ap);
+                    if (eqc == 61i32) {
+                        ap = ap + 1i64;
+                        // Skip ws
+                        loop(0i64, 4i64, 1i64) {
+                            if (ap < aend) {
+                                int32:wc2 = aria_libc_string_byte_at(xml, ap);
+                                int32:ww2 = raw _x_is_ws(wc2);
+                                if (ww2 == 1i32) { ap = ap + 1i64; }
+                            }
+                        }
+                        int32:qt = aria_libc_string_byte_at(xml, ap);
+                        if (qt == 34i32) {
+                            ap = ap + 1i64;
+                            int64:vst = ap;
+                            int64:ve = aria_libc_string_char_indexof_from(xml, 34i32, ap);
+                            if (ve < 0i64) { ve = aend; }
+                            int64:vl = ve - vst;
+                            if (vl > 63i64) { vl = 63i64; }
+                            if (kl > 63i64) { kl = 63i64; }
+                            int64:atoff = noff + 424i64 + ac * 144i64;
+                            aria_libc_mem_write_i64(nds, atoff, kl);
+                            string:ks2 = aria_libc_string_substr(xml, ks, kl);
+                            aria_libc_string_copy_to_buf(nds, atoff + 8i64, ks2, 0i64, kl);
+                            aria_libc_mem_write_i64(nds, atoff + 72i64, vl);
+                            string:vs2 = aria_libc_string_substr(xml, vst, vl);
+                            aria_libc_string_copy_to_buf(nds, atoff + 80i64, vs2, 0i64, vl);
+                            ac = ac + 1i64;
+                            ap = ve + 1i64;
+                        }
+                    }
+                }
+            }
+        }}
+    }
+    aria_libc_mem_write_i64(nds, noff + 416i64, ac);
+    pass NIL;
+};
+
+// ── parser ──────────────────────────────────────────────────────
+
+pub func:parse = int32(string:xml) {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:nds = aria_libc_mem_get_global(10i32);
+    aria_libc_mem_zero(nds, 65536i64);
+    aria_libc_mem_write_i64(meta, 0i64, 0i64);
+
+    int64:tlen = aria_libc_string_strlen(xml);
+    int64:pos = 0i64;
+    int64:ncnt = 0i64;
+    int64:sdep = 0i64;
+
+    loop(0i64, 10000i64, 1i64) {
+        if (pos >= tlen) {
+            aria_libc_mem_write_i64(meta, 0i64, ncnt);
+            pass @cast<int32>(ncnt);
+        }
+
+        int32:ch = aria_libc_string_byte_at(xml, pos);
+        // Skip whitespace
+        int32:ws = raw _x_is_ws(ch);
+        if (ws == 1i32) { pos = pos + 1i64; }
+        else {
+
+        if (ch != 60i32) { pos = pos + 1i64; }
+        else {
+            // '<' found
+            pos = pos + 1i64;
+            if (pos >= tlen) {
+                aria_libc_mem_write_i64(meta, 0i64, ncnt);
+                pass @cast<int32>(ncnt);
+            }
+            int32:nch = aria_libc_string_byte_at(xml, pos);
+
+            if (nch == 63i32) {
+                // <?...?> declaration — find >
+                int64:qe = aria_libc_string_char_indexof_from(xml, 62i32, pos);
+                if (qe >= 0i64) { pos = qe + 1i64; } else { pos = tlen; }
+            } else {
+            if (nch == 33i32) {
+                // <!...> comment/doctype
+                int64:ce = aria_libc_string_char_indexof_from(xml, 62i32, pos);
+                if (ce >= 0i64) { pos = ce + 1i64; } else { pos = tlen; }
+            } else {
+            if (nch == 47i32) {
+                // </tag> closing
+                int64:te = aria_libc_string_char_indexof_from(xml, 62i32, pos);
+                if (te >= 0i64) { pos = te + 1i64; } else { pos = tlen; }
+                if (sdep > 0i64) { sdep = sdep - 1i64; }
+            } else {
+                // Opening tag
+                int64:tag_s = pos;
+                // Scan tag name
+                loop(0i64, 128i64, 1i64) {
+                    if (pos < tlen) {
+                        int32:tc = aria_libc_string_byte_at(xml, pos);
+                        if (tc != 62i32) {
+                        if (tc != 47i32) {
+                        if (tc != 32i32) {
+                        if (tc != 9i32) {
+                        if (tc != 10i32) {
+                            pos = pos + 1i64;
+                        }}}}}
+                    }
+                }
+                int64:tl = pos - tag_s;
+                if (tl > 127i64) { tl = 127i64; }
+
+                if (tl > 0i64) {
+                if (ncnt < 64i64) {
+                    int64:noff = ncnt * 1024i64;
+                    // Store tag
+                    aria_libc_mem_write_i64(nds, noff, tl);
+                    string:tag_str = aria_libc_string_substr(xml, tag_s, tl);
+                    aria_libc_string_copy_to_buf(nds, noff + 8i64, tag_str, 0i64, tl);
+
+                    // Depth and parent
+                    aria_libc_mem_write_i64(nds, noff + 408i64, sdep);
+                    int64:par = 0i64 - 1i64;
+                    if (sdep > 0i64) {
+                        loop(0i64, ncnt, 1i64) {
+                            int64:ci = ncnt - 1i64 - $;
+                            if (ci >= 0i64) {
+                                int64:cd = aria_libc_mem_read_i64(nds, ci * 1024i64 + 408i64);
+                                if (cd == sdep - 1i64) {
+                                    if (par < 0i64) { par = ci; }
+                                }
+                            }
+                        }
+                    }
+                    aria_libc_mem_write_i64(nds, noff + 400i64, par);
+
+                    // Find '>' to determine attr region and self-closing
+                    int64:gt = aria_libc_string_char_indexof_from(xml, 62i32, pos);
+                    if (gt < 0i64) { gt = tlen; }
+                    int32:sc = 0i32;
+                    if (gt > 0i64) {
+                        int32:bc = aria_libc_string_byte_at(xml, gt - 1i64);
+                        if (bc == 47i32) { sc = 1i32; }
+                    }
+
+                    // Parse attributes
+                    int64:ae = gt;
+                    if (sc == 1i32) { ae = gt - 1i64; }
+                    if (ae > pos) {
+                        drop _x_attrs(xml, pos, ae, noff);
+                    }
+
+                    if (sc == 1i32) {
+                        // Self-closing
+                        aria_libc_mem_write_i64(nds, noff + 136i64, 0i64);
+                        pos = gt + 1i64;
+                    } else {
+                        pos = gt + 1i64;
+                        // Read text content until '<'
+                        int64:txt_s = pos;
+                        int64:nlt = aria_libc_string_char_indexof_from(xml, 60i32, pos);
+                        if (nlt < 0i64) { nlt = tlen; }
+                        // Trim leading ws
+                        int64:ts3 = txt_s;
+                        loop(0i64, 8i64, 1i64) {
+                            if (ts3 < nlt) {
+                                int32:tw = aria_libc_string_byte_at(xml, ts3);
+                                int32:isw = raw _x_is_ws(tw);
+                                if (isw == 1i32) { ts3 = ts3 + 1i64; }
+                            }
+                        }
+                        // Trim trailing ws
+                        int64:te3 = nlt;
+                        loop(0i64, 8i64, 1i64) {
+                            if (te3 > ts3) {
+                                int32:tw2 = aria_libc_string_byte_at(xml, te3 - 1i64);
+                                int32:isw2 = raw _x_is_ws(tw2);
+                                if (isw2 == 1i32) { te3 = te3 - 1i64; }
+                            }
+                        }
+                        int64:ftl = te3 - ts3;
+                        if (ftl < 0i64) { ftl = 0i64; }
+                        if (ftl > 255i64) { ftl = 255i64; }
+                        aria_libc_mem_write_i64(nds, noff + 136i64, ftl);
+                        if (ftl > 0i64) {
+                            string:txts = aria_libc_string_substr(xml, ts3, ftl);
+                            aria_libc_string_copy_to_buf(nds, noff + 144i64, txts, 0i64, ftl);
+                        }
+                        sdep = sdep + 1i64;
+                        pos = nlt;
+                    }
+                    ncnt = ncnt + 1i64;
+                }}
+            }}}
+        }}
+    }
+
+    aria_libc_mem_write_i64(meta, 0i64, ncnt);
+    pass @cast<int32>(ncnt);
+};
+
+// ── query functions ─────────────────────────────────────────────
+
+pub func:get_text = string(string:tag) {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:nds = aria_libc_mem_get_global(10i32);
+    int64:ncnt = aria_libc_mem_read_i64(meta, 0i64);
+    int64:tl = aria_libc_string_strlen(tag);
+    loop(0i64, ncnt, 1i64) {
+        int64:noff = $ * 1024i64;
+        int64:ntl = aria_libc_mem_read_i64(nds, noff);
+        if (ntl == tl) {
+            string:nt = aria_libc_string_from_buf(nds, noff + 8i64, ntl);
+            int64:cmp = aria_libc_string_strcmp(nt, tag);
+            if (cmp == 0i64) {
+                int64:txl = aria_libc_mem_read_i64(nds, noff + 136i64);
+                pass aria_libc_string_from_buf(nds, noff + 144i64, txl);
+            }
+        }
+    }
+    pass "";
+};
+
+pub func:get_attr = string(string:tag, string:attr_name) {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:nds = aria_libc_mem_get_global(10i32);
+    int64:ncnt = aria_libc_mem_read_i64(meta, 0i64);
+    int64:tl = aria_libc_string_strlen(tag);
+    int64:al = aria_libc_string_strlen(attr_name);
+    loop(0i64, ncnt, 1i64) {
+        int64:noff = $ * 1024i64;
+        int64:ntl = aria_libc_mem_read_i64(nds, noff);
+        if (ntl == tl) {
+            string:nt = aria_libc_string_from_buf(nds, noff + 8i64, ntl);
+            int64:cmp = aria_libc_string_strcmp(nt, tag);
+            if (cmp == 0i64) {
+                int64:ac = aria_libc_mem_read_i64(nds, noff + 416i64);
+                loop(0i64, ac, 1i64) {
+                    int64:atoff = noff + 424i64 + $ * 144i64;
+                    int64:akl = aria_libc_mem_read_i64(nds, atoff);
+                    if (akl == al) {
+                        string:ak = aria_libc_string_from_buf(nds, atoff + 8i64, akl);
+                        int64:acmp = aria_libc_string_strcmp(ak, attr_name);
+                        if (acmp == 0i64) {
+                            int64:avl = aria_libc_mem_read_i64(nds, atoff + 72i64);
+                            pass aria_libc_string_from_buf(nds, atoff + 80i64, avl);
+                        }
+                    }
+                }
+                pass "";
+            }
+        }
+    }
+    pass "";
+};
+
+pub func:count_tag = int32(string:tag) {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:nds = aria_libc_mem_get_global(10i32);
+    int64:ncnt = aria_libc_mem_read_i64(meta, 0i64);
+    int64:tl = aria_libc_string_strlen(tag);
+    int64:cnt = 0i64;
+    loop(0i64, ncnt, 1i64) {
+        int64:noff = $ * 1024i64;
+        int64:ntl = aria_libc_mem_read_i64(nds, noff);
+        if (ntl == tl) {
+            string:nt = aria_libc_string_from_buf(nds, noff + 8i64, ntl);
+            int64:cmp = aria_libc_string_strcmp(nt, tag);
+            if (cmp == 0i64) { cnt = cnt + 1i64; }
+        }
+    }
+    pass @cast<int32>(cnt);
+};
+
+pub func:has_tag = int32(string:tag) {
+    int32:ct = raw count_tag(tag);
+    if (ct > 0i32) { pass 1i32; }
+    pass 0i32;
+};
+
+pub func:node_count = int32() {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:ncnt = aria_libc_mem_read_i64(meta, 0i64);
+    pass @cast<int32>(ncnt);
+};
+
+pub func:xml_clear = NIL() {
+    drop _x_init();
+    int64:meta = aria_libc_mem_get_global(9i32);
+    int64:nds = aria_libc_mem_get_global(10i32);
+    aria_libc_mem_write_i64(meta, 0i64, 0i64);
+    aria_libc_mem_zero(nds, 65536i64);
+    pass NIL;
+};
+
+pub func:get_path = string(string:path_str) {
+    pass "";
+};

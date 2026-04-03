@@ -160,6 +160,21 @@ int64_t aria_libc_mem_ptr_add(int64_t ptr, int64_t offset) {
     return ptr + offset;
 }
 
+/* ── Global Slots (module-level state for pure Aria packages) ──── */
+
+#define GLOBAL_SLOTS 64
+static int64_t g_global_slots[GLOBAL_SLOTS] = {0};
+
+int64_t aria_libc_mem_get_global(int32_t idx) {
+    if (idx < 0 || idx >= GLOBAL_SLOTS) return 0;
+    return g_global_slots[idx];
+}
+
+void aria_libc_mem_set_global(int32_t idx, int64_t val) {
+    if (idx < 0 || idx >= GLOBAL_SLOTS) return;
+    g_global_slots[idx] = val;
+}
+
 int64_t aria_libc_mem_size_of_i32(void) { return (int64_t)sizeof(int32_t); }
 int64_t aria_libc_mem_size_of_i64(void) { return (int64_t)sizeof(int64_t); }
 int64_t aria_libc_mem_size_of_f64(void) { return (int64_t)sizeof(double); }

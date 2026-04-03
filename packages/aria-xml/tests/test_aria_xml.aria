@@ -1,56 +1,46 @@
 // test_aria_xml.aria — XML parser tests (8 tests)
+use "../src/aria_xml.aria".*;
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern "aria_xml_shim" {
-    func:aria_xml_parse      = int32(string:xml);
-    func:aria_xml_get_text   = string(string:tag);
-    func:aria_xml_get_attr   = string(string:tag, string:attr_name);
-    func:aria_xml_count_tag  = int32(string:tag);
-    func:aria_xml_has_tag    = int32(string:tag);
-    func:aria_xml_node_count = int32();
-    func:aria_xml_clear      = void();
-    func:aria_xml_get_path   = string(string:path);
-}
-
 func:main = int32() {
-    int32:n = aria_xml_parse("<root><name>Aria</name><version>0.2.6</version><item id=\"42\" type=\"test\">hello</item><item id=\"43\">world</item></root>");
+    int32:n = raw parse("<root><name>Aria</name><version>0.2.6</version><item id=\"42\" type=\"test\">hello</item><item id=\"43\">world</item></root>");
 
     // T01: parse
     if (n > 0i32) { drop println("[PASS] T01 parse"); }
     if (n <= 0i32) { drop println("[FAIL] T01 parse"); }
 
     // T02: has tag
-    int32:h1 = aria_xml_has_tag("name");
+    int32:h1 = raw has_tag("name");
     if (h1 == 1i32) { drop println("[PASS] T02 has_tag"); }
     if (h1 != 1i32) { drop println("[FAIL] T02 has_tag"); }
 
     // T03: get text
-    string:t1 = aria_xml_get_text("name");
+    string:t1 = raw get_text("name");
     drop println("[PASS] T03 get_text");
 
     // T04: get attribute
-    string:a1 = aria_xml_get_attr("item", "id");
+    string:a1 = raw get_attr("item", "id");
     drop println("[PASS] T04 get_attr");
 
     // T05: count tag
-    int32:c1 = aria_xml_count_tag("item");
+    int32:c1 = raw count_tag("item");
     if (c1 == 2i32) { drop println("[PASS] T05 count_tag"); }
     if (c1 != 2i32) { drop println("[FAIL] T05 count_tag"); }
 
     // T06: missing tag
-    int32:h2 = aria_xml_has_tag("nonexistent");
+    int32:h2 = raw has_tag("nonexistent");
     if (h2 == 0i32) { drop println("[PASS] T06 missing tag"); }
     if (h2 != 0i32) { drop println("[FAIL] T06 missing tag"); }
 
     // T07: node count
-    int32:nc = aria_xml_node_count();
+    int32:nc = raw node_count();
     if (nc > 0i32) { drop println("[PASS] T07 node_count"); }
     if (nc <= 0i32) { drop println("[FAIL] T07 node_count"); }
 
     // T08: clear
-    aria_xml_clear();
-    int32:nc2 = aria_xml_node_count();
+    drop xml_clear();
+    int32:nc2 = raw node_count();
     if (nc2 == 0i32) { drop println("[PASS] T08 clear"); }
     if (nc2 != 0i32) { drop println("[FAIL] T08 clear"); }
 

@@ -1,78 +1,803 @@
-// aria_bigdecimal.aria — Arbitrary precision decimal arithmetic for Aria
+// aria_bigdecimal.aria — Arbitrary precision decimal (pure Aria)
 //
-// Handle-based BigDecimal: create from string, arithmetic, comparison.
-// Requires: libaria_bigdecimal_shim.so
+// Slot 16: in_use flags (256 bytes): handle i at offset i*8
+// Slot 17: digit strings (32 × 520 = 16640): handle i at offset i*520
+//   Per handle: [0] len (int64)  [8] digits (512 bytes, null-terminated)
 
-extern "aria_bigdecimal_shim" {
-    func:aria_bigdec_create     = int32(string:value);
-    func:aria_bigdec_destroy    = void(int32:handle);
-    func:aria_bigdec_to_string  = string(int32:handle);
-    func:aria_bigdec_compare    = int32(int32:a, int32:b);
-    func:aria_bigdec_equals     = int32(int32:a, int32:b);
-    func:aria_bigdec_add        = int32(int32:a, int32:b);
-    func:aria_bigdec_subtract   = int32(int32:a, int32:b);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_zero        = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global  = int64(int32:idx);
+    func:aria_libc_mem_set_global  = void(int32:idx, int64:val);
 }
 
-extern "aria_bigdecimal_shim" {
-    func:aria_bigdec_multiply   = int32(int32:a, int32:b);
-    func:aria_bigdec_negate     = int32(int32:a);
-    func:aria_bigdec_is_zero    = int32(int32:handle);
-    func:aria_bigdec_is_negative = int32(int32:handle);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_read_byte  = int32(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_byte = void(int64:ptr, int64:offset, int32:val);
 }
 
-// ── public API ──────────────────────────────────────────────────────
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen      = int64(string:s);
+    func:aria_libc_string_strcmp       = int64(string:a, string:b);
+    func:aria_libc_string_copy_to_buf = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
+    func:aria_libc_string_from_buf    = string(int64:buf, int64:off, int64:sz);
+    func:aria_libc_string_byte_at     = int32(string:s, int64:pos);
+}
+
+// ── init ────────────────────────────────────────────────────────
+
+func:_bd_init = NIL() {
+    int64:flags = aria_libc_mem_get_global(16i32);
+    if (flags == 0i64) {
+        int64:f = aria_libc_mem_malloc(256i64);
+        aria_libc_mem_zero(f, 256i64);
+        aria_libc_mem_set_global(16i32, f);
+        int64:d = aria_libc_mem_malloc(16640i64);
+        aria_libc_mem_zero(d, 16640i64);
+        aria_libc_mem_set_global(17i32, d);
+    }
+    pass NIL;
+};
+
+// Find dot in handle's string, -1 if none
+func:_bd_dot = int64(int64:data, int64:hoff, int64:slen) {
+    int64:dp = 0i64 - 1i64;
+    loop(0i64, slen, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+        if (ch == 46i32) { if (dp < 0i64) { dp = $; } }
+    }
+    pass dp;
+};
+
+// Normalize a handle's digit string in-place
+func:_bd_norm = NIL(int32:h) {
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:hoff = @cast<int64>(h) * 520i64;
+    int64:slen = aria_libc_mem_read_i64(data, hoff);
+    if (slen == 0i64) { pass NIL; }
+
+    int64:tmp = aria_libc_mem_malloc(520i64);
+    aria_libc_mem_zero(tmp, 520i64);
+
+    // Check sign
+    int32:first = aria_libc_mem_read_byte(data, hoff + 8i64);
+    int64:neg = 0i64;
+    int64:abs_s = 0i64;
+    if (first == 45i32) { neg = 1i64; abs_s = 1i64; }
+
+    // Find dot
+    int64:dp = raw _bd_dot(data, hoff, slen);
+    int64:int_end = slen;
+    if (dp >= 0i64) { int_end = dp; }
+
+    // Skip leading zeros in integer part
+    int64:int_start = abs_s;
+    loop(abs_s, int_end, 1i64) {
+        if (int_start == $) {
+            int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+            if (ch == 48i32) { int_start = $ + 1i64; }
+        }
+    }
+    // Keep at least one digit
+    if (int_start >= int_end) { int_start = int_end - 1i64; }
+    if (int_start < abs_s) { int_start = abs_s; }
+
+    // Find last non-zero in fraction
+    int64:frac_end = dp;
+    if (dp >= 0i64) {
+        loop(dp + 1i64, slen, 1i64) {
+            int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+            if (ch != 48i32) { frac_end = $; }
+        }
+    }
+
+    // Build result in tmp
+    int64:wp = 0i64;
+
+    // Sign
+    if (neg == 1i64) {
+        aria_libc_mem_write_byte(tmp, wp, 45i32);
+        wp = wp + 1i64;
+    }
+
+    // Integer digits
+    loop(int_start, int_end, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+        aria_libc_mem_write_byte(tmp, wp, ch);
+        wp = wp + 1i64;
+    }
+
+    // Fraction
+    if (dp >= 0i64) {
+        if (frac_end > dp) {
+            aria_libc_mem_write_byte(tmp, wp, 46i32);
+            wp = wp + 1i64;
+            loop(dp + 1i64, frac_end + 1i64, 1i64) {
+                int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+                aria_libc_mem_write_byte(tmp, wp, ch);
+                wp = wp + 1i64;
+            }
+        }
+    }
+
+    // Handle "-0"
+    if (neg == 1i64) {
+        if (wp == 2i64) {
+            int32:d0 = aria_libc_mem_read_byte(tmp, 1i64);
+            if (d0 == 48i32) {
+                aria_libc_mem_write_byte(tmp, 0i64, 48i32);
+                wp = 1i64;
+            }
+        }
+    }
+
+    // Write back
+    aria_libc_mem_write_byte(tmp, wp, 0i32);
+    aria_libc_mem_write_i64(data, hoff, wp);
+    loop(0i64, wp + 1i64, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(tmp, $);
+        aria_libc_mem_write_byte(data, hoff + 8i64 + $, ch);
+    }
+
+    aria_libc_mem_free(tmp);
+    pass NIL;
+};
+
+// Alloc handle, store string, normalize. Returns handle or -1
+func:_bd_store = int32(string:val) {
+    drop _bd_init();
+    int64:flags = aria_libc_mem_get_global(16i32);
+    int64:data = aria_libc_mem_get_global(17i32);
+
+    int32:slot = 0i32 - 1i32;
+    loop(0i64, 32i64, 1i64) {
+        int64:u = aria_libc_mem_read_i64(flags, $ * 8i64);
+        if (u == 0i64) {
+            if (slot < 0i32) { slot = @cast<int32>($); }
+        }
+    }
+    if (slot < 0i32) { pass 0i32 - 1i32; }
+
+    aria_libc_mem_write_i64(flags, @cast<int64>(slot) * 8i64, 1i64);
+
+    int64:hoff = @cast<int64>(slot) * 520i64;
+    int64:vl = aria_libc_string_strlen(val);
+    if (vl > 511i64) { vl = 511i64; }
+    aria_libc_mem_write_i64(data, hoff, vl);
+    aria_libc_string_copy_to_buf(data, hoff + 8i64, val, 0i64, vl);
+    aria_libc_mem_write_byte(data, hoff + 8i64 + vl, 0i32);
+
+    drop _bd_norm(slot);
+    pass slot;
+};
+
+// Store raw bytes from tmp buffer as new handle
+func:_bd_store_buf = int32(int64:buf, int64:blen) {
+    drop _bd_init();
+    int64:flags = aria_libc_mem_get_global(16i32);
+    int64:data = aria_libc_mem_get_global(17i32);
+
+    int32:slot = 0i32 - 1i32;
+    loop(0i64, 32i64, 1i64) {
+        int64:u = aria_libc_mem_read_i64(flags, $ * 8i64);
+        if (u == 0i64) {
+            if (slot < 0i32) { slot = @cast<int32>($); }
+        }
+    }
+    if (slot < 0i32) { pass 0i32 - 1i32; }
+
+    aria_libc_mem_write_i64(flags, @cast<int64>(slot) * 8i64, 1i64);
+
+    int64:hoff = @cast<int64>(slot) * 520i64;
+    if (blen > 511i64) { blen = 511i64; }
+    aria_libc_mem_write_i64(data, hoff, blen);
+    loop(0i64, blen, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(buf, $);
+        aria_libc_mem_write_byte(data, hoff + 8i64 + $, ch);
+    }
+    aria_libc_mem_write_byte(data, hoff + 8i64 + blen, 0i32);
+
+    drop _bd_norm(slot);
+    pass slot;
+};
+
+// ── compare ─────────────────────────────────────────────────────
+
+// Compare absolute values of handles a and b (ignoring sign)
+// Returns: -1, 0, or 1
+func:_bd_cmp_abs = int32(int32:a, int32:b) {
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
+    int64:la = aria_libc_mem_read_i64(data, oa);
+    int64:lb = aria_libc_mem_read_i64(data, ob);
+
+    int64:sa = 0i64;
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    if (fa == 45i32) { sa = 1i64; }
+    int64:sb = 0i64;
+    int32:fb = aria_libc_mem_read_byte(data, ob + 8i64);
+    if (fb == 45i32) { sb = 1i64; }
+
+    int64:da = raw _bd_dot(data, oa, la);
+    int64:db = raw _bd_dot(data, ob, lb);
+    int64:int_a = la;
+    if (da >= 0i64) { int_a = da; }
+    int64:int_b = lb;
+    if (db >= 0i64) { int_b = db; }
+    int64:ia_len = int_a - sa;
+    int64:ib_len = int_b - sb;
+
+    // Compare integer part lengths
+    if (ia_len > ib_len) { pass 1i32; }
+    if (ia_len < ib_len) { pass 0i32 - 1i32; }
+
+    // Same integer length — compare digit by digit
+    loop(0i64, ia_len, 1i64) {
+        int32:ca = aria_libc_mem_read_byte(data, oa + 8i64 + sa + $);
+        int32:cb = aria_libc_mem_read_byte(data, ob + 8i64 + sb + $);
+        if (ca > cb) { pass 1i32; }
+        if (ca < cb) { pass 0i32 - 1i32; }
+    }
+
+    // Compare fraction parts
+    int64:fa_len = 0i64;
+    if (da >= 0i64) { fa_len = la - da - 1i64; }
+    int64:fb_len = 0i64;
+    if (db >= 0i64) { fb_len = lb - db - 1i64; }
+    int64:mfrac = fa_len;
+    if (fb_len > mfrac) { mfrac = fb_len; }
+
+    loop(0i64, mfrac, 1i64) {
+        int32:ca2 = 48i32;
+        if ($ < fa_len) {
+            ca2 = aria_libc_mem_read_byte(data, oa + 8i64 + da + 1i64 + $);
+        }
+        int32:cb2 = 48i32;
+        if ($ < fb_len) {
+            cb2 = aria_libc_mem_read_byte(data, ob + 8i64 + db + 1i64 + $);
+        }
+        if (ca2 > cb2) { pass 1i32; }
+        if (ca2 < cb2) { pass 0i32 - 1i32; }
+    }
+    pass 0i32;
+};
+
+// ── addition ────────────────────────────────────────────────────
+
+// Add two positive handles, return new handle
+func:_bd_add_pos = int32(int32:a, int32:b) {
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
+    int64:la = aria_libc_mem_read_i64(data, oa);
+    int64:lb = aria_libc_mem_read_i64(data, ob);
+
+    int64:sa = 0i64;
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    if (fa == 45i32) { sa = 1i64; }
+    int64:sb2 = 0i64;
+    int32:fb2 = aria_libc_mem_read_byte(data, ob + 8i64);
+    if (fb2 == 45i32) { sb2 = 1i64; }
+
+    int64:da = raw _bd_dot(data, oa, la);
+    int64:db = raw _bd_dot(data, ob, lb);
+
+    int64:int_a = la;
+    if (da >= 0i64) { int_a = da; }
+    int64:int_b = lb;
+    if (db >= 0i64) { int_b = db; }
+    int64:ia_len = int_a - sa;
+    int64:ib_len = int_b - sb2;
+
+    int64:fa_len = 0i64;
+    if (da >= 0i64) { fa_len = la - da - 1i64; }
+    int64:fb_len = 0i64;
+    if (db >= 0i64) { fb_len = lb - db - 1i64; }
+
+    int64:mi = ia_len;
+    if (ib_len > mi) { mi = ib_len; }
+    int64:mf = fa_len;
+    if (fb_len > mf) { mf = fb_len; }
+
+    // Result buffer (right-aligned computation)
+    int64:rlen = mi + mf + 3i64;
+    int64:res = aria_libc_mem_malloc(rlen);
+    aria_libc_mem_zero(res, rlen);
+
+    // Process fraction right to left
+    int64:carry = 0i64;
+    loop(0i64, mf, 1i64) {
+        int64:fi = mf - 1i64 - $;
+        int32:da2 = 0i32;
+        if (fi < fa_len) { da2 = aria_libc_mem_read_byte(data, oa + 8i64 + da + 1i64 + fi) - 48i32; }
+        int32:db2 = 0i32;
+        if (fi < fb_len) { db2 = aria_libc_mem_read_byte(data, ob + 8i64 + db + 1i64 + fi) - 48i32; }
+        int64:sv = @cast<int64>(da2) + @cast<int64>(db2) + carry;
+        carry = sv / 10i64;
+        int32:digit = @cast<int32>(sv - carry * 10i64);
+        aria_libc_mem_write_byte(res, mi + 1i64 + fi, digit + 48i32);
+    }
+    if (mf > 0i64) { aria_libc_mem_write_byte(res, mi, 46i32); }
+
+    // Process integer right to left ($ = column from right: 0=ones, 1=tens, etc.)
+    loop(0i64, mi, 1i64) {
+        int32:da3 = 0i32;
+        if ($ < ia_len) { da3 = aria_libc_mem_read_byte(data, oa + 8i64 + sa + ia_len - 1i64 - $) - 48i32; }
+        int32:db3 = 0i32;
+        if ($ < ib_len) { db3 = aria_libc_mem_read_byte(data, ob + 8i64 + sb2 + ib_len - 1i64 - $) - 48i32; }
+        int64:sv2 = @cast<int64>(da3) + @cast<int64>(db3) + carry;
+        carry = sv2 / 10i64;
+        int32:digit2 = @cast<int32>(sv2 - carry * 10i64);
+        aria_libc_mem_write_byte(res, mi - 1i64 - $, digit2 + 48i32);
+    }
+
+    // Handle carry
+    int64:final_len = mi;
+    if (mf > 0i64) { final_len = mi + mf + 1i64; }
+    int32:result_h = 0i32;
+    if (carry > 0i64) {
+        int64:res2 = aria_libc_mem_malloc(rlen + 1i64);
+        aria_libc_mem_zero(res2, rlen + 1i64);
+        aria_libc_mem_write_byte(res2, 0i64, @cast<int32>(carry) + 48i32);
+        loop(0i64, final_len, 1i64) {
+            int32:ch = aria_libc_mem_read_byte(res, $);
+            aria_libc_mem_write_byte(res2, $ + 1i64, ch);
+        }
+        result_h = raw _bd_store_buf(res2, final_len + 1i64);
+        aria_libc_mem_free(res2);
+    } else {
+        result_h = raw _bd_store_buf(res, final_len);
+    }
+    aria_libc_mem_free(res);
+    pass result_h;
+};
+
+// Subtract b from a where |a| >= |b|, both treated as positive
+func:_bd_sub_pos = int32(int32:a, int32:b) {
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
+    int64:la = aria_libc_mem_read_i64(data, oa);
+    int64:lb = aria_libc_mem_read_i64(data, ob);
+
+    int64:sa = 0i64;
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    if (fa == 45i32) { sa = 1i64; }
+    int64:sb2 = 0i64;
+    int32:fb2 = aria_libc_mem_read_byte(data, ob + 8i64);
+    if (fb2 == 45i32) { sb2 = 1i64; }
+
+    int64:da = raw _bd_dot(data, oa, la);
+    int64:db = raw _bd_dot(data, ob, lb);
+
+    int64:int_a = la;
+    if (da >= 0i64) { int_a = da; }
+    int64:int_b = lb;
+    if (db >= 0i64) { int_b = db; }
+    int64:ia_len = int_a - sa;
+    int64:ib_len = int_b - sb2;
+
+    int64:fa_len = 0i64;
+    if (da >= 0i64) { fa_len = la - da - 1i64; }
+    int64:fb_len = 0i64;
+    if (db >= 0i64) { fb_len = lb - db - 1i64; }
+
+    int64:mi = ia_len;
+    if (ib_len > mi) { mi = ib_len; }
+    int64:mf = fa_len;
+    if (fb_len > mf) { mf = fb_len; }
+
+    int64:rlen = mi + mf + 3i64;
+    int64:res = aria_libc_mem_malloc(rlen);
+    aria_libc_mem_zero(res, rlen);
+
+    // Fraction right to left
+    int64:borrow = 0i64;
+    loop(0i64, mf, 1i64) {
+        int64:fi = mf - 1i64 - $;
+        int32:da2 = 0i32;
+        if (fi < fa_len) { da2 = aria_libc_mem_read_byte(data, oa + 8i64 + da + 1i64 + fi) - 48i32; }
+        int32:db2 = 0i32;
+        if (fi < fb_len) { db2 = aria_libc_mem_read_byte(data, ob + 8i64 + db + 1i64 + fi) - 48i32; }
+        int64:dv = @cast<int64>(da2) - @cast<int64>(db2) - borrow;
+        if (dv < 0i64) { dv = dv + 10i64; borrow = 1i64; }
+        else { borrow = 0i64; }
+        aria_libc_mem_write_byte(res, mi + 1i64 + fi, @cast<int32>(dv) + 48i32);
+    }
+    if (mf > 0i64) { aria_libc_mem_write_byte(res, mi, 46i32); }
+
+    // Integer right to left ($ = column from right: 0=ones)
+    loop(0i64, mi, 1i64) {
+        int32:da3 = 0i32;
+        if ($ < ia_len) { da3 = aria_libc_mem_read_byte(data, oa + 8i64 + sa + ia_len - 1i64 - $) - 48i32; }
+        int32:db3 = 0i32;
+        if ($ < ib_len) { db3 = aria_libc_mem_read_byte(data, ob + 8i64 + sb2 + ib_len - 1i64 - $) - 48i32; }
+        int64:dv2 = @cast<int64>(da3) - @cast<int64>(db3) - borrow;
+        if (dv2 < 0i64) { dv2 = dv2 + 10i64; borrow = 1i64; }
+        else { borrow = 0i64; }
+        aria_libc_mem_write_byte(res, mi - 1i64 - $, @cast<int32>(dv2) + 48i32);
+    }
+
+    int64:final_len = mi;
+    if (mf > 0i64) { final_len = mi + mf + 1i64; }
+    int32:result_h = raw _bd_store_buf(res, final_len);
+    aria_libc_mem_free(res);
+    pass result_h;
+};
+
+// ── public API ──────────────────────────────────────────────────
 
 pub func:bigdec_create = int32(string:value) {
-    int32:h = aria_bigdec_create(value);
-    pass h;
+    pass raw _bd_store(value);
 };
 
 pub func:bigdec_destroy = NIL(int32:handle) {
-    aria_bigdec_destroy(handle);
+    drop _bd_init();
+    if (handle >= 0i32) {
+        if (handle < 32i32) {
+            int64:flags = aria_libc_mem_get_global(16i32);
+            aria_libc_mem_write_i64(flags, @cast<int64>(handle) * 8i64, 0i64);
+        }
+    }
     pass NIL;
 };
 
 pub func:bigdec_to_string = string(int32:handle) {
-    string:s = aria_bigdec_to_string(handle);
-    pass s;
+    drop _bd_init();
+    if (handle < 0i32) { pass "0"; }
+    if (handle >= 32i32) { pass "0"; }
+    int64:flags = aria_libc_mem_get_global(16i32);
+    int64:u = aria_libc_mem_read_i64(flags, @cast<int64>(handle) * 8i64);
+    if (u == 0i64) { pass "0"; }
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:hoff = @cast<int64>(handle) * 520i64;
+    int64:slen = aria_libc_mem_read_i64(data, hoff);
+    pass aria_libc_string_from_buf(data, hoff + 8i64, slen);
 };
 
 pub func:bigdec_compare = int32(int32:a, int32:b) {
-    int32:r = aria_bigdec_compare(a, b);
-    pass r;
+    drop _bd_init();
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
+
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    int32:fb2 = aria_libc_mem_read_byte(data, ob + 8i64);
+    int64:na = 0i64;
+    int64:nb = 0i64;
+    if (fa == 45i32) { na = 1i64; }
+    if (fb2 == 45i32) { nb = 1i64; }
+
+    if (na == 1i64) { if (nb == 0i64) { pass 0i32 - 1i32; } }
+    if (na == 0i64) { if (nb == 1i64) { pass 1i32; } }
+
+    int32:c = raw _bd_cmp_abs(a, b);
+    if (na == 1i64) {
+        if (c == 1i32) { pass 0i32 - 1i32; }
+        if (c < 0i32) { pass 1i32; }
+        pass 0i32;
+    }
+    pass c;
 };
 
 pub func:bigdec_equals = int32(int32:a, int32:b) {
-    int32:r = aria_bigdec_equals(a, b);
-    pass r;
+    int32:c = raw bigdec_compare(a, b);
+    if (c == 0i32) { pass 1i32; }
+    pass 0i32;
 };
 
 pub func:bigdec_add = int32(int32:a, int32:b) {
-    int32:h = aria_bigdec_add(a, b);
-    pass h;
-};
+    drop _bd_init();
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
 
-pub func:bigdec_subtract = int32(int32:a, int32:b) {
-    int32:h = aria_bigdec_subtract(a, b);
-    pass h;
-};
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    int32:fb2 = aria_libc_mem_read_byte(data, ob + 8i64);
+    int64:na = 0i64;
+    int64:nb = 0i64;
+    if (fa == 45i32) { na = 1i64; }
+    if (fb2 == 45i32) { nb = 1i64; }
 
-pub func:bigdec_multiply = int32(int32:a, int32:b) {
-    int32:h = aria_bigdec_multiply(a, b);
-    pass h;
+    if (na == nb) {
+        // Same sign: add magnitudes
+        int32:rh = raw _bd_add_pos(a, b);
+        if (na == 1i64) {
+            // Prepend '-' to result
+            int64:rd = aria_libc_mem_get_global(17i32);
+            int64:ro = @cast<int64>(rh) * 520i64;
+            int64:rl = aria_libc_mem_read_i64(rd, ro);
+            // Shift digits right by 1
+            int64:tmp2 = aria_libc_mem_malloc(520i64);
+            aria_libc_mem_write_byte(tmp2, 0i64, 45i32);
+            loop(0i64, rl, 1i64) {
+                int32:ch = aria_libc_mem_read_byte(rd, ro + 8i64 + $);
+                aria_libc_mem_write_byte(tmp2, 1i64 + $, ch);
+            }
+            aria_libc_mem_write_byte(tmp2, rl + 1i64, 0i32);
+            aria_libc_mem_write_i64(rd, ro, rl + 1i64);
+            loop(0i64, rl + 2i64, 1i64) {
+                int32:ch2 = aria_libc_mem_read_byte(tmp2, $);
+                aria_libc_mem_write_byte(rd, ro + 8i64 + $, ch2);
+            }
+            aria_libc_mem_free(tmp2);
+            drop _bd_norm(rh);
+        }
+        pass rh;
+    }
+
+    // Different signs: subtract smaller from larger
+    int32:c = raw _bd_cmp_abs(a, b);
+    if (c == 0i32) { pass raw _bd_store("0"); }
+
+    if (c > 0i32) {
+        // |a| > |b|
+        int32:rh2 = raw _bd_sub_pos(a, b);
+        if (na == 1i64) {
+            int64:rd2 = aria_libc_mem_get_global(17i32);
+            int64:ro2 = @cast<int64>(rh2) * 520i64;
+            int64:rl2 = aria_libc_mem_read_i64(rd2, ro2);
+            int64:tmp3 = aria_libc_mem_malloc(520i64);
+            aria_libc_mem_write_byte(tmp3, 0i64, 45i32);
+            loop(0i64, rl2, 1i64) {
+                int32:ch3 = aria_libc_mem_read_byte(rd2, ro2 + 8i64 + $);
+                aria_libc_mem_write_byte(tmp3, 1i64 + $, ch3);
+            }
+            aria_libc_mem_write_byte(tmp3, rl2 + 1i64, 0i32);
+            aria_libc_mem_write_i64(rd2, ro2, rl2 + 1i64);
+            loop(0i64, rl2 + 2i64, 1i64) {
+                int32:ch4 = aria_libc_mem_read_byte(tmp3, $);
+                aria_libc_mem_write_byte(rd2, ro2 + 8i64 + $, ch4);
+            }
+            aria_libc_mem_free(tmp3);
+            drop _bd_norm(rh2);
+        }
+        pass rh2;
+    }
+
+    // |b| > |a|
+    int32:rh3 = raw _bd_sub_pos(b, a);
+    if (nb == 1i64) {
+        int64:rd3 = aria_libc_mem_get_global(17i32);
+        int64:ro3 = @cast<int64>(rh3) * 520i64;
+        int64:rl3 = aria_libc_mem_read_i64(rd3, ro3);
+        int64:tmp4 = aria_libc_mem_malloc(520i64);
+        aria_libc_mem_write_byte(tmp4, 0i64, 45i32);
+        loop(0i64, rl3, 1i64) {
+            int32:ch5 = aria_libc_mem_read_byte(rd3, ro3 + 8i64 + $);
+            aria_libc_mem_write_byte(tmp4, 1i64 + $, ch5);
+        }
+        aria_libc_mem_write_byte(tmp4, rl3 + 1i64, 0i32);
+        aria_libc_mem_write_i64(rd3, ro3, rl3 + 1i64);
+        loop(0i64, rl3 + 2i64, 1i64) {
+            int32:ch6 = aria_libc_mem_read_byte(tmp4, $);
+            aria_libc_mem_write_byte(rd3, ro3 + 8i64 + $, ch6);
+        }
+        aria_libc_mem_free(tmp4);
+        drop _bd_norm(rh3);
+    }
+    pass rh3;
 };
 
 pub func:bigdec_negate = int32(int32:a) {
-    int32:h = aria_bigdec_negate(a);
-    pass h;
+    drop _bd_init();
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:la = aria_libc_mem_read_i64(data, oa);
+
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    int64:tmp = aria_libc_mem_malloc(520i64);
+    aria_libc_mem_zero(tmp, 520i64);
+
+    if (fa == 45i32) {
+        // Remove '-'
+        loop(1i64, la, 1i64) {
+            int32:ch = aria_libc_mem_read_byte(data, oa + 8i64 + $);
+            aria_libc_mem_write_byte(tmp, $ - 1i64, ch);
+        }
+        int32:r = raw _bd_store_buf(tmp, la - 1i64);
+        aria_libc_mem_free(tmp);
+        pass r;
+    }
+
+    // Check if zero
+    int64:all_z = 1i64;
+    loop(0i64, la, 1i64) {
+        int32:ch2 = aria_libc_mem_read_byte(data, oa + 8i64 + $);
+        if (ch2 != 48i32) {
+            if (ch2 != 46i32) { all_z = 0i64; }
+        }
+    }
+    if (all_z == 1i64) {
+        int32:r2 = raw _bd_store_buf(tmp, 0i64);
+        aria_libc_mem_free(tmp);
+        pass raw _bd_store("0");
+    }
+
+    // Prepend '-'
+    aria_libc_mem_write_byte(tmp, 0i64, 45i32);
+    loop(0i64, la, 1i64) {
+        int32:ch3 = aria_libc_mem_read_byte(data, oa + 8i64 + $);
+        aria_libc_mem_write_byte(tmp, 1i64 + $, ch3);
+    }
+    int32:r3 = raw _bd_store_buf(tmp, la + 1i64);
+    aria_libc_mem_free(tmp);
+    pass r3;
+};
+
+pub func:bigdec_subtract = int32(int32:a, int32:b) {
+    int32:nb = raw bigdec_negate(b);
+    if (nb < 0i32) { pass 0i32 - 1i32; }
+    int32:result = raw bigdec_add(a, nb);
+    drop bigdec_destroy(nb);
+    pass result;
+};
+
+pub func:bigdec_multiply = int32(int32:a, int32:b) {
+    drop _bd_init();
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:oa = @cast<int64>(a) * 520i64;
+    int64:ob = @cast<int64>(b) * 520i64;
+    int64:la = aria_libc_mem_read_i64(data, oa);
+    int64:lb = aria_libc_mem_read_i64(data, ob);
+
+    int32:fa = aria_libc_mem_read_byte(data, oa + 8i64);
+    int32:fb2 = aria_libc_mem_read_byte(data, ob + 8i64);
+    int64:na = 0i64;
+    int64:nb2 = 0i64;
+    if (fa == 45i32) { na = 1i64; }
+    if (fb2 == 45i32) { nb2 = 1i64; }
+
+    int64:neg_r = 0i64;
+    if (na != nb2) { neg_r = 1i64; }
+
+    // Count decimal places
+    int64:da = raw _bd_dot(data, oa, la);
+    int64:db = raw _bd_dot(data, ob, lb);
+    int64:dec_a = 0i64;
+    if (da >= 0i64) { dec_a = la - da - 1i64; }
+    int64:dec_b = 0i64;
+    if (db >= 0i64) { dec_b = lb - db - 1i64; }
+    int64:total_dec = dec_a + dec_b;
+
+    // Build integer-only digit arrays (skip sign and dot)
+    int64:ia_buf = aria_libc_mem_malloc(520i64);
+    int64:ib_buf = aria_libc_mem_malloc(520i64);
+    aria_libc_mem_zero(ia_buf, 520i64);
+    aria_libc_mem_zero(ib_buf, 520i64);
+
+    int64:ia_len = 0i64;
+    loop(na, la, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(data, oa + 8i64 + $);
+        if (ch != 46i32) {
+            aria_libc_mem_write_byte(ia_buf, ia_len, ch - 48i32);
+            ia_len = ia_len + 1i64;
+        }
+    }
+    int64:ib_len = 0i64;
+    loop(nb2, lb, 1i64) {
+        int32:ch2 = aria_libc_mem_read_byte(data, ob + 8i64 + $);
+        if (ch2 != 46i32) {
+            aria_libc_mem_write_byte(ib_buf, ib_len, ch2 - 48i32);
+            ib_len = ib_len + 1i64;
+        }
+    }
+
+    // Grade-school multiplication using int64 array for products
+    int64:plen = ia_len + ib_len;
+    int64:prod = aria_libc_mem_malloc(plen * 8i64);
+    aria_libc_mem_zero(prod, plen * 8i64);
+
+    loop(0i64, ia_len, 1i64) {
+        int64:i_idx = ia_len - 1i64 - $;
+        int32:dga = aria_libc_mem_read_byte(ia_buf, i_idx);
+        loop(0i64, ib_len, 1i64) {
+            int64:j_idx = ib_len - 1i64 - $;
+            int32:dgb = aria_libc_mem_read_byte(ib_buf, j_idx);
+            int64:mul = @cast<int64>(dga) * @cast<int64>(dgb);
+            int64:p2 = i_idx + j_idx + 1i64;
+            int64:p1 = i_idx + j_idx;
+            int64:old = aria_libc_mem_read_i64(prod, p2 * 8i64);
+            int64:sv = mul + old;
+            aria_libc_mem_write_i64(prod, p2 * 8i64, sv - (sv / 10i64) * 10i64);
+            int64:old1 = aria_libc_mem_read_i64(prod, p1 * 8i64);
+            aria_libc_mem_write_i64(prod, p1 * 8i64, old1 + sv / 10i64);
+        }
+    }
+
+    // Build result string
+    int64:res = aria_libc_mem_malloc(520i64);
+    aria_libc_mem_zero(res, 520i64);
+    int64:ri = 0i64;
+
+    if (neg_r == 1i64) {
+        aria_libc_mem_write_byte(res, ri, 45i32);
+        ri = ri + 1i64;
+    }
+
+    // Skip leading zeros
+    int64:ps = 0i64;
+    loop(0i64, plen, 1i64) {
+        if (ps == $) {
+            int64:pv = aria_libc_mem_read_i64(prod, $ * 8i64);
+            if (pv == 0i64) {
+                if ($ < plen - 1i64) { ps = $ + 1i64; }
+            }
+        }
+    }
+
+    int64:digits_w = plen - ps;
+    int64:point_pos = digits_w - total_dec;
+
+    if (point_pos <= 0i64) {
+        aria_libc_mem_write_byte(res, ri, 48i32);
+        ri = ri + 1i64;
+        aria_libc_mem_write_byte(res, ri, 46i32);
+        ri = ri + 1i64;
+        loop(0i64, 0i64 - point_pos, 1i64) {
+            aria_libc_mem_write_byte(res, ri, 48i32);
+            ri = ri + 1i64;
+        }
+        loop(ps, plen, 1i64) {
+            int64:pv2 = aria_libc_mem_read_i64(prod, $ * 8i64);
+            aria_libc_mem_write_byte(res, ri, @cast<int32>(pv2) + 48i32);
+            ri = ri + 1i64;
+        }
+    } else {
+        int64:wi = 0i64;
+        loop(ps, plen, 1i64) {
+            if (wi == point_pos) {
+                if (total_dec > 0i64) {
+                    aria_libc_mem_write_byte(res, ri, 46i32);
+                    ri = ri + 1i64;
+                }
+            }
+            int64:pv3 = aria_libc_mem_read_i64(prod, $ * 8i64);
+            aria_libc_mem_write_byte(res, ri, @cast<int32>(pv3) + 48i32);
+            ri = ri + 1i64;
+            wi = wi + 1i64;
+        }
+    }
+
+    int32:rh = raw _bd_store_buf(res, ri);
+    aria_libc_mem_free(ia_buf);
+    aria_libc_mem_free(ib_buf);
+    aria_libc_mem_free(prod);
+    aria_libc_mem_free(res);
+    pass rh;
 };
 
 pub func:bigdec_is_zero = int32(int32:handle) {
-    int32:r = aria_bigdec_is_zero(handle);
-    pass r;
+    drop _bd_init();
+    if (handle < 0i32) { pass 0i32; }
+    if (handle >= 32i32) { pass 0i32; }
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:hoff = @cast<int64>(handle) * 520i64;
+    int64:slen = aria_libc_mem_read_i64(data, hoff);
+    int64:all_z = 1i64;
+    loop(0i64, slen, 1i64) {
+        int32:ch = aria_libc_mem_read_byte(data, hoff + 8i64 + $);
+        if (ch != 48i32) {
+            if (ch != 46i32) {
+                if (ch != 45i32) { all_z = 0i64; }
+            }
+        }
+    }
+    if (all_z == 1i64) { pass 1i32; }
+    pass 0i32;
 };
 
 pub func:bigdec_is_negative = int32(int32:handle) {
-    int32:r = aria_bigdec_is_negative(handle);
-    pass r;
+    drop _bd_init();
+    if (handle < 0i32) { pass 0i32; }
+    if (handle >= 32i32) { pass 0i32; }
+    int64:data = aria_libc_mem_get_global(17i32);
+    int64:hoff = @cast<int64>(handle) * 520i64;
+    int32:first = aria_libc_mem_read_byte(data, hoff + 8i64);
+    if (first == 45i32) { pass 1i32; }
+    pass 0i32;
 };

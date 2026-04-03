@@ -1,13 +1,117 @@
-// test_aria_bigdecimal.aria — Tests for aria-bigdecimal package
+// test_aria_bigdecimal.aria — Tests for bigdecimal (pure Aria)
+use "../src/aria_bigdecimal.aria".*;
 
-extern func:aria_test_bigdec_run = int32();
+extern "aria_libc_string" {
+    func:aria_libc_string_strcmp = int64(string:a, string:b);
+}
 
-func:failsafe = int32(tbb32:err_code) {
-    println("FAILSAFE triggered");
-    exit 1;
-};
+func:failsafe = int32(tbb32:err) { exit 1; };
 
 func:main = int32() {
-    int32:fails = aria_test_bigdec_run();
-    exit fails;
+    // T01: create and to_string
+    int32:a = raw bigdec_create("123.456");
+    string:sa = raw bigdec_to_string(a);
+    int64:c1 = aria_libc_string_strcmp(sa, "123.456");
+    if (c1 == 0i64) { drop println("[PASS] T01 create 123.456"); }
+    if (c1 != 0i64) { drop println("[FAIL] T01 create 123.456"); }
+
+    // T02: normalization
+    int32:d = raw bigdec_create("007.100");
+    string:sd = raw bigdec_to_string(d);
+    int64:c2 = aria_libc_string_strcmp(sd, "7.1");
+    if (c2 == 0i64) { drop println("[PASS] T02 normalize 007.100"); }
+    if (c2 != 0i64) { drop println("[FAIL] T02 normalize 007.100"); }
+
+    // T03: normalize -0
+    int32:e = raw bigdec_create("-0");
+    string:se = raw bigdec_to_string(e);
+    int64:c3 = aria_libc_string_strcmp(se, "0");
+    if (c3 == 0i64) { drop println("[PASS] T03 normalize -0"); }
+    if (c3 != 0i64) { drop println("[FAIL] T03 normalize -0"); }
+
+    // T04: compare
+    int32:x10 = raw bigdec_create("10");
+    int32:x20 = raw bigdec_create("20");
+    int32:cmp1 = raw bigdec_compare(x10, x20);
+    if (cmp1 < 0i32) { drop println("[PASS] T04 10 < 20"); }
+    if (cmp1 >= 0i32) { drop println("[FAIL] T04 10 < 20"); }
+
+    // T05: equals
+    int32:x10b = raw bigdec_create("10.0");
+    int32:eq1 = raw bigdec_equals(x10, x10b);
+    if (eq1 == 1i32) { drop println("[PASS] T05 10 == 10.0"); }
+    if (eq1 != 1i32) { drop println("[FAIL] T05 10 == 10.0"); }
+
+    // T06: add 123.456 + 0.001
+    int32:bb = raw bigdec_create("0.001");
+    int32:sum1 = raw bigdec_add(a, bb);
+    string:ss1 = raw bigdec_to_string(sum1);
+    int64:c6 = aria_libc_string_strcmp(ss1, "123.457");
+    if (c6 == 0i64) { drop println("[PASS] T06 123.456 + 0.001"); }
+    if (c6 != 0i64) { drop println("[FAIL] T06 123.456 + 0.001"); }
+
+    // T07: add 10 + 20
+    int32:sum2 = raw bigdec_add(x10, x20);
+    string:ss2 = raw bigdec_to_string(sum2);
+    int64:c7 = aria_libc_string_strcmp(ss2, "30");
+    if (c7 == 0i64) { drop println("[PASS] T07 10 + 20"); }
+    if (c7 != 0i64) { drop println("[FAIL] T07 10 + 20"); }
+
+    // T08: subtract 20 - 10
+    int32:diff1 = raw bigdec_subtract(x20, x10);
+    string:sd1 = raw bigdec_to_string(diff1);
+    int64:c8 = aria_libc_string_strcmp(sd1, "10");
+    if (c8 == 0i64) { drop println("[PASS] T08 20 - 10"); }
+    if (c8 != 0i64) { drop println("[FAIL] T08 20 - 10"); }
+
+    // T09: subtract 10 - 20
+    int32:diff2 = raw bigdec_subtract(x10, x20);
+    string:sd2 = raw bigdec_to_string(diff2);
+    int64:c9 = aria_libc_string_strcmp(sd2, "-10");
+    if (c9 == 0i64) { drop println("[PASS] T09 10 - 20"); }
+    if (c9 != 0i64) { drop println("[FAIL] T09 10 - 20"); }
+
+    // T10: multiply 10 * 20
+    int32:prod1 = raw bigdec_multiply(x10, x20);
+    string:sp1 = raw bigdec_to_string(prod1);
+    int64:c10 = aria_libc_string_strcmp(sp1, "200");
+    if (c10 == 0i64) { drop println("[PASS] T10 10 * 20"); }
+    if (c10 != 0i64) { drop println("[FAIL] T10 10 * 20"); }
+
+    // T11: multiply 1.5 * 2.5
+    int32:f1 = raw bigdec_create("1.5");
+    int32:g1 = raw bigdec_create("2.5");
+    int32:prod2 = raw bigdec_multiply(f1, g1);
+    string:sp2 = raw bigdec_to_string(prod2);
+    int64:c11 = aria_libc_string_strcmp(sp2, "3.75");
+    if (c11 == 0i64) { drop println("[PASS] T11 1.5 * 2.5"); }
+    if (c11 != 0i64) { drop println("[FAIL] T11 1.5 * 2.5"); }
+
+    // T12: negate
+    int32:neg1 = raw bigdec_negate(x10);
+    string:sn1 = raw bigdec_to_string(neg1);
+    int64:c12 = aria_libc_string_strcmp(sn1, "-10");
+    if (c12 == 0i64) { drop println("[PASS] T12 negate 10"); }
+    if (c12 != 0i64) { drop println("[FAIL] T12 negate 10"); }
+
+    // T13: is_zero
+    int32:z = raw bigdec_create("0");
+    int32:iz1 = raw bigdec_is_zero(z);
+    if (iz1 == 1i32) { drop println("[PASS] T13 is_zero"); }
+    if (iz1 != 1i32) { drop println("[FAIL] T13 is_zero"); }
+
+    // T14: is_negative
+    int32:neg_val = raw bigdec_create("-42.5");
+    int32:in1 = raw bigdec_is_negative(neg_val);
+    if (in1 == 1i32) { drop println("[PASS] T14 is_negative"); }
+    if (in1 != 1i32) { drop println("[FAIL] T14 is_negative"); }
+
+    // T15: add -42.5 + 123.456 = 80.956
+    int32:sum3 = raw bigdec_add(neg_val, a);
+    string:ss3 = raw bigdec_to_string(sum3);
+    int64:c15 = aria_libc_string_strcmp(ss3, "80.956");
+    if (c15 == 0i64) { drop println("[PASS] T15 -42.5 + 123.456"); }
+    if (c15 != 0i64) { drop println("[FAIL] T15 -42.5 + 123.456"); }
+
+    exit 0;
 };

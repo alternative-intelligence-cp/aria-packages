@@ -1,49 +1,325 @@
-// aria_url.aria — URL parsing and encoding library for Aria
+// aria_url.aria — URL parsing and encoding (pure Aria, uses aria-libc)
+//
+// Buffer layout at global slot 1 (5120 bytes):
+//   offset 0:   scheme_len  (int64)
+//   offset 8:   scheme data (64 bytes)
+//   offset 72:  host_len    (int64)
+//   offset 80:  host data   (256 bytes)
+//   offset 336: port        (int64)
+//   offset 344: path_len    (int64)
+//   offset 352: path data   (2048 bytes)
+//   offset 2400: query_len  (int64)
+//   offset 2408: query data (2048 bytes)
+//   offset 4456: frag_len   (int64)
+//   offset 4464: frag data  (256 bytes)
 
-extern "aria_url_shim" {
-    func:aria_url_parse        = int32(string:url);
-    func:aria_url_get_scheme   = string();
-    func:aria_url_get_host     = string();
-    func:aria_url_get_port     = int32();
-    func:aria_url_get_path     = string();
-    func:aria_url_get_query    = string();
-    func:aria_url_get_fragment = string();
-    func:aria_url_encode       = string(string:input);
-    func:aria_url_decode       = string(string:input);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_free       = void(int64:ptr);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:idx);
+    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
+    func:aria_libc_mem_write_byte = void(int64:ptr, int64:offset, int32:val);
 }
 
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen   = int64(string:s);
+    func:aria_libc_string_indexof  = int64(string:s, string:needle);
+    func:aria_libc_string_char_indexof = int64(string:s, int32:c);
+    func:aria_libc_string_last_char_indexof = int64(string:s, int32:c);
+    func:aria_libc_string_byte_at  = int32(string:s, int64:idx);
+    func:aria_libc_string_isalnum  = int32(int32:c);
+    func:aria_libc_string_isdigit  = int32(int32:c);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_substr   = string(string:s, int64:start, int64:sz);
+    func:aria_libc_string_copy_to_buf = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
+    func:aria_libc_string_from_buf = string(int64:buf, int64:off, int64:sz);
+    func:aria_libc_string_atoi     = int64(string:s);
+}
+
+// ── parse ───────────────────────────────────────────────────────
+
 pub func:parse = int32(string:url) {
-    pass aria_url_parse(url);
+    int64:ulen = aria_libc_string_strlen(url);
+    if (ulen == 0i64) { pass 0i32; }
+
+    int64:buf = aria_libc_mem_malloc(5120i64);
+    aria_libc_mem_write_i64(buf, 0i64, 0i64);
+    aria_libc_mem_write_i64(buf, 72i64, 0i64);
+    aria_libc_mem_write_i64(buf, 336i64, 0i64);
+    aria_libc_mem_write_i64(buf, 344i64, 0i64);
+    aria_libc_mem_write_i64(buf, 2400i64, 0i64);
+    aria_libc_mem_write_i64(buf, 4456i64, 0i64);
+    aria_libc_mem_set_global(1i32, buf);
+
+    int64:pos = 0i64;
+
+    // Scheme: find "://"
+    int64:sep = aria_libc_string_indexof(url, "://");
+    if (sep > 0i64) {
+        aria_libc_mem_write_i64(buf, 0i64, sep);
+        aria_libc_string_copy_to_buf(buf, 8i64, url, 0i64, sep);
+        pos = sep + 3i64;
+    }
+
+    // Host end: first / ? # after scheme
+    int64:rest_len = ulen - pos;
+    if (rest_len <= 0i64) { pass 1i32; }
+
+    string:rest = aria_libc_string_substr(url, pos, rest_len);
+    int64:slash_pos = aria_libc_string_char_indexof(rest, 47i32);
+    int64:qmark_pos = aria_libc_string_char_indexof(rest, 63i32);
+    int64:hash_pos  = aria_libc_string_char_indexof(rest, 35i32);
+
+    int64:host_sz = rest_len;
+    if (slash_pos >= 0i64) {
+        if (slash_pos < host_sz) { host_sz = slash_pos; }
+    }
+    if (qmark_pos >= 0i64) {
+        if (qmark_pos < host_sz) { host_sz = qmark_pos; }
+    }
+    if (hash_pos >= 0i64) {
+        if (hash_pos < host_sz) { host_sz = hash_pos; }
+    }
+
+    // Extract host:port
+    string:hostport = aria_libc_string_substr(rest, 0i64, host_sz);
+    int64:colon = aria_libc_string_last_char_indexof(hostport, 58i32);
+    if (colon > 0i64) {
+        int64:hp_len = aria_libc_string_strlen(hostport);
+        int64:all_digits = 1i64;
+        int64:ci = colon + 1i64;
+        if (ci >= hp_len) { all_digits = 0i64; }
+        loop(ci, hp_len, 1i64) {
+            int32:ch = aria_libc_string_byte_at(hostport, $);
+            int32:dig = aria_libc_string_isdigit(ch);
+            if (dig == 0i32) { all_digits = 0i64; }
+        }
+        if (all_digits == 1i64) {
+            aria_libc_mem_write_i64(buf, 72i64, colon);
+            aria_libc_string_copy_to_buf(buf, 80i64, hostport, 0i64, colon);
+            string:port_str = aria_libc_string_substr(hostport, colon + 1i64, hp_len - colon - 1i64);
+            int64:pval = aria_libc_string_atoi(port_str);
+            aria_libc_mem_write_i64(buf, 336i64, pval);
+        }
+        if (all_digits == 0i64) {
+            aria_libc_mem_write_i64(buf, 72i64, host_sz);
+            aria_libc_string_copy_to_buf(buf, 80i64, hostport, 0i64, host_sz);
+        }
+    }
+    if (colon <= 0i64) {
+        aria_libc_mem_write_i64(buf, 72i64, host_sz);
+        aria_libc_string_copy_to_buf(buf, 80i64, hostport, 0i64, host_sz);
+    }
+
+    pos = pos + host_sz;
+
+    // Path
+    if (pos < ulen) {
+        int32:pch = aria_libc_string_byte_at(url, pos);
+        if (pch == 47i32) {
+            int64:prest_len = ulen - pos;
+            string:prest = aria_libc_string_substr(url, pos, prest_len);
+            int64:pq = aria_libc_string_char_indexof(prest, 63i32);
+            int64:ph = aria_libc_string_char_indexof(prest, 35i32);
+            int64:path_sz = prest_len;
+            if (pq >= 0i64) {
+                if (pq < path_sz) { path_sz = pq; }
+            }
+            if (ph >= 0i64) {
+                if (ph < path_sz) { path_sz = ph; }
+            }
+            aria_libc_mem_write_i64(buf, 344i64, path_sz);
+            aria_libc_string_copy_to_buf(buf, 352i64, url, pos, path_sz);
+            pos = pos + path_sz;
+        }
+    }
+
+    int64:plen_chk = aria_libc_mem_read_i64(buf, 344i64);
+    if (plen_chk == 0i64) {
+        aria_libc_mem_write_i64(buf, 344i64, 1i64);
+        aria_libc_mem_write_byte(buf, 352i64, 47i32);
+    }
+
+    // Query
+    if (pos < ulen) {
+        int32:qch = aria_libc_string_byte_at(url, pos);
+        if (qch == 63i32) {
+            pos = pos + 1i64;
+            int64:qrest_len = ulen - pos;
+            string:qrest = aria_libc_string_substr(url, pos, qrest_len);
+            int64:qh = aria_libc_string_char_indexof(qrest, 35i32);
+            int64:query_sz = qrest_len;
+            if (qh >= 0i64) { query_sz = qh; }
+            aria_libc_mem_write_i64(buf, 2400i64, query_sz);
+            aria_libc_string_copy_to_buf(buf, 2408i64, url, pos, query_sz);
+            pos = pos + query_sz;
+        }
+    }
+
+    // Fragment
+    if (pos < ulen) {
+        int32:fch = aria_libc_string_byte_at(url, pos);
+        if (fch == 35i32) {
+            pos = pos + 1i64;
+            int64:frag_sz = ulen - pos;
+            aria_libc_mem_write_i64(buf, 4456i64, frag_sz);
+            aria_libc_string_copy_to_buf(buf, 4464i64, url, pos, frag_sz);
+        }
+    }
+
+    pass 1i32;
 };
 
+// ── getters ─────────────────────────────────────────────────────
+
 pub func:get_scheme = string() {
-    pass aria_url_get_scheme();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:sz = aria_libc_mem_read_i64(buf, 0i64);
+    if (sz <= 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(buf, 8i64, sz);
 };
 
 pub func:get_host = string() {
-    pass aria_url_get_host();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:sz = aria_libc_mem_read_i64(buf, 72i64);
+    if (sz <= 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(buf, 80i64, sz);
 };
 
 pub func:get_port = int32() {
-    pass aria_url_get_port();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:pv = aria_libc_mem_read_i64(buf, 336i64);
+    pass @cast<int32>(pv);
 };
 
 pub func:get_path = string() {
-    pass aria_url_get_path();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:sz = aria_libc_mem_read_i64(buf, 344i64);
+    if (sz <= 0i64) { pass "/"; }
+    pass aria_libc_string_from_buf(buf, 352i64, sz);
 };
 
 pub func:get_query = string() {
-    pass aria_url_get_query();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:sz = aria_libc_mem_read_i64(buf, 2400i64);
+    if (sz <= 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(buf, 2408i64, sz);
 };
 
 pub func:get_fragment = string() {
-    pass aria_url_get_fragment();
+    int64:buf = aria_libc_mem_get_global(1i32);
+    int64:sz = aria_libc_mem_read_i64(buf, 4456i64);
+    if (sz <= 0i64) { pass ""; }
+    pass aria_libc_string_from_buf(buf, 4464i64, sz);
+};
+
+// ── encode ──────────────────────────────────────────────────────
+
+func:_hex_digit = int32(int32:val) {
+    if (val < 10i32) { pass val + 48i32; }
+    pass val + 55i32;
 };
 
 pub func:encode = string(string:input) {
-    pass aria_url_encode(input);
+    int64:slen = aria_libc_string_strlen(input);
+    if (slen == 0i64) { pass ""; }
+    int64:buf_sz = slen * 3i64 + 1i64;
+    int64:ebuf = aria_libc_mem_malloc(buf_sz);
+    int64:oi = 0i64;
+    loop(0i64, slen, 1i64) {
+        int32:ch = aria_libc_string_byte_at(input, $);
+        int32:an = aria_libc_string_isalnum(ch);
+        int32:is_safe = 0i32;
+        if (an != 0i32) { is_safe = 1i32; }
+        if (ch == 45i32) { is_safe = 1i32; }
+        if (ch == 95i32) { is_safe = 1i32; }
+        if (ch == 46i32) { is_safe = 1i32; }
+        if (ch == 126i32) { is_safe = 1i32; }
+        if (is_safe != 0i32) {
+            aria_libc_mem_write_byte(ebuf, oi, ch);
+            oi = oi + 1i64;
+        }
+        if (is_safe == 0i32) {
+            aria_libc_mem_write_byte(ebuf, oi, 37i32);
+            oi = oi + 1i64;
+            int32:hi = ch / 16i32;
+            int32:lo = ch - hi * 16i32;
+            int32:hc = raw _hex_digit(hi);
+            aria_libc_mem_write_byte(ebuf, oi, hc);
+            oi = oi + 1i64;
+            int32:lc = raw _hex_digit(lo);
+            aria_libc_mem_write_byte(ebuf, oi, lc);
+            oi = oi + 1i64;
+        }
+    }
+    aria_libc_mem_write_byte(ebuf, oi, 0i32);
+    string:result = aria_libc_string_from_buf(ebuf, 0i64, oi);
+    aria_libc_mem_free(ebuf);
+    pass result;
+};
+
+// ── decode ──────────────────────────────────────────────────────
+
+func:_hex_val = int32(int32:c) {
+    if (c >= 48i32) {
+        if (c <= 57i32) { pass c - 48i32; }
+    }
+    if (c >= 97i32) {
+        if (c <= 102i32) { pass c - 87i32; }
+    }
+    if (c >= 65i32) {
+        if (c <= 70i32) { pass c - 55i32; }
+    }
+    pass 0i32 - 1i32;
 };
 
 pub func:decode = string(string:input) {
-    pass aria_url_decode(input);
+    int64:slen = aria_libc_string_strlen(input);
+    if (slen == 0i64) { pass ""; }
+    int64:dbuf = aria_libc_mem_malloc(slen + 1i64);
+    int64:oi = 0i64;
+    int64:ii = 0i64;
+    loop(0i64, slen, 1i64) {
+        if (ii < slen) {
+            int32:ch = aria_libc_string_byte_at(input, ii);
+            if (ch == 37i32) {
+                int64:n1 = ii + 1i64;
+                int64:n2 = ii + 2i64;
+                if (n2 < slen) {
+                    int32:c1 = aria_libc_string_byte_at(input, n1);
+                    int32:c2 = aria_libc_string_byte_at(input, n2);
+                    int32:h = raw _hex_val(c1);
+                    int32:l = raw _hex_val(c2);
+                    if (h >= 0i32) {
+                        if (l >= 0i32) {
+                            int32:dec_byte = h * 16i32 + l;
+                            aria_libc_mem_write_byte(dbuf, oi, dec_byte);
+                            oi = oi + 1i64;
+                            ii = ii + 3i64;
+                        }
+                    }
+                }
+            }
+            if (ch == 43i32) {
+                aria_libc_mem_write_byte(dbuf, oi, 32i32);
+                oi = oi + 1i64;
+                ii = ii + 1i64;
+            }
+            if (ch != 37i32) {
+                if (ch != 43i32) {
+                    aria_libc_mem_write_byte(dbuf, oi, ch);
+                    oi = oi + 1i64;
+                    ii = ii + 1i64;
+                }
+            }
+        }
+    }
+    aria_libc_mem_write_byte(dbuf, oi, 0i32);
+    string:result = aria_libc_string_from_buf(dbuf, 0i64, oi);
+    aria_libc_mem_free(dbuf);
+    pass result;
 };

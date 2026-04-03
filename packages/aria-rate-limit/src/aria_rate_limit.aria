@@ -1,78 +1,254 @@
-// aria_rate_limit.aria — Token bucket rate limiting for Aria HTTP servers
-// LIB-RL: Per-client rate limiting with configurable token bucket.
+// aria_rate_limit.aria — Token bucket rate limiting (pure Aria, uses aria-libc)
 //
-// Usage:
-//   rate_limit_configure(100i32, 10i32, 60i32);  // 100 max, 10/sec refill, 60s window
+// Global slot 3: config block (32 bytes)
+//   offset 0: max_tokens (i64)
+//   offset 8: refill_rate (i64, tokens/sec)
+//   offset 16: window_sec (i64)
+//   offset 24: bucket_count (i64)
 //
-//   // In request handler:
-//   string:client_ip = server_req_header("X-Forwarded-For");
-//   int32:ok = rate_limit_check(client_ip);
-//   pick(ok) {
-//       (0i32) {
-//           // Rate limited — respond 429
-//           string:hdrs = rate_limit_headers(client_ip);
-//           server_respond_headers(fd, 429i32, "Too Many Requests", "text/plain", hdrs, "Rate limit exceeded");
-//       },
-//       (*) {
-//           // Allowed — process request
-//           string:hdrs = rate_limit_headers(client_ip);
-//           server_respond_headers(fd, 200i32, "OK", "application/json", hdrs, body);
-//       }
-//   }
+// Global slot 4: buckets array pointer (64 entries × 296 bytes = 18944 bytes)
+//   each bucket (296 bytes):
+//     offset 0: active (i64)
+//     offset 8: tokens_x100 (i64, tokens * 100 for int precision)
+//     offset 16: last_refill (i64, epoch seconds)
+//     offset 24: key_len (i64)
+//     offset 32: key data (256 bytes)
+//     offset 288: (padding to 296)
 
-extern "aria_rate_limit_shim" {
-    func:aria_rate_limit_configure    = void(int32:max_tokens, int32:refill_per_sec, int32:window_sec);
-    func:aria_rate_limit_set_max      = void(int32:max_tokens);
-    func:aria_rate_limit_set_rate     = void(int32:tokens_per_sec);
-    func:aria_rate_limit_check        = int32(string:key);
-    func:aria_rate_limit_check_cost   = int32(string:key, int32:cost);
-    func:aria_rate_limit_remaining    = int32(string:key);
-    func:aria_rate_limit_retry_after  = int32(string:key);
-    func:aria_rate_limit_headers      = string(string:key);
-    func:aria_rate_limit_reset        = void();
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_free       = void(int64:ptr);
+    func:aria_libc_mem_zero       = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:idx);
+    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
 }
 
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen      = int64(string:s);
+    func:aria_libc_string_copy_to_buf = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
+    func:aria_libc_string_from_buf    = string(int64:buf, int64:off, int64:sz);
+    func:aria_libc_string_strcat      = string(string:a, string:b);
+    func:aria_libc_string_from_i64    = string(int64:val);
+    func:aria_libc_string_strcmp       = int64(string:a, string:b);
+}
+
+extern "aria_libc_time" {
+    func:aria_libc_time_now = int64();
+}
+
+// ── internal init ───────────────────────────────────────────────
+
+func:_ensure_cfg = NIL() {
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    if (cnf == 0i64) {
+        int64:c = aria_libc_mem_malloc(32i64);
+        aria_libc_mem_write_i64(c, 0i64, 100i64);
+        aria_libc_mem_write_i64(c, 8i64, 10i64);
+        aria_libc_mem_write_i64(c, 16i64, 60i64);
+        aria_libc_mem_write_i64(c, 24i64, 0i64);
+        aria_libc_mem_set_global(3i32, c);
+        int64:b = aria_libc_mem_malloc(18944i64);
+        aria_libc_mem_zero(b, 18944i64);
+        aria_libc_mem_set_global(4i32, b);
+    }
+    pass NIL;
+};
+
+func:_get_or_create_bucket = int64(string:key) {
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:klen = aria_libc_string_strlen(key);
+    if (klen > 255i64) { klen = 255i64; }
+
+    // Search existing by key length + strcmp
+    loop(0i64, 64i64, 1i64) {
+        int64:boff = $ * 296i64;
+        int64:active = aria_libc_mem_read_i64(buckets, boff);
+        if (active == 1i64) {
+            int64:sk = aria_libc_mem_read_i64(buckets, boff + 24i64);
+            if (sk == klen) {
+                string:sk_str = aria_libc_string_from_buf(buckets, boff + 32i64, sk);
+                int64:cmp = aria_libc_string_strcmp(sk_str, key);
+                if (cmp == 0i64) { pass boff; }
+            }
+        }
+    }
+
+    // Find inactive slot
+    int64:slot = 0i64 - 1i64;
+    loop(0i64, 64i64, 1i64) {
+        int64:boff = $ * 296i64;
+        int64:active = aria_libc_mem_read_i64(buckets, boff);
+        if (active == 0i64) {
+            if (slot < 0i64) { slot = boff; }
+        }
+    }
+
+    if (slot < 0i64) { slot = 0i64; }
+
+    int64:mt = aria_libc_mem_read_i64(cnf, 0i64);
+    int64:now = aria_libc_time_now();
+    aria_libc_mem_write_i64(buckets, slot, 1i64);
+    aria_libc_mem_write_i64(buckets, slot + 8i64, mt * 100i64);
+    aria_libc_mem_write_i64(buckets, slot + 16i64, now);
+    aria_libc_mem_write_i64(buckets, slot + 24i64, klen);
+    aria_libc_string_copy_to_buf(buckets, slot + 32i64, key, 0i64, klen);
+    pass slot;
+};
+
+func:_refill = NIL(int64:boff) {
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:now = aria_libc_time_now();
+    int64:last = aria_libc_mem_read_i64(buckets, boff + 16i64);
+    int64:elapsed = now - last;
+    if (elapsed > 0i64) {
+        int64:rate = aria_libc_mem_read_i64(cnf, 8i64);
+        int64:tokens_x100 = aria_libc_mem_read_i64(buckets, boff + 8i64);
+        int64:add = elapsed * rate * 100i64;
+        tokens_x100 = tokens_x100 + add;
+        int64:mt = aria_libc_mem_read_i64(cnf, 0i64);
+        int64:cap = mt * 100i64;
+        if (tokens_x100 > cap) { tokens_x100 = cap; }
+        aria_libc_mem_write_i64(buckets, boff + 8i64, tokens_x100);
+        aria_libc_mem_write_i64(buckets, boff + 16i64, now);
+    }
+    pass NIL;
+};
+
+// ── public API ──────────────────────────────────────────────────
+
 pub func:rate_limit_configure = NIL(int32:max_tokens, int32:refill_per_sec, int32:window_sec) {
-    aria_rate_limit_configure(max_tokens, refill_per_sec, window_sec);
+    drop _ensure_cfg();
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:mt = @cast<int64>(max_tokens);
+    int64:rr = @cast<int64>(refill_per_sec);
+    int64:ws = @cast<int64>(window_sec);
+    if (mt <= 0i64) { mt = 100i64; }
+    if (rr <= 0i64) { rr = 10i64; }
+    if (ws <= 0i64) { ws = 60i64; }
+    aria_libc_mem_write_i64(cnf, 0i64, mt);
+    aria_libc_mem_write_i64(cnf, 8i64, rr);
+    aria_libc_mem_write_i64(cnf, 16i64, ws);
     pass NIL;
 };
 
 pub func:rate_limit_max = NIL(int32:max_tokens) {
-    aria_rate_limit_set_max(max_tokens);
+    drop _ensure_cfg();
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:mt = @cast<int64>(max_tokens);
+    if (mt <= 0i64) { mt = 100i64; }
+    aria_libc_mem_write_i64(cnf, 0i64, mt);
     pass NIL;
 };
 
 pub func:rate_limit_rate = NIL(int32:tokens_per_sec) {
-    aria_rate_limit_set_rate(tokens_per_sec);
+    drop _ensure_cfg();
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:rr = @cast<int64>(tokens_per_sec);
+    if (rr <= 0i64) { rr = 10i64; }
+    aria_libc_mem_write_i64(cnf, 8i64, rr);
     pass NIL;
 };
 
 pub func:rate_limit_check = int32(string:key) {
-    int32:r = aria_rate_limit_check(key);
-    pass r;
+    drop _ensure_cfg();
+    int64:boff = raw _get_or_create_bucket(key);
+    drop _refill(boff);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:tokens_x100 = aria_libc_mem_read_i64(buckets, boff + 8i64);
+    if (tokens_x100 >= 100i64) {
+        aria_libc_mem_write_i64(buckets, boff + 8i64, tokens_x100 - 100i64);
+        pass 1i32;
+    }
+    pass 0i32;
 };
 
 pub func:rate_limit_check_cost = int32(string:key, int32:cost) {
-    int32:r = aria_rate_limit_check_cost(key, cost);
-    pass r;
+    drop _ensure_cfg();
+    int64:boff = raw _get_or_create_bucket(key);
+    drop _refill(boff);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:tokens_x100 = aria_libc_mem_read_i64(buckets, boff + 8i64);
+    int64:c = @cast<int64>(cost);
+    if (c <= 0i64) { c = 1i64; }
+    int64:needed = c * 100i64;
+    if (tokens_x100 >= needed) {
+        aria_libc_mem_write_i64(buckets, boff + 8i64, tokens_x100 - needed);
+        pass 1i32;
+    }
+    pass 0i32;
 };
 
 pub func:rate_limit_remaining = int32(string:key) {
-    int32:r = aria_rate_limit_remaining(key);
-    pass r;
+    drop _ensure_cfg();
+    int64:boff = raw _get_or_create_bucket(key);
+    drop _refill(boff);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:tokens_x100 = aria_libc_mem_read_i64(buckets, boff + 8i64);
+    int64:whole = tokens_x100 / 100i64;
+    pass @cast<int32>(whole);
 };
 
 pub func:rate_limit_retry_after = int32(string:key) {
-    int32:r = aria_rate_limit_retry_after(key);
-    pass r;
+    drop _ensure_cfg();
+    int64:boff = raw _get_or_create_bucket(key);
+    drop _refill(boff);
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:tokens_x100 = aria_libc_mem_read_i64(buckets, boff + 8i64);
+    if (tokens_x100 >= 100i64) { pass 0i32; }
+    int64:rate = aria_libc_mem_read_i64(cnf, 8i64);
+    int64:needed = 100i64 - tokens_x100;
+    int64:secs = needed / (rate * 100i64) + 1i64;
+    pass @cast<int32>(secs);
 };
 
 pub func:rate_limit_headers = string(string:key) {
-    string:r = aria_rate_limit_headers(key);
-    pass r;
+    drop _ensure_cfg();
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    int64:mt = aria_libc_mem_read_i64(cnf, 0i64);
+    int32:rem = raw rate_limit_remaining(key);
+    string:mt_str = aria_libc_string_from_i64(mt);
+    string:hdr = aria_libc_string_strcat("X-RateLimit-Limit: ", mt_str);
+    hdr = aria_libc_string_strcat(hdr, "\r\nX-RateLimit-Remaining: ");
+    string:rem_str = aria_libc_string_from_i64(@cast<int64>(rem));
+    hdr = aria_libc_string_strcat(hdr, rem_str);
+    hdr = aria_libc_string_strcat(hdr, "\r\n");
+    if (rem <= 0i32) {
+        int32:retry = raw rate_limit_retry_after(key);
+        string:retry_str = aria_libc_string_from_i64(@cast<int64>(retry));
+        hdr = aria_libc_string_strcat(hdr, "Retry-After: ");
+        hdr = aria_libc_string_strcat(hdr, retry_str);
+        hdr = aria_libc_string_strcat(hdr, "\r\n");
+    }
+    pass hdr;
 };
 
 pub func:rate_limit_reset = NIL() {
-    aria_rate_limit_reset();
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    if (buckets != 0i64) {
+        aria_libc_mem_zero(buckets, 18944i64);
+    }
+    int64:cnf = aria_libc_mem_get_global(3i32);
+    if (cnf != 0i64) {
+        aria_libc_mem_write_i64(cnf, 0i64, 100i64);
+        aria_libc_mem_write_i64(cnf, 8i64, 10i64);
+        aria_libc_mem_write_i64(cnf, 16i64, 60i64);
+        aria_libc_mem_write_i64(cnf, 24i64, 0i64);
+    }
+    pass NIL;
+};
+
+pub func:rate_limit_test_set_tokens = NIL(string:key, int32:tokens) {
+    drop _ensure_cfg();
+    int64:boff = raw _get_or_create_bucket(key);
+    int64:buckets = aria_libc_mem_get_global(4i32);
+    int64:t = @cast<int64>(tokens) * 100i64;
+    aria_libc_mem_write_i64(buckets, boff + 8i64, t);
+    int64:now = aria_libc_time_now();
+    aria_libc_mem_write_i64(buckets, boff + 16i64, now);
     pass NIL;
 };

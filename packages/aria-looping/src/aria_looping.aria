@@ -1,51 +1,721 @@
-// aria_looping.aria — Looping / iterative-refinement model wrapper
+// aria_looping.aria — Universal Transformer / iterative-refinement model (pure Aria)
+//
+// Slot 18: model pool  — 32 models × 256 bytes = 8192
+// Slot 19: scratch pool — 128 scratches × 32 bytes = 4096
+// Slot 20: RNG state (8 bytes)
+//
+// Model layout (256 bytes each):
+//   [0]:   alive        [8]:   d_model      [16]:  n_heads
+//   [24]:  ffn_dim      [32]:  max_iters    [40]:  vocab_size
+//   [48]:  max_seq      [56]:  conv_thresh (flt64 bits)
+//   [64]:  last_iters   [72]:  tok_emb_ptr  [80]:  pos_emb_ptr
+//   [88]:  iter_emb_ptr [96]:  ln1_g_ptr    [104]: ln1_b_ptr
+//   [112]: Wq_ptr       [120]: Wk_ptr       [128]: Wv_ptr
+//   [136]: Wo_ptr       [144]: ln2_g_ptr    [152]: ln2_b_ptr
+//   [160]: W1_ptr       [168]: b1_ptr       [176]: W2_ptr
+//   [184]: b2_ptr
+//
+// Scratch layout (32 bytes each):
+//   [0]: alive   [8]: data_ptr   [16]: rows   [24]: cols
+//
+// Float-in-memory: write_i64(ptr, off, flt64_bits(val))
+//                  flt64_from_bits(read_i64(ptr, off))
 
-use "print_utils.aria".*;
-
-extern "aria_looping_shim" {
-    func:aria_looping_last_error      = string();
-    func:aria_looping_set_seed        = void(int32:seed);
-    func:aria_looping_create          = int64(int32:d_model, int32:n_heads, int32:ffn_dim, int32:max_iters, int32:vocab_size, int32:max_seq);
-    func:aria_looping_destroy         = void(int64:id);
-    func:aria_looping_d_model         = int32(int64:id);
-    func:aria_looping_n_heads         = int32(int64:id);
-    func:aria_looping_ffn_dim         = int32(int64:id);
-    func:aria_looping_max_iters       = int32(int64:id);
-    func:aria_looping_vocab_size      = int32(int64:id);
-    func:aria_looping_last_iters_used = int32(int64:id);
-    func:aria_looping_set_threshold   = void(int64:id, flt64:thresh);
-    func:aria_looping_param_count     = int64(int64:id);
-    func:aria_looping_scratch_create  = int64(int32:rows, int32:cols);
-    func:aria_looping_scratch_destroy = void(int64:id);
-    func:aria_looping_scratch_set     = void(int64:id, int32:idx, flt64:val);
-    func:aria_looping_scratch_get     = flt64(int64:id, int32:idx);
-    func:aria_looping_scratch_rows    = int32(int64:id);
-    func:aria_looping_scratch_cols    = int32(int64:id);
-    func:aria_looping_forward         = int64(int64:model, int64:input);
-    func:aria_looping_forward_n       = int64(int64:model, int64:input, int32:n_iters);
-    func:aria_looping_argmax          = int32(int64:scratch, int32:row);
-    func:aria_looping_softmax_row     = void(int64:scratch, int32:row);
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc      = int64(int64:size);
+    func:aria_libc_mem_free        = void(int64:ptr);
+    func:aria_libc_mem_zero        = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global  = int64(int32:idx);
+    func:aria_libc_mem_set_global  = void(int32:idx, int64:val);
 }
 
-pub func:looping_last_error      = string()   { pass aria_looping_last_error(); };
-pub func:looping_set_seed        = void(int32:s) { aria_looping_set_seed(s); };
-pub func:looping_create          = int64(int32:dm, int32:nh, int32:ff, int32:mi, int32:vs, int32:ms) { pass aria_looping_create(dm,nh,ff,mi,vs,ms); };
-pub func:looping_destroy         = void(int64:id) { aria_looping_destroy(id); };
-pub func:looping_d_model         = int32(int64:id) { pass aria_looping_d_model(id); };
-pub func:looping_n_heads         = int32(int64:id) { pass aria_looping_n_heads(id); };
-pub func:looping_ffn_dim         = int32(int64:id) { pass aria_looping_ffn_dim(id); };
-pub func:looping_max_iters       = int32(int64:id) { pass aria_looping_max_iters(id); };
-pub func:looping_vocab_size      = int32(int64:id) { pass aria_looping_vocab_size(id); };
-pub func:looping_last_iters_used = int32(int64:id) { pass aria_looping_last_iters_used(id); };
-pub func:looping_set_threshold   = void(int64:id, flt64:t) { aria_looping_set_threshold(id,t); };
-pub func:looping_param_count     = int64(int64:id) { pass aria_looping_param_count(id); };
-pub func:looping_scratch_create  = int64(int32:r, int32:c) { pass aria_looping_scratch_create(r,c); };
-pub func:looping_scratch_destroy = void(int64:id) { aria_looping_scratch_destroy(id); };
-pub func:looping_scratch_set     = void(int64:id, int32:i, flt64:v) { aria_looping_scratch_set(id,i,v); };
-pub func:looping_scratch_get     = flt64(int64:id, int32:i) { pass aria_looping_scratch_get(id,i); };
-pub func:looping_scratch_rows    = int32(int64:id) { pass aria_looping_scratch_rows(id); };
-pub func:looping_scratch_cols    = int32(int64:id) { pass aria_looping_scratch_cols(id); };
-pub func:looping_forward         = int64(int64:m, int64:inp) { pass aria_looping_forward(m,inp); };
-pub func:looping_forward_n       = int64(int64:m, int64:inp, int32:n) { pass aria_looping_forward_n(m,inp,n); };
-pub func:looping_argmax          = int32(int64:s, int32:r) { pass aria_looping_argmax(s,r); };
-pub func:looping_softmax_row     = void(int64:s, int32:r) { aria_looping_softmax_row(s,r); };
+extern "aria_libc_mem" {
+    func:aria_libc_mem_calloc = int64(int64:count, int64:size);
+    func:aria_libc_mem_copy   = void(int64:dst, int64:src, int64:n);
+}
+
+extern "aria_libc_math" {
+    func:aria_libc_math_sqrt           = flt64(flt64:x);
+    func:aria_libc_math_exp            = flt64(flt64:x);
+    func:aria_libc_math_flt64_bits     = int64(flt64:val);
+    func:aria_libc_math_flt64_from_bits = flt64(int64:bits);
+    func:aria_libc_math_fabs           = flt64(flt64:x);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_from_i64 = string(int64:v);
+}
+
+// ── Float-in-memory helpers ──────────────────────────────────────
+
+func:_lp_rf = flt64(int64:ptr, int64:idx) {
+    int64:bits = aria_libc_mem_read_i64(ptr, idx * 8i64);
+    pass aria_libc_math_flt64_from_bits(bits);
+};
+
+func:_lp_wf = NIL(int64:ptr, int64:idx, flt64:val) {
+    int64:bits = aria_libc_math_flt64_bits(val);
+    aria_libc_mem_write_i64(ptr, idx * 8i64, bits);
+    pass NIL;
+};
+
+// ── Init ──────────────────────────────────────────────────────────
+
+func:_lp_init = NIL() {
+    int64:mp = aria_libc_mem_get_global(18i32);
+    if (mp == 0i64) {
+        int64:m = aria_libc_mem_calloc(1i64, 8192i64);
+        aria_libc_mem_set_global(18i32, m);
+        int64:s = aria_libc_mem_calloc(1i64, 4096i64);
+        aria_libc_mem_set_global(19i32, s);
+        int64:r = aria_libc_mem_calloc(1i64, 8i64);
+        aria_libc_mem_set_global(20i32, r);
+    }
+    pass NIL;
+};
+
+// ── Model field accessors ─────────────────────────────────────────
+
+func:_lp_mptr = int64(int64:id) {
+    int64:mp = aria_libc_mem_get_global(18i32);
+    pass mp + id * 256i64;
+};
+
+func:_lp_mrd = int64(int64:id, int64:off) {
+    int64:base = raw _lp_mptr(id);
+    pass aria_libc_mem_read_i64(base, off);
+};
+
+func:_lp_mwr = NIL(int64:id, int64:off, int64:val) {
+    int64:base = raw _lp_mptr(id);
+    aria_libc_mem_write_i64(base, off, val);
+    pass NIL;
+};
+
+// ── Scratch helpers ───────────────────────────────────────────────
+
+func:_lp_sptr = int64(int64:id) {
+    int64:sp = aria_libc_mem_get_global(19i32);
+    pass sp + id * 32i64;
+};
+
+func:_lp_sc_alloc = int64(int64:rows, int64:cols) {
+    int64:sp = aria_libc_mem_get_global(19i32);
+    int64:found = 0i64 - 1i64;
+    loop(0i64, 128i64, 1i64) {
+        int64:base = sp + $ * 32i64;
+        int64:alive = aria_libc_mem_read_i64(base, 0i64);
+        if (alive == 0i64) {
+            if (found < 0i64) {
+                found = $;
+            }
+        }
+    }
+    if (found < 0i64) { pass 0i64 - 1i64; }
+    int64:base = sp + found * 32i64;
+    int64:buf = aria_libc_mem_calloc(rows * cols, 8i64);
+    aria_libc_mem_write_i64(base, 0i64, 1i64);
+    aria_libc_mem_write_i64(base, 8i64, buf);
+    aria_libc_mem_write_i64(base, 16i64, rows);
+    aria_libc_mem_write_i64(base, 24i64, cols);
+    pass found;
+};
+
+// ── RNG ───────────────────────────────────────────────────────────
+
+func:_lp_rand = flt64() {
+    int64:rp = aria_libc_mem_get_global(20i32);
+    int64:state = aria_libc_mem_read_i64(rp, 0i64);
+    state = state * 1103515245i64 + 12345i64;
+    aria_libc_mem_write_i64(rp, 0i64, state);
+    int64:v = state / 65536i64;
+    if (v < 0i64) { v = 0i64 - v; }
+    v = v - (v / 32768i64) * 32768i64;
+    pass @cast<flt64>(v) / 32767.0;
+};
+
+func:_lp_xavier = flt64(int64:fi, int64:fo) {
+    flt64:scale = raw aria_libc_math_sqrt(6.0 / @cast<flt64>(fi + fo));
+    flt64:r = raw _lp_rand();
+    pass (r * 2.0 - 1.0) * scale;
+};
+
+// ── Xavier init a buffer of N floats ──────────────────────────────
+
+func:_lp_init_buf = int64(int64:count, int64:fi, int64:fo) {
+    int64:buf = aria_libc_mem_malloc(count * 8i64);
+    loop(0i64, count, 1i64) {
+        flt64:w = raw _lp_xavier(fi, fo);
+        drop _lp_wf(buf, $, w);
+    }
+    pass buf;
+};
+
+func:_lp_init_zeros = int64(int64:count) {
+    int64:buf = aria_libc_mem_calloc(count, 8i64);
+    pass buf;
+};
+
+func:_lp_init_ones = int64(int64:count) {
+    int64:buf = aria_libc_mem_malloc(count * 8i64);
+    loop(0i64, count, 1i64) {
+        drop _lp_wf(buf, $, 1.0);
+    }
+    pass buf;
+};
+
+// ── Layer normalization (in→out, length n) ────────────────────────
+
+func:_lp_layernorm = NIL(int64:out_ptr, int64:in_ptr, int64:in_off, int64:g_ptr, int64:b_ptr, int64:n) {
+    flt64:mu = 0.0;
+    loop(0i64, n, 1i64) {
+        mu = mu + raw _lp_rf(in_ptr, in_off + $);
+    }
+    mu = mu / @cast<flt64>(n);
+    flt64:var_acc = 0.0;
+    loop(0i64, n, 1i64) {
+        flt64:d = raw _lp_rf(in_ptr, in_off + $) - mu;
+        var_acc = var_acc + d * d;
+    }
+    var_acc = var_acc / @cast<flt64>(n);
+    flt64:inv = 1.0 / raw aria_libc_math_sqrt(var_acc + 0.00001);
+    loop(0i64, n, 1i64) {
+        flt64:x = raw _lp_rf(in_ptr, in_off + $);
+        flt64:g = raw _lp_rf(g_ptr, $);
+        flt64:b = raw _lp_rf(b_ptr, $);
+        flt64:normed = g * (x - mu) * inv + b;
+        drop _lp_wf(out_ptr, $, normed);
+    }
+    pass NIL;
+};
+
+// ── Softmax over vec[start..start+n) ─────────────────────────────
+
+func:_lp_softmax = NIL(int64:ptr, int64:start, int64:n) {
+    flt64:mx = 0.0 - 1000000000000.0;
+    loop(0i64, n, 1i64) {
+        flt64:v = raw _lp_rf(ptr, start + $);
+        if (v > mx) { mx = v; }
+    }
+    flt64:sum = 0.0;
+    loop(0i64, n, 1i64) {
+        flt64:v = raw _lp_rf(ptr, start + $);
+        flt64:e = raw aria_libc_math_exp(v - mx);
+        drop _lp_wf(ptr, start + $, e);
+        sum = sum + e;
+    }
+    loop(0i64, n, 1i64) {
+        flt64:v = raw _lp_rf(ptr, start + $);
+        drop _lp_wf(ptr, start + $, v / sum);
+    }
+    pass NIL;
+};
+
+// ── SiLU activation ──────────────────────────────────────────────
+
+func:_lp_silu = flt64(flt64:x) {
+    flt64:neg = 0.0 - x;
+    flt64:e = raw aria_libc_math_exp(neg);
+    pass x / (1.0 + e);
+};
+
+// ── Single refinement iteration ──────────────────────────────────
+
+func:_lp_refine = NIL(int64:id, int64:act, int64:seq, int64:iter_idx) {
+    int64:dm = raw _lp_mrd(id, 8i64);
+    int64:nh = raw _lp_mrd(id, 16i64);
+    int64:ffn = raw _lp_mrd(id, 24i64);
+    int64:max_it = raw _lp_mrd(id, 32i64);
+    int64:dk = dm / nh;
+
+    // ── Add iteration embedding ──
+    if (iter_idx < max_it) {
+        int64:ie_ptr = raw _lp_mrd(id, 88i64);
+        loop(0i64, seq * dm, 1i64) {
+            int64:t = $ / dm;
+            int64:d = $ - t * dm;
+            flt64:cur = raw _lp_rf(act, $);
+            flt64:ie = raw _lp_rf(ie_ptr, iter_idx * dm + d);
+            drop _lp_wf(act, $, cur + ie);
+        }
+    }
+
+    // ── Pre-attention LayerNorm ──
+    int64:normed = aria_libc_mem_malloc(seq * dm * 8i64);
+    loop(0i64, seq, 1i64) {
+        int64:t = $;
+        int64:ln1_g = raw _lp_mrd(id, 96i64);
+        int64:ln1_b = raw _lp_mrd(id, 104i64);
+        drop _lp_layernorm(normed + t * dm * 8i64, act, t * dm, ln1_g, ln1_b, dm);
+    }
+
+    // ── Q K V projections: out[i*dm+j] += normed[i*dm+k] * W[k*dm+j] ──
+    int64:Q = aria_libc_mem_calloc(seq * dm, 8i64);
+    int64:K = aria_libc_mem_calloc(seq * dm, 8i64);
+    int64:V = aria_libc_mem_calloc(seq * dm, 8i64);
+    int64:Wq = raw _lp_mrd(id, 112i64);
+    int64:Wk = raw _lp_mrd(id, 120i64);
+    int64:Wv = raw _lp_mrd(id, 128i64);
+
+    // matmul normed × Wq → Q, normed × Wk → K, normed × Wv → V
+    loop(0i64, seq * dm, 1i64) {
+        int64:ik = $;
+        int64:i = ik / dm;
+        int64:k = ik - i * dm;
+        flt64:n_val = raw _lp_rf(normed, ik);
+        loop(0i64, dm, 1i64) {
+            int64:j = $;
+            flt64:wq = raw _lp_rf(Wq, k * dm + j);
+            flt64:oq = raw _lp_rf(Q, i * dm + j);
+            drop _lp_wf(Q, i * dm + j, oq + n_val * wq);
+
+            flt64:wk = raw _lp_rf(Wk, k * dm + j);
+            flt64:ck = raw _lp_rf(K, i * dm + j);
+            drop _lp_wf(K, i * dm + j, ck + n_val * wk);
+
+            flt64:wv = raw _lp_rf(Wv, k * dm + j);
+            flt64:ov = raw _lp_rf(V, i * dm + j);
+            drop _lp_wf(V, i * dm + j, ov + n_val * wv);
+        }
+    }
+
+    // ── Multi-head attention with causal mask ──
+    int64:attn_out = aria_libc_mem_calloc(seq * dm, 8i64);
+    flt64:scale = 1.0 / raw aria_libc_math_sqrt(@cast<flt64>(dk));
+    int64:scores = aria_libc_mem_malloc(seq * seq * 8i64);
+
+    loop(0i64, nh, 1i64) {
+        int64:h = $;
+        // Compute scores
+        loop(0i64, seq * seq, 1i64) {
+            int64:ij = $;
+            int64:i = ij / seq;
+            int64:j = ij - i * seq;
+            if (j > i) {
+                drop _lp_wf(scores, ij, 0.0 - 1000000000.0);
+            }
+            if (j <= i) {
+                flt64:dot = 0.0;
+                loop(0i64, dk, 1i64) {
+                    flt64:qv = raw _lp_rf(Q, i * dm + h * dk + $);
+                    flt64:kv = raw _lp_rf(K, j * dm + h * dk + $);
+                    dot = dot + qv * kv;
+                }
+                drop _lp_wf(scores, ij, dot * scale);
+            }
+        }
+        // Softmax each row
+        loop(0i64, seq, 1i64) {
+            drop _lp_softmax(scores, $ * seq, seq);
+        }
+        // Weighted sum of V
+        loop(0i64, seq * dk, 1i64) {
+            int64:id_2 = $;
+            int64:i = id_2 / dk;
+            int64:d = id_2 - i * dk;
+            flt64:vsum = 0.0;
+            loop(0i64, seq, 1i64) {
+                flt64:sc = raw _lp_rf(scores, i * seq + $);
+                flt64:vv = raw _lp_rf(V, $ * dm + h * dk + d);
+                vsum = vsum + sc * vv;
+            }
+            drop _lp_wf(attn_out, i * dm + h * dk + d, vsum);
+        }
+    }
+
+    // ── Wo projection + residual ──
+    int64:Wo = raw _lp_mrd(id, 136i64);
+    loop(0i64, seq * dm, 1i64) {
+        int64:ij = $;
+        int64:i = ij / dm;
+        int64:j = ij - i * dm;
+        flt64:vv = 0.0;
+        loop(0i64, dm, 1i64) {
+            flt64:a = raw _lp_rf(attn_out, i * dm + $);
+            flt64:w = raw _lp_rf(Wo, $ * dm + j);
+            vv = vv + a * w;
+        }
+        flt64:cur = raw _lp_rf(act, ij);
+        drop _lp_wf(act, ij, cur + vv);
+    }
+
+    aria_libc_mem_free(normed);
+    aria_libc_mem_free(Q);
+    aria_libc_mem_free(K);
+    aria_libc_mem_free(V);
+    aria_libc_mem_free(attn_out);
+    aria_libc_mem_free(scores);
+
+    // ── Pre-FFN LayerNorm ──
+    int64:normed2 = aria_libc_mem_malloc(seq * dm * 8i64);
+    loop(0i64, seq, 1i64) {
+        int64:t = $;
+        int64:ln2_g = raw _lp_mrd(id, 144i64);
+        int64:ln2_b = raw _lp_mrd(id, 152i64);
+        drop _lp_layernorm(normed2 + t * dm * 8i64, act, t * dm, ln2_g, ln2_b, dm);
+    }
+
+    // ── FFN layer 1: hidden[i*ffn+f] = silu(sum_d normed[i*dm+d] * W1[d*ffn+f] + b1[f]) ──
+    int64:W1 = raw _lp_mrd(id, 160i64);
+    int64:b1_ptr = raw _lp_mrd(id, 168i64);
+    int64:hidden = aria_libc_mem_malloc(seq * ffn * 8i64);
+    loop(0i64, seq * ffn, 1i64) {
+        int64:iif = $;
+        int64:i = iif / ffn;
+        int64:f = iif - i * ffn;
+        flt64:vv = raw _lp_rf(b1_ptr, f);
+        loop(0i64, dm, 1i64) {
+            flt64:nv = raw _lp_rf(normed2, i * dm + $);
+            flt64:wv = raw _lp_rf(W1, $ * ffn + f);
+            vv = vv + nv * wv;
+        }
+        flt64:sv = raw _lp_silu(vv);
+        drop _lp_wf(hidden, iif, sv);
+    }
+
+    // ── FFN layer 2: act[i*dm+d] += sum_f hidden[i*ffn+f] * W2[f*dm+d] + b2[d] ──
+    int64:W2 = raw _lp_mrd(id, 176i64);
+    int64:b2_ptr = raw _lp_mrd(id, 184i64);
+    loop(0i64, seq * dm, 1i64) {
+        int64:iid = $;
+        int64:i = iid / dm;
+        int64:d = iid - i * dm;
+        flt64:vv = raw _lp_rf(b2_ptr, d);
+        loop(0i64, ffn, 1i64) {
+            flt64:hv = raw _lp_rf(hidden, i * ffn + $);
+            flt64:wv = raw _lp_rf(W2, $ * dm + d);
+            vv = vv + hv * wv;
+        }
+        flt64:cur = raw _lp_rf(act, iid);
+        drop _lp_wf(act, iid, cur + vv);
+    }
+
+    aria_libc_mem_free(normed2);
+    aria_libc_mem_free(hidden);
+    pass NIL;
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  PUBLIC API
+// ══════════════════════════════════════════════════════════════════
+
+pub func:looping_set_seed = NIL(int32:s) {
+    drop _lp_init();
+    int64:rp = aria_libc_mem_get_global(20i32);
+    int64:sv = @cast<int64>(s) * 6364136223846793005i64 + 1i64;
+    aria_libc_mem_write_i64(rp, 0i64, sv);
+    pass NIL;
+};
+
+pub func:looping_create = int64(int32:d_model, int32:n_heads, int32:ffn_dim, int32:max_iters, int32:vocab_size, int32:max_seq) {
+    drop _lp_init();
+    int64:mp = aria_libc_mem_get_global(18i32);
+    int64:slot = 0i64 - 1i64;
+    loop(0i64, 32i64, 1i64) {
+        int64:alive = aria_libc_mem_read_i64(mp + $ * 256i64, 0i64);
+        if (alive == 0i64) {
+            if (slot < 0i64) { slot = $; }
+        }
+    }
+    if (slot < 0i64) { pass 0i64 - 1i64; }
+
+    int64:dm = @cast<int64>(d_model);
+    int64:nh = @cast<int64>(n_heads);
+    int64:ff = @cast<int64>(ffn_dim);
+    int64:mi = @cast<int64>(max_iters);
+    int64:vs = @cast<int64>(vocab_size);
+    int64:ms = @cast<int64>(max_seq);
+
+    drop _lp_mwr(slot, 0i64, 1i64);
+    drop _lp_mwr(slot, 8i64, dm);
+    drop _lp_mwr(slot, 16i64, nh);
+    drop _lp_mwr(slot, 24i64, ff);
+    drop _lp_mwr(slot, 32i64, mi);
+    drop _lp_mwr(slot, 40i64, vs);
+    drop _lp_mwr(slot, 48i64, ms);
+    drop _lp_mwr(slot, 56i64, aria_libc_math_flt64_bits(0.0));
+    drop _lp_mwr(slot, 64i64, 0i64);
+
+    // tok_emb: vocab × dm
+    int64:te = raw _lp_init_buf(vs * dm, vs, dm);
+    drop _lp_mwr(slot, 72i64, te);
+    // pos_emb: max_seq × dm
+    int64:pe = raw _lp_init_buf(ms * dm, ms, dm);
+    drop _lp_mwr(slot, 80i64, pe);
+    // iter_emb: max_iters × dm (small scale)
+    int64:ie_raw = aria_libc_mem_malloc(mi * dm * 8i64);
+    loop(0i64, mi * dm, 1i64) {
+        flt64:w = raw _lp_xavier(mi, dm);
+        drop _lp_wf(ie_raw, $, w * 0.1);
+    }
+    drop _lp_mwr(slot, 88i64, ie_raw);
+
+    // LN1 gain=1, bias=0
+    int64:ln1g = raw _lp_init_ones(dm);
+    int64:ln1b = raw _lp_init_zeros(dm);
+    drop _lp_mwr(slot, 96i64, ln1g);
+    drop _lp_mwr(slot, 104i64, ln1b);
+
+    // Attention: Wq Wk Wv Wo — dm×dm each
+    int64:wq = raw _lp_init_buf(dm * dm, dm, dm);
+    int64:wk = raw _lp_init_buf(dm * dm, dm, dm);
+    int64:wv = raw _lp_init_buf(dm * dm, dm, dm);
+    int64:wo = raw _lp_init_buf(dm * dm, dm, dm);
+    drop _lp_mwr(slot, 112i64, wq);
+    drop _lp_mwr(slot, 120i64, wk);
+    drop _lp_mwr(slot, 128i64, wv);
+    drop _lp_mwr(slot, 136i64, wo);
+
+    // LN2 gain=1, bias=0
+    int64:ln2g = raw _lp_init_ones(dm);
+    int64:ln2b = raw _lp_init_zeros(dm);
+    drop _lp_mwr(slot, 144i64, ln2g);
+    drop _lp_mwr(slot, 152i64, ln2b);
+
+    // FFN: W1(dm×ff), b1(ff), W2(ff×dm), b2(dm)
+    int64:w1 = raw _lp_init_buf(dm * ff, dm, ff);
+    int64:b1 = raw _lp_init_zeros(ff);
+    int64:w2 = raw _lp_init_buf(ff * dm, ff, dm);
+    int64:b2 = raw _lp_init_zeros(dm);
+    drop _lp_mwr(slot, 160i64, w1);
+    drop _lp_mwr(slot, 168i64, b1);
+    drop _lp_mwr(slot, 176i64, w2);
+    drop _lp_mwr(slot, 184i64, b2);
+
+    pass slot;
+};
+
+pub func:looping_destroy = NIL(int64:id) {
+    if (id < 0i64) { pass NIL; }
+    if (id >= 32i64) { pass NIL; }
+    int64:alive = raw _lp_mrd(id, 0i64);
+    if (alive == 0i64) { pass NIL; }
+
+    // Free all 15 weight buffers (offsets 72..184 step 8)
+    int64:off = 72i64;
+    loop(0i64, 15i64, 1i64) {
+        int64:ptr = raw _lp_mrd(id, off);
+        if (ptr != 0i64) { aria_libc_mem_free(ptr); }
+        off = off + 8i64;
+    }
+    drop _lp_mwr(id, 0i64, 0i64);
+    pass NIL;
+};
+
+// ── Metadata ──────────────────────────────────────────────────────
+
+pub func:looping_d_model = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 8i64));
+};
+
+pub func:looping_n_heads = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 16i64));
+};
+
+pub func:looping_ffn_dim = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 24i64));
+};
+
+pub func:looping_max_iters = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 32i64));
+};
+
+pub func:looping_vocab_size = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 40i64));
+};
+
+pub func:looping_last_iters_used = int32(int64:id) {
+    pass @cast<int32>(raw _lp_mrd(id, 64i64));
+};
+
+pub func:looping_set_threshold = NIL(int64:id, flt64:thresh) {
+    drop _lp_mwr(id, 56i64, aria_libc_math_flt64_bits(thresh));
+    pass NIL;
+};
+
+pub func:looping_param_count = int64(int64:id) {
+    int64:dm = raw _lp_mrd(id, 8i64);
+    int64:ff = raw _lp_mrd(id, 24i64);
+    int64:mi = raw _lp_mrd(id, 32i64);
+    int64:vs = raw _lp_mrd(id, 40i64);
+    int64:ms = raw _lp_mrd(id, 48i64);
+    int64:p = 0i64;
+    p = p + vs * dm + ms * dm;
+    p = p + mi * dm;
+    p = p + 4i64 * dm * dm;
+    p = p + 4i64 * dm;
+    p = p + dm * ff + ff + ff * dm + dm;
+    pass p;
+};
+
+// ── Scratch API ───────────────────────────────────────────────────
+
+pub func:looping_scratch_create = int64(int32:rows, int32:cols) {
+    drop _lp_init();
+    pass raw _lp_sc_alloc(@cast<int64>(rows), @cast<int64>(cols));
+};
+
+pub func:looping_scratch_destroy = NIL(int64:id) {
+    if (id < 0i64) { pass NIL; }
+    if (id >= 128i64) { pass NIL; }
+    int64:base = raw _lp_sptr(id);
+    int64:alive = aria_libc_mem_read_i64(base, 0i64);
+    if (alive != 0i64) {
+        int64:ptr = aria_libc_mem_read_i64(base, 8i64);
+        aria_libc_mem_free(ptr);
+        aria_libc_mem_write_i64(base, 0i64, 0i64);
+    }
+    pass NIL;
+};
+
+pub func:looping_scratch_set = NIL(int64:id, int32:idx, flt64:val) {
+    int64:base = raw _lp_sptr(id);
+    int64:ptr = aria_libc_mem_read_i64(base, 8i64);
+    drop _lp_wf(ptr, @cast<int64>(idx), val);
+    pass NIL;
+};
+
+pub func:looping_scratch_get = flt64(int64:id, int32:idx) {
+    int64:base = raw _lp_sptr(id);
+    int64:ptr = aria_libc_mem_read_i64(base, 8i64);
+    pass raw _lp_rf(ptr, @cast<int64>(idx));
+};
+
+pub func:looping_scratch_rows = int32(int64:id) {
+    int64:base = raw _lp_sptr(id);
+    pass @cast<int32>(aria_libc_mem_read_i64(base, 16i64));
+};
+
+pub func:looping_scratch_cols = int32(int64:id) {
+    int64:base = raw _lp_sptr(id);
+    pass @cast<int32>(aria_libc_mem_read_i64(base, 24i64));
+};
+
+// ── Forward ───────────────────────────────────────────────────────
+
+pub func:looping_forward_n = int64(int64:mid, int64:inp_id, int32:n_iters) {
+    int64:dm = raw _lp_mrd(mid, 8i64);
+    int64:vs = raw _lp_mrd(mid, 40i64);
+    int64:mi = raw _lp_mrd(mid, 32i64);
+
+    int64:inp_base = raw _lp_sptr(inp_id);
+    int64:inp_ptr = aria_libc_mem_read_i64(inp_base, 8i64);
+    int64:seq = aria_libc_mem_read_i64(inp_base, 16i64);
+
+    // Embed: act[t*dm+d] = tok_emb[tok*dm+d] + pos_emb[t*dm+d]
+    int64:act = aria_libc_mem_calloc(seq * dm, 8i64);
+    int64:te = raw _lp_mrd(mid, 72i64);
+    int64:pe = raw _lp_mrd(mid, 80i64);
+    loop(0i64, seq, 1i64) {
+        int64:t = $;
+        flt64:tok_f = raw _lp_rf(inp_ptr, t);
+        int64:tok = @cast<int64>(tok_f);
+        if (tok < 0i64) { tok = 0i64; }
+        if (tok >= vs) { tok = vs - 1i64; }
+        loop(0i64, dm, 1i64) {
+            flt64:tv = raw _lp_rf(te, tok * dm + $);
+            flt64:pv = raw _lp_rf(pe, t * dm + $);
+            drop _lp_wf(act, t * dm + $, tv + pv);
+        }
+    }
+
+    // Convergence check support
+    flt64:thresh = aria_libc_math_flt64_from_bits(raw _lp_mrd(mid, 56i64));
+    int64:prev = 0i64;
+    if (thresh > 0.0) {
+        prev = aria_libc_mem_malloc(seq * dm * 8i64);
+    }
+
+    int64:iters = @cast<int64>(n_iters);
+    if (iters <= 0i64) { iters = mi; }
+    int64:used = 0i64;
+
+    loop(0i64, iters, 1i64) {
+        int64:it = $;
+        // Copy act → prev for convergence check
+        if (prev != 0i64) {
+            aria_libc_mem_copy(prev, act, seq * dm * 8i64);
+        }
+        drop _lp_refine(mid, act, seq, it);
+        used = it + 1i64;
+        // Convergence check
+        if (prev != 0i64) {
+            flt64:l2 = 0.0;
+            loop(0i64, seq * dm, 1i64) {
+                flt64:a = raw _lp_rf(act, $);
+                flt64:p = raw _lp_rf(prev, $);
+                flt64:d = a - p;
+                l2 = l2 + d * d;
+            }
+            l2 = aria_libc_math_sqrt(l2 / @cast<flt64>(seq * dm));
+            if (l2 < thresh) {
+                // Break: set iters = used to stop outer loop
+                // Can't break from loop, so we use a flag by setting prev to 0
+                aria_libc_mem_free(prev);
+                prev = 0i64;
+                // We already have the final act. Mark done.
+                drop _lp_mwr(mid, 64i64, used);
+            }
+        }
+    }
+
+    drop _lp_mwr(mid, 64i64, used);
+    if (prev != 0i64) { aria_libc_mem_free(prev); }
+
+    // Unembed: logits[t*vs+v] = sum_d act[t*dm+d] * tok_emb[v*dm+d]
+    int64:out_id = raw _lp_sc_alloc(seq, vs);
+    if (out_id < 0i64) {
+        aria_libc_mem_free(act);
+        pass 0i64 - 1i64;
+    }
+    int64:out_base = raw _lp_sptr(out_id);
+    int64:out_ptr = aria_libc_mem_read_i64(out_base, 8i64);
+
+    loop(0i64, seq * vs, 1i64) {
+        int64:tv = $;
+        int64:t = tv / vs;
+        int64:v = tv - t * vs;
+        flt64:dot = 0.0;
+        loop(0i64, dm, 1i64) {
+            flt64:av = raw _lp_rf(act, t * dm + $);
+            flt64:ev = raw _lp_rf(te, v * dm + $);
+            dot = dot + av * ev;
+        }
+        drop _lp_wf(out_ptr, tv, dot);
+    }
+
+    aria_libc_mem_free(act);
+    pass out_id;
+};
+
+pub func:looping_forward = int64(int64:mid, int64:inp_id) {
+    pass raw looping_forward_n(mid, inp_id, 0i32);
+};
+
+pub func:looping_argmax = int32(int64:sid, int32:row) {
+    int64:base = raw _lp_sptr(sid);
+    int64:ptr = aria_libc_mem_read_i64(base, 8i64);
+    int64:cols = aria_libc_mem_read_i64(base, 24i64);
+    int64:r = @cast<int64>(row);
+    int32:best = 0i32;
+    flt64:bv = raw _lp_rf(ptr, r * cols);
+    loop(1i64, cols, 1i64) {
+        flt64:v = raw _lp_rf(ptr, r * cols + $);
+        if (v > bv) {
+            bv = v;
+            best = @cast<int32>($);
+        }
+    }
+    pass best;
+};
+
+pub func:looping_softmax_row = NIL(int64:sid, int32:row) {
+    int64:base = raw _lp_sptr(sid);
+    int64:ptr = aria_libc_mem_read_i64(base, 8i64);
+    int64:cols = aria_libc_mem_read_i64(base, 24i64);
+    int64:r = @cast<int64>(row);
+    drop _lp_softmax(ptr, r * cols, cols);
+    pass NIL;
+};

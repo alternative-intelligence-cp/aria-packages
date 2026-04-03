@@ -1,36 +1,574 @@
-// aria_yaml.aria — YAML configuration parser for Aria
+// aria_yaml.aria — Pure Aria YAML parser (config-file subset)
 //
-// Parse YAML from strings or files, query values by dotted keys.
-// Requires: libaria_yaml_shim.so
+// Global slot 5: metadata (32 bytes)  [0]: init  [8]: entry count
+// Global slot 6: entries (128 × 544 = 69632 bytes)
+//   Per entry: [0] active [8] type_id [16] int_val
+//              [24] key_len [32] key(256) [288] val_len [296] val(240)
+// Global slot 7: prefix stack (16 × 272 = 4352 bytes)
+//   Per level: [0] indent [8] prefix_len [16] prefix(256)
+// type_id: 0=string 1=int 2=float 3=bool
 
-extern "aria_yaml_shim" {
-    func:aria_yaml_error      = string();
-    func:aria_yaml_parse      = int32(string:text);
-    func:aria_yaml_parse_file = int32(string:path);
-    func:aria_yaml_get_type   = int32(string:key);
-    func:aria_yaml_get_string = string(string:key);
-    func:aria_yaml_get_int    = int64(string:key);
-    func:aria_yaml_get_float  = flt64(string:key);
-    func:aria_yaml_get_bool   = int32(string:key);
-    func:aria_yaml_has_key    = int32(string:key);
-    func:aria_yaml_set_string = int32(string:key, string:val);
-    func:aria_yaml_set_int    = int32(string:key, int64:val);
-    func:aria_yaml_set_bool   = int32(string:key, int32:val);
-    func:aria_yaml_count      = int32();
-    func:aria_yaml_clear      = void();
+extern "aria_libc_mem" {
+    func:aria_libc_mem_malloc     = int64(int64:size);
+    func:aria_libc_mem_zero       = void(int64:ptr, int64:n);
+    func:aria_libc_mem_read_i64   = int64(int64:ptr, int64:offset);
+    func:aria_libc_mem_write_i64  = void(int64:ptr, int64:offset, int64:val);
+    func:aria_libc_mem_get_global = int64(int32:idx);
+    func:aria_libc_mem_set_global = void(int32:idx, int64:val);
 }
 
-pub func:yaml_error      = string()               { pass aria_yaml_error(); };
-pub func:yaml_parse      = int32(string:text)      { pass aria_yaml_parse(text); };
-pub func:yaml_parse_file = int32(string:path)      { pass aria_yaml_parse_file(path); };
-pub func:yaml_get_type   = int32(string:key)       { pass aria_yaml_get_type(key); };
-pub func:yaml_get_string = string(string:key)      { pass aria_yaml_get_string(key); };
-pub func:yaml_get_int    = int64(string:key)       { pass aria_yaml_get_int(key); };
-pub func:yaml_get_float  = flt64(string:key)       { pass aria_yaml_get_float(key); };
-pub func:yaml_get_bool   = int32(string:key)       { pass aria_yaml_get_bool(key); };
-pub func:yaml_has_key    = int32(string:key)       { pass aria_yaml_has_key(key); };
-pub func:yaml_set_string = int32(string:key, string:val) { pass aria_yaml_set_string(key, val); };
-pub func:yaml_set_int    = int32(string:key, int64:val)  { pass aria_yaml_set_int(key, val); };
-pub func:yaml_set_bool   = int32(string:key, int32:val)  { pass aria_yaml_set_bool(key, val); };
-pub func:yaml_count      = int32()                 { pass aria_yaml_count(); };
-pub func:yaml_clear      = NIL()                   { aria_yaml_clear(); pass NIL; };
+extern "aria_libc_string" {
+    func:aria_libc_string_strlen         = int64(string:s);
+    func:aria_libc_string_strcmp          = int64(string:a, string:b);
+    func:aria_libc_string_strcasecmp     = int64(string:a, string:b);
+    func:aria_libc_string_copy_to_buf    = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
+    func:aria_libc_string_from_buf       = string(int64:buf, int64:off, int64:sz);
+    func:aria_libc_string_byte_at        = int32(string:s, int64:pos);
+}
+
+extern "aria_libc_string" {
+    func:aria_libc_string_char_indexof_from = int64(string:s, int32:c, int64:from);
+    func:aria_libc_string_atoi              = int64(string:s);
+    func:aria_libc_string_atof              = flt64(string:s);
+    func:aria_libc_string_from_i64          = string(int64:val);
+    func:aria_libc_string_isdigit           = int32(int32:c);
+    func:aria_libc_string_substr            = string(string:s, int64:start, int64:sz);
+}
+
+// ── init ────────────────────────────────────────────────────────
+
+func:_y_init = NIL() {
+    int64:meta = aria_libc_mem_get_global(5i32);
+    if (meta == 0i64) {
+        int64:m = aria_libc_mem_malloc(32i64);
+        aria_libc_mem_zero(m, 32i64);
+        aria_libc_mem_set_global(5i32, m);
+        int64:e = aria_libc_mem_malloc(69632i64);
+        aria_libc_mem_zero(e, 69632i64);
+        aria_libc_mem_set_global(6i32, e);
+        int64:s = aria_libc_mem_malloc(4352i64);
+        aria_libc_mem_zero(s, 4352i64);
+        aria_libc_mem_set_global(7i32, s);
+    }
+    pass NIL;
+};
+
+// ── entry helpers ───────────────────────────────────────────────
+
+func:_y_find = int64(string:key) {
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:cnt = aria_libc_mem_read_i64(meta, 8i64);
+    int64:klen = aria_libc_string_strlen(key);
+    loop(0i64, cnt, 1i64) {
+        int64:eoff = $ * 544i64;
+        int64:act = aria_libc_mem_read_i64(ent, eoff);
+        if (act == 1i64) {
+            int64:ekl = aria_libc_mem_read_i64(ent, eoff + 24i64);
+            if (ekl == klen) {
+                string:ek = aria_libc_string_from_buf(ent, eoff + 32i64, ekl);
+                int64:cmp = aria_libc_string_strcmp(ek, key);
+                if (cmp == 0i64) { pass eoff; }
+            }
+        }
+    }
+    pass 0i64 - 1i64;
+};
+
+func:_y_add = int64(string:key) {
+    int64:found = raw _y_find(key);
+    if (found >= 0i64) { pass found; }
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:cnt = aria_libc_mem_read_i64(meta, 8i64);
+    if (cnt >= 128i64) { pass 0i64 - 1i64; }
+    int64:eoff = cnt * 544i64;
+    aria_libc_mem_write_i64(ent, eoff, 1i64);
+    int64:kl = aria_libc_string_strlen(key);
+    if (kl > 255i64) { kl = 255i64; }
+    aria_libc_mem_write_i64(ent, eoff + 24i64, kl);
+    aria_libc_string_copy_to_buf(ent, eoff + 32i64, key, 0i64, kl);
+    aria_libc_mem_write_i64(meta, 8i64, cnt + 1i64);
+    pass eoff;
+};
+
+// Allocate a raw slot without setting key (for parser use)
+func:_y_slot = int64() {
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:cnt = aria_libc_mem_read_i64(meta, 8i64);
+    if (cnt >= 128i64) { pass 0i64 - 1i64; }
+    int64:eoff = cnt * 544i64;
+    aria_libc_mem_write_i64(ent, eoff, 1i64);
+    aria_libc_mem_write_i64(meta, 8i64, cnt + 1i64);
+    pass eoff;
+};
+
+// ── value classification (val is a string — may be in g_buf!) ───
+
+func:_y_classify = NIL(int64:eoff, string:val) {
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:vlen = aria_libc_string_strlen(val);
+
+    // Check for quoted strings
+    if (vlen >= 2i64) {
+        int32:fc = aria_libc_string_byte_at(val, 0i64);
+        int32:lc = aria_libc_string_byte_at(val, vlen - 1i64);
+        // Double-quoted
+        if (fc == 34i32) {
+            if (lc == 34i32) {
+                int64:ilen = vlen - 2i64;
+                if (ilen > 239i64) { ilen = 239i64; }
+                aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+                aria_libc_mem_write_i64(ent, eoff + 288i64, ilen);
+                // copy from val with offset 1 to skip opening quote
+                aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 1i64, ilen);
+                pass NIL;
+            }
+        }
+        // Single-quoted
+        if (fc == 39i32) {
+            if (lc == 39i32) {
+                int64:ilen2 = vlen - 2i64;
+                if (ilen2 > 239i64) { ilen2 = 239i64; }
+                aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+                aria_libc_mem_write_i64(ent, eoff + 288i64, ilen2);
+                aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 1i64, ilen2);
+                pass NIL;
+            }
+        }
+    }
+
+    // Bool — true variants
+    int64:ct = aria_libc_string_strcasecmp(val, "true");
+    if (ct == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 1i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+    int64:cy = aria_libc_string_strcasecmp(val, "yes");
+    if (cy == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 1i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+    int64:co = aria_libc_string_strcasecmp(val, "on");
+    if (co == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 1i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+
+    // Bool — false variants
+    int64:cf = aria_libc_string_strcasecmp(val, "false");
+    if (cf == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+    int64:cn = aria_libc_string_strcasecmp(val, "no");
+    if (cn == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+    int64:coff = aria_libc_string_strcasecmp(val, "off");
+    if (coff == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+
+    // Null
+    int64:cnull = aria_libc_string_strcasecmp(val, "null");
+    if (cnull == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, 0i64);
+        pass NIL;
+    }
+    int64:ctilde = aria_libc_string_strcmp(val, "~");
+    if (ctilde == 0i64) {
+        aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, 0i64);
+        pass NIL;
+    }
+
+    // Number: starts with digit or '-'
+    int32:ch0 = aria_libc_string_byte_at(val, 0i64);
+    int32:dig = aria_libc_string_isdigit(ch0);
+    if (dig == 1i32) {
+        int64:dot = aria_libc_string_char_indexof_from(val, 46i32, 0i64);
+        if (dot >= 0i64) {
+            // Float
+            aria_libc_mem_write_i64(ent, eoff + 8i64, 2i64);
+        } else {
+            // Int
+            int64:iv = aria_libc_string_atoi(val);
+            aria_libc_mem_write_i64(ent, eoff + 8i64, 1i64);
+            aria_libc_mem_write_i64(ent, eoff + 16i64, iv);
+        }
+        if (vlen > 239i64) { vlen = 239i64; }
+        aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+        pass NIL;
+    }
+    // Negative number
+    if (ch0 == 45i32) {
+        if (vlen > 1i64) {
+            int32:ch1 = aria_libc_string_byte_at(val, 1i64);
+            int32:dig2 = aria_libc_string_isdigit(ch1);
+            if (dig2 == 1i32) {
+                int64:dot2 = aria_libc_string_char_indexof_from(val, 46i32, 0i64);
+                if (dot2 >= 0i64) {
+                    aria_libc_mem_write_i64(ent, eoff + 8i64, 2i64);
+                } else {
+                    int64:niv = aria_libc_string_atoi(val);
+                    aria_libc_mem_write_i64(ent, eoff + 8i64, 1i64);
+                    aria_libc_mem_write_i64(ent, eoff + 16i64, niv);
+                }
+                if (vlen > 239i64) { vlen = 239i64; }
+                aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+                aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+                pass NIL;
+            }
+        }
+    }
+
+    // Default: unquoted string
+    aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+    if (vlen > 239i64) { vlen = 239i64; }
+    aria_libc_mem_write_i64(ent, eoff + 288i64, vlen);
+    aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vlen);
+    pass NIL;
+};
+
+// ── parser ──────────────────────────────────────────────────────
+
+pub func:yaml_parse = int32(string:text) {
+    drop _y_init();
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:stk = aria_libc_mem_get_global(7i32);
+
+    // Clear
+    aria_libc_mem_zero(ent, 69632i64);
+    aria_libc_mem_write_i64(meta, 8i64, 0i64);
+    aria_libc_mem_zero(stk, 4352i64);
+    // Stack level 0: indent=-1, prefix_len=0
+    aria_libc_mem_write_i64(stk, 0i64, 0i64 - 1i64);
+
+    int64:tlen = aria_libc_string_strlen(text);
+    int64:pos = 0i64;
+    int64:dep = 0i64;
+
+    loop(0i64, 10000i64, 1i64) {
+        if (pos >= tlen) {
+            int64:fc = aria_libc_mem_read_i64(meta, 8i64);
+            pass @cast<int32>(fc);
+        }
+
+        // Find newline
+        int64:nl = aria_libc_string_char_indexof_from(text, 10i32, pos);
+        if (nl < 0i64) { nl = tlen; }
+        int64:llen = nl - pos;
+
+        // Count leading spaces (up to 16)
+        int64:ind = 0i64;
+        int32:s0 = aria_libc_string_byte_at(text, pos);
+        if (s0 == 32i32) { ind = 1i64;
+        int32:s1 = aria_libc_string_byte_at(text, pos + 1i64);
+        if (s1 == 32i32) { ind = 2i64;
+        int32:s2 = aria_libc_string_byte_at(text, pos + 2i64);
+        if (s2 == 32i32) { ind = 3i64;
+        int32:s3 = aria_libc_string_byte_at(text, pos + 3i64);
+        if (s3 == 32i32) { ind = 4i64;
+        int32:s4 = aria_libc_string_byte_at(text, pos + 4i64);
+        if (s4 == 32i32) { ind = 5i64;
+        int32:s5 = aria_libc_string_byte_at(text, pos + 5i64);
+        if (s5 == 32i32) { ind = 6i64;
+        int32:s6 = aria_libc_string_byte_at(text, pos + 6i64);
+        if (s6 == 32i32) { ind = 7i64;
+        int32:s7 = aria_libc_string_byte_at(text, pos + 7i64);
+        if (s7 == 32i32) { ind = 8i64;
+        int32:s8 = aria_libc_string_byte_at(text, pos + 8i64);
+        if (s8 == 32i32) { ind = 9i64;
+        int32:s9 = aria_libc_string_byte_at(text, pos + 9i64);
+        if (s9 == 32i32) { ind = 10i64;
+        int32:s10 = aria_libc_string_byte_at(text, pos + 10i64);
+        if (s10 == 32i32) { ind = 11i64;
+        int32:s11 = aria_libc_string_byte_at(text, pos + 11i64);
+        if (s11 == 32i32) { ind = 12i64;
+        }}}}}}}}}}}}
+
+        int64:ts = pos + ind;
+
+        // Skip empty or too-short lines
+        if (ind >= llen) {
+            pos = nl + 1i64;
+        } else {
+        int32:fch = aria_libc_string_byte_at(text, ts);
+
+        // Skip comments
+        if (fch == 35i32) { pos = nl + 1i64; }
+        else {
+        // Skip document markers (--- or ...)
+        if (fch == 46i32) { pos = nl + 1i64; }
+        else {
+        // Skip list items
+        if (fch == 45i32) { pos = nl + 1i64; }
+        else {
+
+        // Find colon
+        int64:col = aria_libc_string_char_indexof_from(text, 58i32, ts);
+        if (col < 0i64) { pos = nl + 1i64; }
+        else {
+        if (col >= nl) { pos = nl + 1i64; }
+        else {
+            int64:klen = col - ts;
+
+            // Pop stack to match current indent
+            loop(0i64, 16i64, 1i64) {
+                if (dep > 0i64) {
+                    int64:so = dep * 272i64;
+                    int64:si = aria_libc_mem_read_i64(stk, so);
+                    if (si >= ind) { dep = dep - 1i64; }
+                }
+            }
+
+            // Get current prefix info
+            int64:poff = dep * 272i64;
+            int64:plen = aria_libc_mem_read_i64(stk, poff + 8i64);
+
+            // Find value start (skip spaces after colon)
+            int64:vs = col + 1i64;
+            int32:vc0 = aria_libc_string_byte_at(text, vs);
+            if (vc0 == 32i32) { vs = vs + 1i64; }
+            if (vc0 == 9i32)  { vs = vs + 1i64; }
+            // Check again for double space
+            int32:vc1 = aria_libc_string_byte_at(text, vs);
+            if (vc1 == 32i32) { vs = vs + 1i64; }
+
+            // Find value end (trim trailing whitespace)
+            int64:ve = nl;
+            int32:tc0 = aria_libc_string_byte_at(text, ve - 1i64);
+            if (tc0 == 32i32) { ve = ve - 1i64; }
+            if (tc0 == 13i32) { ve = ve - 1i64; }
+            if (tc0 == 9i32)  { ve = ve - 1i64; }
+            int32:tc1 = aria_libc_string_byte_at(text, ve - 1i64);
+            if (tc1 == 32i32) { ve = ve - 1i64; }
+            if (tc1 == 13i32) { ve = ve - 1i64; }
+
+            int64:vl = ve - vs;
+            if (vl < 0i64) { vl = 0i64; }
+
+            if (vl == 0i64) {
+                // Mapping key — push prefix stack
+                if (dep < 15i64) {
+                    dep = dep + 1i64;
+                    int64:noff = dep * 272i64;
+                    aria_libc_mem_write_i64(stk, noff, ind);
+
+                    if (plen > 0i64) {
+                        // Copy old prefix to new level
+                        string:opfx = aria_libc_string_from_buf(stk, poff + 16i64, plen);
+                        aria_libc_string_copy_to_buf(stk, noff + 16i64, opfx, 0i64, plen);
+                        // Add dot
+                        aria_libc_string_copy_to_buf(stk, noff + 16i64 + plen, ".", 0i64, 1i64);
+                        // Add local key from text
+                        string:lk = aria_libc_string_substr(text, ts, klen);
+                        aria_libc_string_copy_to_buf(stk, noff + 16i64 + plen + 1i64, lk, 0i64, klen);
+                        aria_libc_mem_write_i64(stk, noff + 8i64, plen + 1i64 + klen);
+                    } else {
+                        // No prefix — just local key
+                        string:lk2 = aria_libc_string_substr(text, ts, klen);
+                        aria_libc_string_copy_to_buf(stk, noff + 16i64, lk2, 0i64, klen);
+                        aria_libc_mem_write_i64(stk, noff + 8i64, klen);
+                    }
+                }
+                pos = nl + 1i64;
+            } else {
+                // Leaf value — allocate entry and build key
+                int64:eoff = raw _y_slot();
+                if (eoff >= 0i64) {
+                    if (plen > 0i64) {
+                        // Copy prefix from stack to entry key
+                        string:pfx = aria_libc_string_from_buf(stk, poff + 16i64, plen);
+                        aria_libc_string_copy_to_buf(ent, eoff + 32i64, pfx, 0i64, plen);
+                        // Add dot
+                        aria_libc_string_copy_to_buf(ent, eoff + 32i64 + plen, ".", 0i64, 1i64);
+                        // Add local key
+                        string:lk3 = aria_libc_string_substr(text, ts, klen);
+                        aria_libc_string_copy_to_buf(ent, eoff + 32i64 + plen + 1i64, lk3, 0i64, klen);
+                        aria_libc_mem_write_i64(ent, eoff + 24i64, plen + 1i64 + klen);
+                    } else {
+                        string:lk4 = aria_libc_string_substr(text, ts, klen);
+                        aria_libc_string_copy_to_buf(ent, eoff + 32i64, lk4, 0i64, klen);
+                        aria_libc_mem_write_i64(ent, eoff + 24i64, klen);
+                    }
+
+                    // Extract value and classify
+                    string:val_s = aria_libc_string_substr(text, vs, vl);
+                    drop _y_classify(eoff, val_s);
+                }
+                pos = nl + 1i64;
+            }
+        }}
+        }}}
+        }
+    }
+
+    int64:rc = aria_libc_mem_read_i64(meta, 8i64);
+    pass @cast<int32>(rc);
+};
+
+pub func:yaml_parse_file = int32(string:path) {
+    // Not implemented in pure Aria yet
+    pass 0i32 - 1i32;
+};
+
+// ── getters ─────────────────────────────────────────────────────
+
+pub func:yaml_get_type = int32(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff < 0i64) { pass 0i32 - 1i32; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:tid = aria_libc_mem_read_i64(ent, eoff + 8i64);
+    pass @cast<int32>(tid);
+};
+
+pub func:yaml_get_string = string(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff < 0i64) { pass ""; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:tid = aria_libc_mem_read_i64(ent, eoff + 8i64);
+    if (tid == 1i64) {
+        int64:iv = aria_libc_mem_read_i64(ent, eoff + 16i64);
+        pass aria_libc_string_from_i64(iv);
+    }
+    if (tid == 3i64) {
+        int64:bv = aria_libc_mem_read_i64(ent, eoff + 16i64);
+        if (bv == 1i64) { pass "true"; }
+        pass "false";
+    }
+    int64:vl = aria_libc_mem_read_i64(ent, eoff + 288i64);
+    pass aria_libc_string_from_buf(ent, eoff + 296i64, vl);
+};
+
+pub func:yaml_get_int = int64(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff < 0i64) { pass 0i64; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:tid = aria_libc_mem_read_i64(ent, eoff + 8i64);
+    if (tid == 1i64) { pass aria_libc_mem_read_i64(ent, eoff + 16i64); }
+    if (tid == 3i64) { pass aria_libc_mem_read_i64(ent, eoff + 16i64); }
+    int64:vl = aria_libc_mem_read_i64(ent, eoff + 288i64);
+    string:vs = aria_libc_string_from_buf(ent, eoff + 296i64, vl);
+    pass aria_libc_string_atoi(vs);
+};
+
+pub func:yaml_get_float = flt64(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff < 0i64) { pass 0.0; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:vl = aria_libc_mem_read_i64(ent, eoff + 288i64);
+    string:vs = aria_libc_string_from_buf(ent, eoff + 296i64, vl);
+    pass aria_libc_string_atof(vs);
+};
+
+pub func:yaml_get_bool = int32(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff < 0i64) { pass 0i32; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    int64:bv = aria_libc_mem_read_i64(ent, eoff + 16i64);
+    pass @cast<int32>(bv);
+};
+
+pub func:yaml_has_key = int32(string:key) {
+    drop _y_init();
+    int64:eoff = raw _y_find(key);
+    if (eoff >= 0i64) { pass 1i32; }
+    pass 0i32;
+};
+
+pub func:yaml_error = string() { pass ""; };
+
+// ── setters ─────────────────────────────────────────────────────
+
+pub func:yaml_set_string = int32(string:key, string:val) {
+    drop _y_init();
+    int64:eoff = raw _y_add(key);
+    if (eoff < 0i64) { pass 0i32 - 1i32; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    aria_libc_mem_write_i64(ent, eoff + 8i64, 0i64);
+    int64:vl = aria_libc_string_strlen(val);
+    if (vl > 239i64) { vl = 239i64; }
+    aria_libc_mem_write_i64(ent, eoff + 288i64, vl);
+    aria_libc_string_copy_to_buf(ent, eoff + 296i64, val, 0i64, vl);
+    pass 0i32;
+};
+
+pub func:yaml_set_int = int32(string:key, int64:val) {
+    drop _y_init();
+    int64:eoff = raw _y_add(key);
+    if (eoff < 0i64) { pass 0i32 - 1i32; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    aria_libc_mem_write_i64(ent, eoff + 8i64, 1i64);
+    aria_libc_mem_write_i64(ent, eoff + 16i64, val);
+    string:vs = aria_libc_string_from_i64(val);
+    int64:vl = aria_libc_string_strlen(vs);
+    if (vl > 239i64) { vl = 239i64; }
+    aria_libc_mem_write_i64(ent, eoff + 288i64, vl);
+    aria_libc_string_copy_to_buf(ent, eoff + 296i64, vs, 0i64, vl);
+    pass 0i32;
+};
+
+pub func:yaml_set_bool = int32(string:key, int32:val) {
+    drop _y_init();
+    int64:eoff = raw _y_add(key);
+    if (eoff < 0i64) { pass 0i32 - 1i32; }
+    int64:ent = aria_libc_mem_get_global(6i32);
+    aria_libc_mem_write_i64(ent, eoff + 8i64, 3i64);
+    if (val != 0i32) {
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 1i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, 4i64);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, "true", 0i64, 4i64);
+    } else {
+        aria_libc_mem_write_i64(ent, eoff + 16i64, 0i64);
+        aria_libc_mem_write_i64(ent, eoff + 288i64, 5i64);
+        aria_libc_string_copy_to_buf(ent, eoff + 296i64, "false", 0i64, 5i64);
+    }
+    pass 0i32;
+};
+
+pub func:yaml_count = int32() {
+    drop _y_init();
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:cnt = aria_libc_mem_read_i64(meta, 8i64);
+    pass @cast<int32>(cnt);
+};
+
+pub func:yaml_clear = NIL() {
+    drop _y_init();
+    int64:meta = aria_libc_mem_get_global(5i32);
+    int64:ent = aria_libc_mem_get_global(6i32);
+    aria_libc_mem_write_i64(meta, 8i64, 0i64);
+    aria_libc_mem_zero(ent, 69632i64);
+    pass NIL;
+};

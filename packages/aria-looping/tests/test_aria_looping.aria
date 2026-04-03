@@ -1,38 +1,22 @@
-// test_aria_looping.aria — Looping model test suite
+// test_aria_looping.aria — Looping model test suite (pure Aria)
 //
 // Compile:
-//   ariac test_aria_looping.aria -o test_looping -L../shim -laria_looping_shim -lm
+//   ariac test_aria_looping.aria -o test_looping \
+//     -L../../aria-libc/shim -laria_libc_mem -laria_libc_string -laria_libc_math -lm
 // Run:
-//   LD_LIBRARY_PATH=../shim ./test_looping
+//   LD_LIBRARY_PATH=../../aria-libc/shim ./test_looping
 
-use "print_utils.aria".*;
+use "../src/aria_looping.aria".*;
+
+extern "aria_libc_string" {
+    func:aria_libc_string_from_i64 = string(int64:v);
+}
 
 func:failsafe = int32(tbb32:err) { exit 1; };
 
-extern "aria_looping_shim" {
-    func:aria_looping_last_error      = string();
-    func:aria_looping_set_seed        = void(int32:seed);
-    func:aria_looping_create          = int64(int32:d_model, int32:n_heads, int32:ffn_dim, int32:max_iters, int32:vocab_size, int32:max_seq);
-    func:aria_looping_destroy         = void(int64:id);
-    func:aria_looping_d_model         = int32(int64:id);
-    func:aria_looping_n_heads         = int32(int64:id);
-    func:aria_looping_ffn_dim         = int32(int64:id);
-    func:aria_looping_max_iters       = int32(int64:id);
-    func:aria_looping_vocab_size      = int32(int64:id);
-    func:aria_looping_last_iters_used = int32(int64:id);
-    func:aria_looping_set_threshold   = void(int64:id, flt64:thresh);
-    func:aria_looping_param_count     = int64(int64:id);
-    func:aria_looping_scratch_create  = int64(int32:rows, int32:cols);
-    func:aria_looping_scratch_destroy = void(int64:id);
-    func:aria_looping_scratch_set     = void(int64:id, int32:idx, flt64:val);
-    func:aria_looping_scratch_get     = flt64(int64:id, int32:idx);
-    func:aria_looping_scratch_rows    = int32(int64:id);
-    func:aria_looping_scratch_cols    = int32(int64:id);
-    func:aria_looping_forward         = int64(int64:model, int64:input);
-    func:aria_looping_forward_n       = int64(int64:model, int64:input, int32:n_iters);
-    func:aria_looping_argmax          = int32(int64:scratch, int32:row);
-    func:aria_looping_softmax_row     = void(int64:scratch, int32:row);
-}
+func:s = string(int64:v) {
+    pass aria_libc_string_from_i64(v);
+};
 
 func:main = int32() {
     int32:passed = 0i32;
@@ -41,36 +25,32 @@ func:main = int32() {
     println("=== aria-looping test suite ===");
     println("");
 
-    aria_looping_set_seed(42i32);
+    drop looping_set_seed(42i32);
 
-    // ── Test 1: Create model ──
-    // d_model=16, n_heads=4, ffn_dim=64, max_iters=6, vocab=64, max_seq=16
+    // T01: Create model (d_model=16, n_heads=4, ffn=64, iters=6, vocab=64, seq=16)
     total += 1i32;
-    int64:model = aria_looping_create(16i32, 4i32, 64i32, 6i32, 64i32, 16i32);
-    print("Test 1 — Create model: id=");
-    println(string_from_int(model));
-    if (model >= 0i64) {
-        println("  PASS");
-        passed += 1i32;
-    }
+    int64:model = raw looping_create(16i32, 4i32, 64i32, 6i32, 64i32, 16i32);
+    print("T01 create: id=");
+    println(raw s(model));
+    if (model >= 0i64) { println("  PASS"); passed += 1i32; }
 
-    // ── Test 2: Metadata ──
+    // T02: Metadata
     total += 1i32;
-    int32:dm = aria_looping_d_model(model);
-    int32:nh = aria_looping_n_heads(model);
-    int32:ff = aria_looping_ffn_dim(model);
-    int32:mi = aria_looping_max_iters(model);
-    int32:vs = aria_looping_vocab_size(model);
-    print("Test 2 — d_model=");
-    print(string_from_int(@cast<int64>(dm)));
-    print(" n_heads=");
-    print(string_from_int(@cast<int64>(nh)));
-    print(" ffn=");
-    print(string_from_int(@cast<int64>(ff)));
-    print(" max_iters=");
-    print(string_from_int(@cast<int64>(mi)));
-    print(" vocab=");
-    println(string_from_int(@cast<int64>(vs)));
+    int32:dm = raw looping_d_model(model);
+    int32:nh = raw looping_n_heads(model);
+    int32:ff = raw looping_ffn_dim(model);
+    int32:mi = raw looping_max_iters(model);
+    int32:vs = raw looping_vocab_size(model);
+    print("T02 meta: dm=");
+    print(raw s(@cast<int64>(dm)));
+    print(" nh=");
+    print(raw s(@cast<int64>(nh)));
+    print(" ff=");
+    print(raw s(@cast<int64>(ff)));
+    print(" mi=");
+    print(raw s(@cast<int64>(mi)));
+    print(" vs=");
+    println(raw s(@cast<int64>(vs)));
     if (dm == 16i32) {
         if (nh == 4i32) {
             if (mi == 6i32) {
@@ -80,37 +60,34 @@ func:main = int32() {
         }
     }
 
-    // ── Test 3: Parameter count ──
+    // T03: Param count
     total += 1i32;
-    int64:params = aria_looping_param_count(model);
-    print("Test 3 — Param count: ");
-    println(string_from_int(params));
-    if (params > 0i64) {
-        println("  PASS");
-        passed += 1i32;
-    }
+    int64:params = raw looping_param_count(model);
+    print("T03 params: ");
+    println(raw s(params));
+    if (params > 0i64) { println("  PASS"); passed += 1i32; }
 
-    // ── Test 4: Forward (default max_iters) ──
+    // T04: Forward (default max_iters)
     total += 1i32;
-    int64:inp = aria_looping_scratch_create(4i32, 1i32);
-    aria_looping_scratch_set(inp, 0i32, 1.0);
-    aria_looping_scratch_set(inp, 1i32, 5.0);
-    aria_looping_scratch_set(inp, 2i32, 10.0);
-    aria_looping_scratch_set(inp, 3i32, 3.0);
-    int64:logits = aria_looping_forward(model, inp);
-    print("Test 4 — Forward (max iters): logits_id=");
-    println(string_from_int(logits));
+    int64:inp = raw looping_scratch_create(4i32, 1i32);
+    drop looping_scratch_set(inp, 0i32, 1.0);
+    drop looping_scratch_set(inp, 1i32, 5.0);
+    drop looping_scratch_set(inp, 2i32, 10.0);
+    drop looping_scratch_set(inp, 3i32, 3.0);
+    int64:logits = raw looping_forward(model, inp);
+    print("T04 forward: logits=");
+    println(raw s(logits));
     if (logits >= 0i64) {
-        int32:lr = aria_looping_scratch_rows(logits);
-        int32:lc = aria_looping_scratch_cols(logits);
-        print("  Output shape: [");
-        print(string_from_int(@cast<int64>(lr)));
+        int32:lr = raw looping_scratch_rows(logits);
+        int32:lc = raw looping_scratch_cols(logits);
+        print("  shape: [");
+        print(raw s(@cast<int64>(lr)));
         print(" x ");
-        print(string_from_int(@cast<int64>(lc)));
+        print(raw s(@cast<int64>(lc)));
         println("]");
-        int32:used = aria_looping_last_iters_used(model);
-        print("  Iterations used: ");
-        println(string_from_int(@cast<int64>(used)));
+        int32:used = raw looping_last_iters_used(model);
+        print("  iters: ");
+        println(raw s(@cast<int64>(used)));
         if (lr == 4i32) {
             if (lc == 64i32) {
                 if (used == 6i32) {
@@ -121,139 +98,113 @@ func:main = int32() {
         }
     }
 
-    // ── Test 5: Forward with specific iteration count ──
+    // T05: Forward with specific iteration count
     total += 1i32;
-    int64:logits2 = aria_looping_forward_n(model, inp, 2i32);
-    print("Test 5 — Forward_n(2 iters): ");
+    int64:logits2 = raw looping_forward_n(model, inp, 2i32);
+    print("T05 forward_n(2): ");
     if (logits2 >= 0i64) {
-        int32:used2 = aria_looping_last_iters_used(model);
-        print("iters_used=");
-        println(string_from_int(@cast<int64>(used2)));
-        if (used2 == 2i32) {
-            println("  PASS");
-            passed += 1i32;
-        }
-        aria_looping_scratch_destroy(logits2);
+        int32:used2 = raw looping_last_iters_used(model);
+        print("iters=");
+        println(raw s(@cast<int64>(used2)));
+        if (used2 == 2i32) { println("  PASS"); passed += 1i32; }
+        drop looping_scratch_destroy(logits2);
     }
 
-    // ── Test 6: Argmax ──
+    // T06: Argmax
     total += 1i32;
-    int32:pred0 = aria_looping_argmax(logits, 0i32);
-    int32:pred3 = aria_looping_argmax(logits, 3i32);
-    print("Test 6 — Predictions: pos0=");
-    print(string_from_int(@cast<int64>(pred0)));
+    int32:pred0 = raw looping_argmax(logits, 0i32);
+    int32:pred3 = raw looping_argmax(logits, 3i32);
+    print("T06 argmax: pos0=");
+    print(raw s(@cast<int64>(pred0)));
     print(" pos3=");
-    println(string_from_int(@cast<int64>(pred3)));
+    println(raw s(@cast<int64>(pred3)));
     if (pred0 >= 0i32) {
-        if (pred0 < 64i32) {
-            println("  PASS");
-            passed += 1i32;
-        }
+        if (pred0 < 64i32) { println("  PASS"); passed += 1i32; }
     }
 
-    // ── Test 7: Softmax ──
+    // T07: Softmax
     total += 1i32;
-    aria_looping_softmax_row(logits, 0i32);
+    drop looping_softmax_row(logits, 0i32);
     flt64:prob_sum = 0.0;
-    int32:pi = 0i32;
-    for (pi = 0i32; pi < 64i32; pi += 1i32) {
-        prob_sum = prob_sum + aria_looping_scratch_get(logits, pi);
+    loop(0i64, 64i64, 1i64) {
+        flt64:pv = raw looping_scratch_get(logits, @cast<int32>($));
+        prob_sum = prob_sum + pv;
     }
-    print("Test 7 — Softmax sum=");
-    println(string_from_int(@cast<int64>(prob_sum * 1000.0)));
+    print("T07 softmax sum*1000=");
+    println(raw s(@cast<int64>(prob_sum * 1000.0)));
     if (prob_sum > 0.99) {
-        if (prob_sum < 1.01) {
-            println("  PASS");
-            passed += 1i32;
-        }
+        if (prob_sum < 1.01) { println("  PASS"); passed += 1i32; }
     }
 
-    // ── Test 8: More iterations → different predictions ──
+    // T08: Different iteration counts produce valid outputs
     total += 1i32;
-    int64:lo1 = aria_looping_forward_n(model, inp, 1i32);
-    int64:lo6 = aria_looping_forward_n(model, inp, 6i32);
+    int64:lo1 = raw looping_forward_n(model, inp, 1i32);
+    int64:lo6 = raw looping_forward_n(model, inp, 6i32);
     if (lo1 >= 0i64) {
         if (lo6 >= 0i64) {
-            // Just check both produce valid outputs
-            int32:p1 = aria_looping_argmax(lo1, 0i32);
-            int32:p6 = aria_looping_argmax(lo6, 0i32);
-            print("Test 8 — 1-iter pred=");
-            print(string_from_int(@cast<int64>(p1)));
-            print(" 6-iter pred=");
-            println(string_from_int(@cast<int64>(p6)));
+            int32:p1 = raw looping_argmax(lo1, 0i32);
+            int32:p6 = raw looping_argmax(lo6, 0i32);
+            print("T08 1-iter=");
+            print(raw s(@cast<int64>(p1)));
+            print(" 6-iter=");
+            println(raw s(@cast<int64>(p6)));
             if (p1 >= 0i32) {
-                if (p6 >= 0i32) {
-                    println("  PASS");
-                    passed += 1i32;
-                }
+                if (p6 >= 0i32) { println("  PASS"); passed += 1i32; }
             }
-            aria_looping_scratch_destroy(lo6);
+            drop looping_scratch_destroy(lo6);
         }
-        aria_looping_scratch_destroy(lo1);
+        drop looping_scratch_destroy(lo1);
     }
 
-    // ── Test 9: Convergence threshold ──
+    // T09: Convergence threshold
     total += 1i32;
-    aria_looping_set_threshold(model, 0.001);
-    int64:logits_ct = aria_looping_forward(model, inp);
+    drop looping_set_threshold(model, 0.001);
+    int64:logits_ct = raw looping_forward(model, inp);
     if (logits_ct >= 0i64) {
-        int32:used_ct = aria_looping_last_iters_used(model);
-        print("Test 9 — Convergence (thresh=0.001): iters=");
-        println(string_from_int(@cast<int64>(used_ct)));
-        // Could stop early or run all 6 — either is valid
+        int32:used_ct = raw looping_last_iters_used(model);
+        print("T09 convergence iters=");
+        println(raw s(@cast<int64>(used_ct)));
         if (used_ct >= 1i32) {
-            if (used_ct <= 6i32) {
-                println("  PASS");
-                passed += 1i32;
-            }
+            if (used_ct <= 6i32) { println("  PASS"); passed += 1i32; }
         }
-        aria_looping_scratch_destroy(logits_ct);
+        drop looping_scratch_destroy(logits_ct);
     }
-    aria_looping_set_threshold(model, 0.0);  // reset
+    drop looping_set_threshold(model, 0.0);
 
-    // ── Test 10: Longer sequence ──
+    // T10: Longer sequence (len=12)
     total += 1i32;
-    int64:inp3 = aria_looping_scratch_create(12i32, 1i32);
-    int32:si = 0i32;
-    for (si = 0i32; si < 12i32; si += 1i32) {
-        aria_looping_scratch_set(inp3, si, @cast<flt64>(si) * 4.0);
+    int64:inp3 = raw looping_scratch_create(12i32, 1i32);
+    loop(0i64, 12i64, 1i64) {
+        drop looping_scratch_set(inp3, @cast<int32>($), @cast<flt64>($) * 4.0);
     }
-    int64:logits3 = aria_looping_forward(model, inp3);
-    print("Test 10 — Longer seq (len=12): ");
+    int64:logits3 = raw looping_forward(model, inp3);
+    print("T10 seq=12: ");
     if (logits3 >= 0i64) {
-        int32:lr3 = aria_looping_scratch_rows(logits3);
-        int32:lc3 = aria_looping_scratch_cols(logits3);
+        int32:lr3 = raw looping_scratch_rows(logits3);
+        int32:lc3 = raw looping_scratch_cols(logits3);
         print("[");
-        print(string_from_int(@cast<int64>(lr3)));
+        print(raw s(@cast<int64>(lr3)));
         print(" x ");
-        print(string_from_int(@cast<int64>(lc3)));
+        print(raw s(@cast<int64>(lc3)));
         println("]");
         if (lr3 == 12i32) {
-            if (lc3 == 64i32) {
-                println("  PASS");
-                passed += 1i32;
-            }
+            if (lc3 == 64i32) { println("  PASS"); passed += 1i32; }
         }
-        aria_looping_scratch_destroy(logits3);
+        drop looping_scratch_destroy(logits3);
     }
-    aria_looping_scratch_destroy(inp3);
+    drop looping_scratch_destroy(inp3);
 
-    // ── Cleanup ──
-    aria_looping_scratch_destroy(logits);
-    aria_looping_scratch_destroy(inp);
-    aria_looping_destroy(model);
+    // Cleanup
+    drop looping_scratch_destroy(logits);
+    drop looping_scratch_destroy(inp);
+    drop looping_destroy(model);
 
-    // ── Summary ──
     println("");
     print("=== Results: ");
-    print(string_from_int(@cast<int64>(passed)));
+    print(raw s(@cast<int64>(passed)));
     print("/");
-    print(string_from_int(@cast<int64>(total)));
+    print(raw s(@cast<int64>(total)));
     println(" passed ===");
-
-    if (passed == total) {
-        println("ALL TESTS PASSED");
-        exit 0;
-    }
-    pass 1i32;
+    if (passed == total) { println("ALL TESTS PASSED"); exit 0; }
+    exit 1;
 };
