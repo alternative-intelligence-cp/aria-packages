@@ -1,0 +1,193 @@
+// aria_rate_limit.aria — Token-bucket rate limiter (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_rate_limit.aria".*;
+//
+// Uses token bucket algorithm stored in ahash handle.
+// Without real-time clock, token refill is manual via test_set_tokens.
+
+// ── Configuration ───────────────────────────────────────────────────────────
+
+pub func:rate_configure = int64(int64:max_tokens, int64:refill_rate) {
+    int64:h = ahash(256);
+    string:mt = string_from_int(max_tokens);
+    string:rr = string_from_int(refill_rate);
+    ahset(h, "_max", mt);
+    ahset(h, "_rate", rr);
+    ahset(h, "_tokens", mt);
+    pass h;
+};
+
+pub func:rate_set_max = int32(int64:h, int64:max_tokens) {
+    ahset(h, "_max", string_from_int(max_tokens));
+    pass 0i32;
+};
+
+pub func:rate_set_rate = int32(int64:h, int64:refill_rate) {
+    ahset(h, "_rate", string_from_int(refill_rate));
+    pass 0i32;
+};
+
+// ── Token operations ────────────────────────────────────────────────────────
+
+pub func:rate_check = int64(int64:h) {
+    string:ts = ahget(h, "_tokens");
+    int64:t = 0i64;
+    int64:tlen = string_length(ts);
+    int64:ti = 0i64;
+    while (ti < tlen) {
+        string:td = string_substring(ts, ti, ti + 1i64);
+        t = t * 10i64;
+        if (td == "0") { t = t + 0i64; }
+        if (td == "1") { t = t + 1i64; }
+        if (td == "2") { t = t + 2i64; }
+        if (td == "3") { t = t + 3i64; }
+        if (td == "4") { t = t + 4i64; }
+        if (td == "5") { t = t + 5i64; }
+        if (td == "6") { t = t + 6i64; }
+        if (td == "7") { t = t + 7i64; }
+        if (td == "8") { t = t + 8i64; }
+        if (td == "9") { t = t + 9i64; }
+        ti = ti + 1i64;
+    }
+    if (t < 1i64) {
+        pass 0i64;
+    }
+    t = t - 1i64;
+    ahset(h, "_tokens", string_from_int(t));
+    pass 1i64;
+};
+
+pub func:rate_check_cost = int64(int64:h, int64:cost) {
+    string:ts = ahget(h, "_tokens");
+    int64:t = 0i64;
+    int64:tlen = string_length(ts);
+    int64:ti = 0i64;
+    while (ti < tlen) {
+        string:td = string_substring(ts, ti, ti + 1i64);
+        t = t * 10i64;
+        if (td == "0") { t = t + 0i64; }
+        if (td == "1") { t = t + 1i64; }
+        if (td == "2") { t = t + 2i64; }
+        if (td == "3") { t = t + 3i64; }
+        if (td == "4") { t = t + 4i64; }
+        if (td == "5") { t = t + 5i64; }
+        if (td == "6") { t = t + 6i64; }
+        if (td == "7") { t = t + 7i64; }
+        if (td == "8") { t = t + 8i64; }
+        if (td == "9") { t = t + 9i64; }
+        ti = ti + 1i64;
+    }
+    if (t < cost) {
+        pass 0i64;
+    }
+    t = t - cost;
+    ahset(h, "_tokens", string_from_int(t));
+    pass 1i64;
+};
+
+pub func:rate_remaining = int64(int64:h) {
+    string:ts = ahget(h, "_tokens");
+    int64:t = 0i64;
+    int64:tlen = string_length(ts);
+    int64:ti = 0i64;
+    while (ti < tlen) {
+        string:td = string_substring(ts, ti, ti + 1i64);
+        t = t * 10i64;
+        if (td == "0") { t = t + 0i64; }
+        if (td == "1") { t = t + 1i64; }
+        if (td == "2") { t = t + 2i64; }
+        if (td == "3") { t = t + 3i64; }
+        if (td == "4") { t = t + 4i64; }
+        if (td == "5") { t = t + 5i64; }
+        if (td == "6") { t = t + 6i64; }
+        if (td == "7") { t = t + 7i64; }
+        if (td == "8") { t = t + 8i64; }
+        if (td == "9") { t = t + 9i64; }
+        ti = ti + 1i64;
+    }
+    pass t;
+};
+
+pub func:rate_retry_after = int64(int64:h) {
+    string:ts = ahget(h, "_tokens");
+    int64:t = 0i64;
+    int64:tlen = string_length(ts);
+    int64:ti = 0i64;
+    while (ti < tlen) {
+        string:td = string_substring(ts, ti, ti + 1i64);
+        t = t * 10i64;
+        if (td == "0") { t = t + 0i64; }
+        if (td == "1") { t = t + 1i64; }
+        if (td == "2") { t = t + 2i64; }
+        if (td == "3") { t = t + 3i64; }
+        if (td == "4") { t = t + 4i64; }
+        if (td == "5") { t = t + 5i64; }
+        if (td == "6") { t = t + 6i64; }
+        if (td == "7") { t = t + 7i64; }
+        if (td == "8") { t = t + 8i64; }
+        if (td == "9") { t = t + 9i64; }
+        ti = ti + 1i64;
+    }
+    if (t > 0i64) { pass 0i64; }
+    string:rs = ahget(h, "_rate");
+    int64:r = 0i64;
+    int64:rlen = string_length(rs);
+    int64:ri = 0i64;
+    while (ri < rlen) {
+        string:rd = string_substring(rs, ri, ri + 1i64);
+        r = r * 10i64;
+        if (rd == "0") { r = r + 0i64; }
+        if (rd == "1") { r = r + 1i64; }
+        if (rd == "2") { r = r + 2i64; }
+        if (rd == "3") { r = r + 3i64; }
+        if (rd == "4") { r = r + 4i64; }
+        if (rd == "5") { r = r + 5i64; }
+        if (rd == "6") { r = r + 6i64; }
+        if (rd == "7") { r = r + 7i64; }
+        if (rd == "8") { r = r + 8i64; }
+        if (rd == "9") { r = r + 9i64; }
+        ri = ri + 1i64;
+    }
+    if (r == 0i64) { pass 0i64; }
+    pass 1i64;
+};
+
+// ── Headers ─────────────────────────────────────────────────────────────────
+
+pub func:rate_headers = string(int64:h) {
+    string:ms = ahget(h, "_max");
+    string:ts = ahget(h, "_tokens");
+    string:hdr = string_concat("X-RateLimit-Limit: ", ms);
+    hdr = string_concat(hdr, "\nX-RateLimit-Remaining: ");
+    hdr = string_concat(hdr, ts);
+    pass hdr;
+};
+
+// ── Reset / Test ────────────────────────────────────────────────────────────
+
+pub func:rate_reset = int32(int64:h) {
+    string:ms = ahget(h, "_max");
+    ahset(h, "_tokens", ms);
+    pass 0i32;
+};
+
+pub func:rate_test_set_tokens = int32(int64:h, int64:n) {
+    ahset(h, "_tokens", string_from_int(n));
+    pass 0i32;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:RateLimit = {
+    func:init       = int64(int64:m, int64:r) { pass raw rate_configure(m, r); };
+    func:set_max    = int32(int64:h, int64:m) { pass raw rate_set_max(h, m); };
+    func:set_rate   = int32(int64:h, int64:r) { pass raw rate_set_rate(h, r); };
+    func:allowed    = int64(int64:h) { pass raw rate_check(h); };
+    func:cost_check = int64(int64:h, int64:c) { pass raw rate_check_cost(h, c); };
+    func:left       = int64(int64:h) { pass raw rate_remaining(h); };
+    func:retry      = int64(int64:h) { pass raw rate_retry_after(h); };
+    func:hdrs       = string(int64:h) { pass raw rate_headers(h); };
+    func:clear      = int32(int64:h) { pass raw rate_reset(h); };
+    func:set_tok    = int32(int64:h, int64:n) { pass raw rate_test_set_tokens(h, n); };
+};

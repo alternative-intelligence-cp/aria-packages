@@ -1,0 +1,101 @@
+// test_aria_session.aria — 12-test suite for aria-session (v0.12.1)
+use "../src/aria_session.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_lifecycle = int32() {
+    int32:pc = 0i32;
+
+    int64:s1 = raw session_create("abc123");
+    string:sid1 = raw session_id(s1);
+    if (sid1 == "abc123") { println("[PASS] T01 create + id"); pc += 1i32; }
+    if (sid1 != "abc123") { println("[FAIL] T01"); }
+
+    int64:act1 = raw session_is_active(s1);
+    if (act1 == 1i64) { println("[PASS] T02 is_active=true"); pc += 1i32; }
+    if (act1 != 1i64) { println("[FAIL] T02"); }
+
+    int32:_d = raw session_destroy(s1);
+    int64:act2 = raw session_is_active(s1);
+    if (act2 == 0i64) { println("[PASS] T03 destroy → inactive"); pc += 1i32; }
+    if (act2 != 0i64) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_vars = int32() {
+    int32:pc = 0i32;
+
+    int64:s2 = raw session_create("def456");
+    int32:_sv = raw session_set(s2, "user", "alice");
+    string:g4 = raw session_get(s2, "user");
+    if (g4 == "alice") { println("[PASS] T04 set+get user=alice"); pc += 1i32; }
+    if (g4 != "alice") { println("[FAIL] T04"); }
+
+    int64:h5 = raw session_has(s2, "user");
+    if (h5 == 1i64) { println("[PASS] T05 has user=true"); pc += 1i32; }
+    if (h5 != 1i64) { println("[FAIL] T05"); }
+
+    int64:h6 = raw session_has(s2, "missing");
+    if (h6 == 0i64) { println("[PASS] T06 has missing=false"); pc += 1i32; }
+    if (h6 != 0i64) { println("[FAIL] T06"); }
+
+    int32:_sv2 = raw session_set(s2, "role", "admin");
+    int64:vc7 = raw session_var_count(s2);
+    if (vc7 == 2i64) { println("[PASS] T07 var_count=2"); pc += 1i32; }
+    if (vc7 != 2i64) { println("[FAIL] T07"); }
+
+    pass pc;
+};
+
+func:test_remove = int32() {
+    int32:pc = 0i32;
+
+    int64:s3 = raw session_create("ghi789");
+    int32:_sv = raw session_set(s3, "color", "blue");
+    int32:_rm = raw session_remove(s3, "color");
+    int64:vc8 = raw session_var_count(s3);
+    if (vc8 == 0i64) { println("[PASS] T08 remove → count=0"); pc += 1i32; }
+    if (vc8 != 0i64) { println("[FAIL] T08"); }
+
+    pass pc;
+};
+
+func:test_cookie = int32() {
+    int32:pc = 0i32;
+
+    int64:s4 = raw session_create("tok001");
+
+    string:cname9 = raw session_get_cookie_name(s4);
+    if (cname9 == "ARIA_SID") { println("[PASS] T09 default cookie name"); pc += 1i32; }
+    if (cname9 != "ARIA_SID") { println("[FAIL] T09"); }
+
+    int32:_sc = raw session_set_cookie_name(s4, "MY_SES");
+    string:ch10 = raw session_cookie_header(s4);
+    int32:t10 = 0i32;
+    if (string_contains(ch10, "MY_SES=tok001")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 cookie header name+sid"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    int32:t11 = 0i32;
+    if (string_contains(ch10, "HttpOnly")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 cookie HttpOnly"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    string:clr12 = raw session_clear_cookie(s4);
+    int32:t12 = 0i32;
+    if (string_contains(clr12, "Max-Age=0")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 clear cookie Max-Age=0"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_lifecycle();
+    int32:p2 = raw test_vars();
+    int32:p3 = raw test_remove();
+    int32:p4 = raw test_cookie();
+    println("DONE");
+    exit(0i32);
+};

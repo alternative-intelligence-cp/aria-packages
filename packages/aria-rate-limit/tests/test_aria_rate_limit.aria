@@ -1,0 +1,97 @@
+// test_aria_rate_limit.aria — 12-test suite for aria-rate-limit (v0.12.1)
+use "../src/aria_rate_limit.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_basic = int32() {
+    int32:pc = 0i32;
+
+    int64:rl = raw rate_configure(5i64, 1i64);
+    int64:rem1 = raw rate_remaining(rl);
+    if (rem1 == 5i64) { println("[PASS] T01 initial tokens=5"); pc += 1i32; }
+    if (rem1 != 5i64) { println("[FAIL] T01"); }
+
+    int64:ok2 = raw rate_check(rl);
+    if (ok2 == 1i64) { println("[PASS] T02 first check allowed"); pc += 1i32; }
+    if (ok2 != 1i64) { println("[FAIL] T02"); }
+
+    int64:rem3 = raw rate_remaining(rl);
+    if (rem3 == 4i64) { println("[PASS] T03 remaining=4"); pc += 1i32; }
+    if (rem3 != 4i64) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_exhaust = int32() {
+    int32:pc = 0i32;
+
+    int64:rl2 = raw rate_configure(3i64, 1i64);
+    int64:_c1 = raw rate_check(rl2);
+    int64:_c2 = raw rate_check(rl2);
+    int64:_c3 = raw rate_check(rl2);
+    int64:ok4 = raw rate_check(rl2);
+    if (ok4 == 0i64) { println("[PASS] T04 exhausted → denied"); pc += 1i32; }
+    if (ok4 != 0i64) { println("[FAIL] T04"); }
+
+    int64:rem5 = raw rate_remaining(rl2);
+    if (rem5 == 0i64) { println("[PASS] T05 remaining=0"); pc += 1i32; }
+    if (rem5 != 0i64) { println("[FAIL] T05"); }
+
+    int64:rt6 = raw rate_retry_after(rl2);
+    if (rt6 == 1i64) { println("[PASS] T06 retry_after=1"); pc += 1i32; }
+    if (rt6 != 1i64) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_cost = int32() {
+    int32:pc = 0i32;
+
+    int64:rl3 = raw rate_configure(10i64, 2i64);
+    int64:ok7 = raw rate_check_cost(rl3, 3i64);
+    if (ok7 == 1i64) { println("[PASS] T07 cost=3 allowed"); pc += 1i32; }
+    if (ok7 != 1i64) { println("[FAIL] T07"); }
+
+    int64:rem8 = raw rate_remaining(rl3);
+    if (rem8 == 7i64) { println("[PASS] T08 remaining=7 after cost=3"); pc += 1i32; }
+    if (rem8 != 7i64) { println("[FAIL] T08"); }
+
+    int64:ok9 = raw rate_check_cost(rl3, 8i64);
+    if (ok9 == 0i64) { println("[PASS] T09 cost=8 denied (only 7 left)"); pc += 1i32; }
+    if (ok9 != 0i64) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_headers_reset = int32() {
+    int32:pc = 0i32;
+
+    int64:rl4 = raw rate_configure(5i64, 1i64);
+    int64:_c = raw rate_check(rl4);
+    string:h10 = raw rate_headers(rl4);
+    int32:t10 = 0i32;
+    if (string_contains(h10, "X-RateLimit-Limit: 5")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 headers Limit"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    int32:t11 = 0i32;
+    if (string_contains(h10, "Remaining: 4")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 headers Remaining"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r = raw rate_reset(rl4);
+    int64:rem12 = raw rate_remaining(rl4);
+    if (rem12 == 5i64) { println("[PASS] T12 reset → tokens=5"); pc += 1i32; }
+    if (rem12 != 5i64) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_basic();
+    int32:p2 = raw test_exhaust();
+    int32:p3 = raw test_cost();
+    int32:p4 = raw test_headers_reset();
+    println("DONE");
+    exit(0i32);
+};

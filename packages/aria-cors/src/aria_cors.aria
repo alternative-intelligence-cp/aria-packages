@@ -1,0 +1,171 @@
+// aria_cors.aria — CORS header builder (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_cors.aria".*;
+//
+// Configuration stored in ahash. Set allowed origins, methods, headers, then
+// generate Access-Control-* response headers.
+
+// ── CORS config creation ────────────────────────────────────────────────────
+
+// Create a new CORS config handle with defaults.
+// Origins/methods/headers stored as pipe-delimited: "|val1|val2|"
+pub func:cors_reset = int64() {
+    int64:ch = ahash(64);
+    ahset(ch, "_origins", "");
+    ahset(ch, "_methods", "");
+    ahset(ch, "_headers", "");
+    ahset(ch, "_expose", "");
+    ahset(ch, "_credentials", "0");
+    ahset(ch, "_max_age", "0");
+    pass ch;
+};
+
+// ── Configuration setters ───────────────────────────────────────────────────
+
+// Set allowed origin (pipe-delimited, e.g. "http://a.com" or "*")
+pub func:cors_allow_origin = int64(int64:ch, string:origin) {
+    string:cur = ahget(ch, "_origins");
+    string:entry = string_concat("|", string_concat(origin, "|"));
+    if (cur == "") {
+        ahset(ch, "_origins", entry);
+    }
+    if (cur != "") {
+        ahset(ch, "_origins", string_concat(cur, string_concat(origin, "|")));
+    }
+    pass 1i64;
+};
+
+pub func:cors_allow_methods = int64(int64:ch, string:methods) {
+    ahset(ch, "_methods", methods);
+    pass 1i64;
+};
+
+pub func:cors_allow_headers = int64(int64:ch, string:headers) {
+    ahset(ch, "_headers", headers);
+    pass 1i64;
+};
+
+pub func:cors_allow_credentials = int64(int64:ch, int64:flag) {
+    if (flag == 1i64) { ahset(ch, "_credentials", "1"); }
+    if (flag == 0i64) { ahset(ch, "_credentials", "0"); }
+    pass 1i64;
+};
+
+pub func:cors_expose_headers = int64(int64:ch, string:headers) {
+    ahset(ch, "_expose", headers);
+    pass 1i64;
+};
+
+pub func:cors_max_age = int64(int64:ch, int64:seconds) {
+    string:sec_str = string_from_int(seconds);
+    ahset(ch, "_max_age", sec_str);
+    pass 1i64;
+};
+
+// ── Query functions ─────────────────────────────────────────────────────────
+
+// Check if origin is in the allowed list (or wildcard "*")
+pub func:cors_is_allowed = int64(int64:ch, string:origin) {
+    string:origins = ahget(ch, "_origins");
+    // wildcard check
+    if (string_contains(origins, "|*|")) { pass 1i64; }
+    // specific origin check
+    string:needle = string_concat("|", string_concat(origin, "|"));
+    if (string_contains(origins, needle)) { pass 1i64; }
+    pass 0i64;
+};
+
+// Check if a request is a preflight (method=OPTIONS + has origin + has request-method)
+pub func:cors_is_preflight = int64(string:method, string:origin, string:req_method) {
+    if (method == "OPTIONS") {
+        if (origin != "") {
+            if (req_method != "") { pass 1i64; }
+        }
+    }
+    pass 0i64;
+};
+
+// ── Header generation ───────────────────────────────────────────────────────
+
+// Generate CORS headers for a normal (non-preflight) response.
+// Returns pipe-delimited header pairs: "Access-Control-Allow-Origin: ...|..."
+pub func:cors_headers = string(int64:ch, string:origin) {
+    string:result = "";
+
+    // Access-Control-Allow-Origin
+    int64:allowed = raw cors_is_allowed(ch, origin);
+    if (allowed == 1i64) {
+        result = string_concat("Access-Control-Allow-Origin: ", origin);
+    }
+    if (allowed == 0i64) {
+        pass "";
+    }
+
+    // Access-Control-Allow-Credentials
+    string:creds = ahget(ch, "_credentials");
+    if (creds == "1") {
+        result = string_concat(result, "|Access-Control-Allow-Credentials: true");
+    }
+
+    // Access-Control-Expose-Headers
+    string:expose = ahget(ch, "_expose");
+    if (expose != "") {
+        result = string_concat(result, string_concat("|Access-Control-Expose-Headers: ", expose));
+    }
+
+    pass result;
+};
+
+// Generate preflight response headers.
+pub func:cors_preflight = string(int64:ch, string:origin) {
+    string:result = "";
+
+    int64:allowed = raw cors_is_allowed(ch, origin);
+    if (allowed == 0i64) { pass ""; }
+
+    // Access-Control-Allow-Origin
+    result = string_concat("Access-Control-Allow-Origin: ", origin);
+
+    // Access-Control-Allow-Methods
+    string:methods = ahget(ch, "_methods");
+    if (methods != "") {
+        result = string_concat(result, string_concat("|Access-Control-Allow-Methods: ", methods));
+    }
+
+    // Access-Control-Allow-Headers
+    string:hdrs = ahget(ch, "_headers");
+    if (hdrs != "") {
+        result = string_concat(result, string_concat("|Access-Control-Allow-Headers: ", hdrs));
+    }
+
+    // Access-Control-Allow-Credentials
+    string:creds = ahget(ch, "_credentials");
+    if (creds == "1") {
+        result = string_concat(result, "|Access-Control-Allow-Credentials: true");
+    }
+
+    // Access-Control-Max-Age
+    string:ma = ahget(ch, "_max_age");
+    if (ma != "0") {
+        result = string_concat(result, string_concat("|Access-Control-Max-Age: ", ma));
+    }
+
+    pass result;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:Cors = {
+    func:create         = int64() { pass raw cors_reset(); };
+    func:allow_origin   = int64(int64:h, string:o) { pass raw cors_allow_origin(h, o); };
+    func:allow_methods  = int64(int64:h, string:m) { pass raw cors_allow_methods(h, m); };
+    func:allow_headers  = int64(int64:h, string:a) { pass raw cors_allow_headers(h, a); };
+    func:allow_creds    = int64(int64:h, int64:f) { pass raw cors_allow_credentials(h, f); };
+    func:expose_headers = int64(int64:h, string:e) { pass raw cors_expose_headers(h, e); };
+    func:set_max_age    = int64(int64:h, int64:s) { pass raw cors_max_age(h, s); };
+    func:is_allowed     = int64(int64:h, string:o) { pass raw cors_is_allowed(h, o); };
+    func:is_preflight   = int64(string:m, string:o, string:r) { pass raw cors_is_preflight(m, o, r); };
+    func:headers        = string(int64:h, string:o) { pass raw cors_headers(h, o); };
+    func:preflight      = string(int64:h, string:o) { pass raw cors_preflight(h, o); };
+};

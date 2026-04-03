@@ -1,0 +1,106 @@
+// test_aria_static.aria — 12-test suite for aria-static (v0.12.1)
+use "../src/aria_static.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_config = int32() {
+    int32:pc = 0i32;
+
+    int64:h1 = raw static_reset();
+    string:r1 = raw static_get_root(h1);
+    if (r1 == "/var/www") { println("[PASS] T01 default root"); pc += 1i32; }
+    if (r1 != "/var/www") { println("[FAIL] T01"); }
+
+    int32:_sr = raw static_set_root(h1, "/srv/static");
+    string:r2 = raw static_get_root(h1);
+    if (r2 == "/srv/static") { println("[PASS] T02 set root"); pc += 1i32; }
+    if (r2 != "/srv/static") { println("[FAIL] T02"); }
+
+    pass pc;
+};
+
+func:test_mime = int32() {
+    int32:pc = 0i32;
+
+    string:m3 = raw static_detect_mime("style.css");
+    if (m3 == "text/css") { println("[PASS] T03 mime css"); pc += 1i32; }
+    if (m3 != "text/css") { println("[FAIL] T03"); }
+
+    string:m4 = raw static_detect_mime("logo.png");
+    if (m4 == "image/png") { println("[PASS] T04 mime png"); pc += 1i32; }
+    if (m4 != "image/png") { println("[FAIL] T04"); }
+
+    string:m5 = raw static_detect_mime("app.js");
+    if (m5 == "application/javascript") { println("[PASS] T05 mime js"); pc += 1i32; }
+    if (m5 != "application/javascript") { println("[FAIL] T05"); }
+
+    string:m6 = raw static_detect_mime("data.bin");
+    if (m6 == "application/octet-stream") { println("[PASS] T06 mime octet fallback"); pc += 1i32; }
+    if (m6 != "application/octet-stream") { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_resolve = int32() {
+    int32:pc = 0i32;
+
+    int64:h7 = raw static_reset();
+    int32:_si = raw static_set_index(h7, "home.html");
+    int32:res7 = raw static_resolve(h7, "/");
+    string:p7 = raw static_resolved_path(h7);
+    int32:t7 = 0i32;
+    if (string_contains(p7, "home.html")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 resolve / → index"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    int32:res8 = raw static_resolve(h7, "/about.html");
+    string:p8 = raw static_resolved_path(h7);
+    int32:t8 = 0i32;
+    if (string_contains(p8, "/about.html")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 resolve /about.html"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:m9 = raw static_mime_type(h7);
+    if (m9 == "text/html") { println("[PASS] T09 resolved mime html"); pc += 1i32; }
+    if (m9 != "text/html") { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_security = int32() {
+    int32:pc = 0i32;
+
+    int64:h10 = raw static_reset();
+
+    int32:res10 = raw static_resolve(h10, "/../etc/passwd");
+    string:e10 = raw static_error(h10);
+    int32:t10 = 0i32;
+    if (string_contains(e10, "traversal")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 block .. traversal"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    int32:res11 = raw static_resolve(h10, "/~admin");
+    string:e11 = raw static_error(h10);
+    int32:t11 = 0i32;
+    if (string_contains(e11, "tilde")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 block tilde"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:res12 = raw static_resolve(h10, "/assets/app.js");
+    string:p12 = raw static_resolved_path(h10);
+    int32:t12 = 0i32;
+    if (string_contains(p12, "/var/www/assets/app.js")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 clean path resolves"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_config();
+    int32:p2 = raw test_mime();
+    int32:p3 = raw test_resolve();
+    int32:p4 = raw test_security();
+    println("DONE");
+    exit(0i32);
+};

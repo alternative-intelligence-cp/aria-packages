@@ -1,0 +1,175 @@
+// aria_body_parser.aria — HTTP body parser (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_body_parser.aria".*;
+//
+// Parses URL-encoded form bodies (a=1&b=2) and detects content types.
+// Fields stored in ahash with indexed access (_key_N, _val_N).
+//
+// NOTE: Two-step API — call body_parse() then body_parse_urlencoded() separately.
+// Nested module function calls trigger GC OOM in the current compiler.
+
+// ── Content type detection ──────────────────────────────────────────────────
+
+pub func:body_detect = string(string:content_type) {
+    if (string_contains(content_type, "application/x-www-form-urlencoded")) { pass "urlencoded"; }
+    if (string_contains(content_type, "multipart/form-data")) { pass "multipart"; }
+    if (string_contains(content_type, "application/json")) { pass "json"; }
+    if (string_contains(content_type, "text/plain")) { pass "text"; }
+    if (string_contains(content_type, "text/html")) { pass "html"; }
+    if (string_contains(content_type, "application/xml")) { pass "xml"; }
+    pass "unknown";
+};
+
+// ── Parsing ─────────────────────────────────────────────────────────────────
+
+pub func:body_parse = int64(string:content_type, string:body_str) {
+    int64:bh = ahash(256);
+    ahset(bh, "_raw", body_str);
+    ahset(bh, "_content_type", content_type);
+    ahset(bh, "_error", "");
+    ahset(bh, "_count", "0");
+
+    string:kind = raw body_detect(content_type);
+    ahset(bh, "_kind", kind);
+
+    if (kind == "multipart") {
+        ahset(bh, "_error", "multipart not yet supported");
+    }
+
+    pass bh;
+};
+
+pub func:body_parse_urlencoded = int64(int64:bh, string:body_str) {
+    int64:slen = string_length(body_str);
+    if (slen == 0i64) { pass 0i64; }
+
+    int64:pos = 0i64;
+    int64:count = 0i64;
+
+    while (pos < slen) {
+        string:rest = string_substring(body_str, pos, slen);
+        int64:amp = string_index_of(rest, "&");
+
+        string:pair = rest;
+        if (amp >= 0i64) {
+            pair = string_substring(rest, 0i64, amp);
+        }
+
+        int64:eq = string_index_of(pair, "=");
+        if (eq > 0i64) {
+            string:fkey = string_substring(pair, 0i64, eq);
+            string:fval = string_substring(pair, eq + 1i64, string_length(pair));
+
+            string:idx = string_from_int(count);
+            ahset(bh, string_concat("_key_", idx), fkey);
+            ahset(bh, string_concat("_val_", idx), fval);
+
+            ahset(bh, fkey, fval);
+            count = count + 1i64;
+        }
+
+        if (amp >= 0i64) { pos = pos + amp + 1i64; }
+        if (amp < 0i64) { pos = slen; }
+    }
+
+    ahset(bh, "_count", string_from_int(count));
+    pass count;
+};
+
+// ── Field access ────────────────────────────────────────────────────────────
+
+pub func:body_field = string(int64:bh, string:name) {
+    int64:tag = ahtype(bh, name);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(bh, name);
+    pass val;
+};
+
+pub func:body_field_count = int64(int64:bh) {
+    string:cnt_str = ahget(bh, "_count");
+    int64:result = 0i64;
+    int64:clen = string_length(cnt_str);
+    int64:ci = 0i64;
+    while (ci < clen) {
+        string:digit = string_substring(cnt_str, ci, ci + 1i64);
+        result = result * 10i64;
+        if (digit == "0") { result = result + 0i64; }
+        if (digit == "1") { result = result + 1i64; }
+        if (digit == "2") { result = result + 2i64; }
+        if (digit == "3") { result = result + 3i64; }
+        if (digit == "4") { result = result + 4i64; }
+        if (digit == "5") { result = result + 5i64; }
+        if (digit == "6") { result = result + 6i64; }
+        if (digit == "7") { result = result + 7i64; }
+        if (digit == "8") { result = result + 8i64; }
+        if (digit == "9") { result = result + 9i64; }
+        ci = ci + 1i64;
+    }
+    pass result;
+};
+
+pub func:body_field_key = string(int64:bh, int64:index) {
+    string:lookup = string_concat("_key_", string_from_int(index));
+    int64:tag = ahtype(bh, lookup);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(bh, lookup);
+    pass val;
+};
+
+pub func:body_field_value = string(int64:bh, int64:index) {
+    string:lookup = string_concat("_val_", string_from_int(index));
+    int64:tag = ahtype(bh, lookup);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(bh, lookup);
+    pass val;
+};
+
+pub func:body_has_field = int64(int64:bh, string:name) {
+    int64:tag = ahtype(bh, name);
+    if (tag < 0i64) { pass 0i64; }
+    string:val = ahget(bh, name);
+    if (string_contains(name, "_")) {
+        if (string_length(name) > 0i64) {
+            string:first = string_substring(name, 0i64, 1i64);
+            if (first == "_") { pass 0i64; }
+        }
+    }
+    pass 1i64;
+};
+
+pub func:body_raw = string(int64:bh) {
+    string:val = ahget(bh, "_raw");
+    pass val;
+};
+
+pub func:body_raw_length = int64(int64:bh) {
+    string:r = ahget(bh, "_raw");
+    pass string_length(r);
+};
+
+pub func:body_content_type = string(int64:bh) {
+    string:val = ahget(bh, "_content_type");
+    pass val;
+};
+
+pub func:body_error = string(int64:bh) {
+    string:val = ahget(bh, "_error");
+    pass val;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:BodyParser = {
+    func:detect       = string(string:ct) { pass raw body_detect(ct); };
+    func:parse_body   = int64(string:ct, string:b) { pass raw body_parse(ct, b); };
+    func:field        = string(int64:h, string:n) { pass raw body_field(h, n); };
+    func:field_count  = int64(int64:h) { pass raw body_field_count(h); };
+    func:field_key    = string(int64:h, int64:i) { pass raw body_field_key(h, i); };
+    func:field_value  = string(int64:h, int64:i) { pass raw body_field_value(h, i); };
+    func:has_field    = int64(int64:h, string:n) { pass raw body_has_field(h, n); };
+    func:get_raw      = string(int64:h) { pass raw body_raw(h); };
+    func:raw_len      = int64(int64:h) { pass raw body_raw_length(h); };
+    func:content_type = string(int64:h) { pass raw body_content_type(h); };
+    func:get_error    = string(int64:h) { pass raw body_error(h); };
+};

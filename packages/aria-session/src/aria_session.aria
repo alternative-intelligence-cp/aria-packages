@@ -1,0 +1,164 @@
+// aria_session.aria — Server session management (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_session.aria".*;
+//
+// Sessions are ahash handles. Caller manages session IDs.
+// Variables stored with user keys; metadata prefixed with "_".
+
+// ── Session lifecycle ───────────────────────────────────────────────────────
+
+pub func:session_create = int64(string:sid) {
+    int64:h = ahash(512);
+    ahset(h, "_id", sid);
+    ahset(h, "_cookie_name", "ARIA_SID");
+    ahset(h, "_max_age", "3600");
+    ahset(h, "_var_count", "0");
+    ahset(h, "_active", "1");
+    pass h;
+};
+
+pub func:session_id = string(int64:h) {
+    string:val = ahget(h, "_id");
+    pass val;
+};
+
+pub func:session_is_active = int64(int64:h) {
+    int64:tag = ahtype(h, "_active");
+    if (tag < 0i64) { pass 0i64; }
+    string:val = ahget(h, "_active");
+    if (val == "1") { pass 1i64; }
+    pass 0i64;
+};
+
+pub func:session_destroy = int32(int64:h) {
+    ahset(h, "_active", "0");
+    pass 0i32;
+};
+
+// ── Variable access ─────────────────────────────────────────────────────────
+
+pub func:session_set = int32(int64:h, string:key, string:val) {
+    int64:existed = ahtype(h, key);
+    ahset(h, key, val);
+    if (existed < 0i64) {
+        string:vc = ahget(h, "_var_count");
+        string:nvc = "1";
+        if (vc == "0") { nvc = "1"; }
+        if (vc == "1") { nvc = "2"; }
+        if (vc == "2") { nvc = "3"; }
+        if (vc == "3") { nvc = "4"; }
+        if (vc == "4") { nvc = "5"; }
+        if (vc == "5") { nvc = "6"; }
+        if (vc == "6") { nvc = "7"; }
+        if (vc == "7") { nvc = "8"; }
+        if (vc == "8") { nvc = "9"; }
+        if (vc == "9") { nvc = "10"; }
+        ahset(h, "_var_count", nvc);
+    }
+    pass 0i32;
+};
+
+pub func:session_get = string(int64:h, string:key) {
+    int64:tag = ahtype(h, key);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(h, key);
+    pass val;
+};
+
+pub func:session_has = int64(int64:h, string:key) {
+    int64:tag = ahtype(h, key);
+    if (tag < 0i64) { pass 0i64; }
+    pass 1i64;
+};
+
+pub func:session_remove = int32(int64:h, string:key) {
+    int64:tag = ahtype(h, key);
+    if (tag < 0i64) { pass 0i32; }
+    ahset(h, key, "_REMOVED_");
+    string:vc = ahget(h, "_var_count");
+    string:nvc = "0";
+    if (vc == "1") { nvc = "0"; }
+    if (vc == "2") { nvc = "1"; }
+    if (vc == "3") { nvc = "2"; }
+    if (vc == "4") { nvc = "3"; }
+    if (vc == "5") { nvc = "4"; }
+    if (vc == "6") { nvc = "5"; }
+    if (vc == "7") { nvc = "6"; }
+    if (vc == "8") { nvc = "7"; }
+    if (vc == "9") { nvc = "8"; }
+    if (vc == "10") { nvc = "9"; }
+    ahset(h, "_var_count", nvc);
+    pass 0i32;
+};
+
+pub func:session_var_count = int64(int64:h) {
+    string:vc = ahget(h, "_var_count");
+    if (vc == "0") { pass 0i64; }
+    if (vc == "1") { pass 1i64; }
+    if (vc == "2") { pass 2i64; }
+    if (vc == "3") { pass 3i64; }
+    if (vc == "4") { pass 4i64; }
+    if (vc == "5") { pass 5i64; }
+    if (vc == "6") { pass 6i64; }
+    if (vc == "7") { pass 7i64; }
+    if (vc == "8") { pass 8i64; }
+    if (vc == "9") { pass 9i64; }
+    if (vc == "10") { pass 10i64; }
+    pass 0i64;
+};
+
+// ── Cookie configuration ────────────────────────────────────────────────────
+
+pub func:session_set_cookie_name = int32(int64:h, string:name) {
+    ahset(h, "_cookie_name", name);
+    pass 0i32;
+};
+
+pub func:session_get_cookie_name = string(int64:h) {
+    string:val = ahget(h, "_cookie_name");
+    pass val;
+};
+
+pub func:session_set_max_age = int32(int64:h, int64:secs) {
+    ahset(h, "_max_age", string_from_int(secs));
+    pass 0i32;
+};
+
+// ── Cookie headers ──────────────────────────────────────────────────────────
+
+pub func:session_cookie_header = string(int64:h) {
+    string:cname = ahget(h, "_cookie_name");
+    string:sid = ahget(h, "_id");
+    string:age = ahget(h, "_max_age");
+    string:hdr = string_concat(cname, "=");
+    hdr = string_concat(hdr, sid);
+    hdr = string_concat(hdr, "; Path=/; HttpOnly; Max-Age=");
+    hdr = string_concat(hdr, age);
+    pass hdr;
+};
+
+pub func:session_clear_cookie = string(int64:h) {
+    string:cname = ahget(h, "_cookie_name");
+    string:hdr = string_concat(cname, "=; Path=/; HttpOnly; Max-Age=0");
+    pass hdr;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:Session = {
+    func:create          = int64(string:sid) { pass raw session_create(sid); };
+    func:sid             = string(int64:h) { pass raw session_id(h); };
+    func:active          = int64(int64:h) { pass raw session_is_active(h); };
+    func:kill            = int32(int64:h) { pass raw session_destroy(h); };
+    func:set_var         = int32(int64:h, string:k, string:v) { pass raw session_set(h, k, v); };
+    func:get_var         = string(int64:h, string:k) { pass raw session_get(h, k); };
+    func:has_var         = int64(int64:h, string:k) { pass raw session_has(h, k); };
+    func:remove_var      = int32(int64:h, string:k) { pass raw session_remove(h, k); };
+    func:vars            = int64(int64:h) { pass raw session_var_count(h); };
+    func:set_cname       = int32(int64:h, string:n) { pass raw session_set_cookie_name(h, n); };
+    func:get_cname       = string(int64:h) { pass raw session_get_cookie_name(h); };
+    func:set_age         = int32(int64:h, int64:s) { pass raw session_set_max_age(h, s); };
+    func:cookie          = string(int64:h) { pass raw session_cookie_header(h); };
+    func:clear           = string(int64:h) { pass raw session_clear_cookie(h); };
+};

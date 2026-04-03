@@ -1,0 +1,144 @@
+// aria_static.aria — Static file path resolver + MIME detection (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_static.aria".*;
+//
+// Resolves URL paths to safe filesystem paths and detects MIME types.
+// File I/O requires aria-libc; this module handles routing and types.
+
+// ── Configuration ───────────────────────────────────────────────────────────
+
+pub func:static_reset = int64() {
+    int64:h = ahash(256);
+    ahset(h, "_root", "/var/www");
+    ahset(h, "_index", "index.html");
+    ahset(h, "_resolved", "");
+    ahset(h, "_mime", "");
+    ahset(h, "_error", "");
+    ahset(h, "_content", "");
+    ahset(h, "_clen", "0");
+    pass h;
+};
+
+pub func:static_set_root = int32(int64:h, string:root_path) {
+    ahset(h, "_root", root_path);
+    pass 0i32;
+};
+
+pub func:static_get_root = string(int64:h) {
+    string:val = ahget(h, "_root");
+    pass val;
+};
+
+pub func:static_set_index = int32(int64:h, string:idx_file) {
+    ahset(h, "_index", idx_file);
+    pass 0i32;
+};
+
+// ── MIME detection ──────────────────────────────────────────────────────────
+
+pub func:static_detect_mime = string(string:fpath) {
+    if (string_contains(fpath, ".html")) { pass "text/html"; }
+    if (string_contains(fpath, ".htm")) { pass "text/html"; }
+    if (string_contains(fpath, ".css")) { pass "text/css"; }
+    if (string_contains(fpath, ".js")) { pass "application/javascript"; }
+    if (string_contains(fpath, ".json")) { pass "application/json"; }
+    if (string_contains(fpath, ".xml")) { pass "application/xml"; }
+    if (string_contains(fpath, ".txt")) { pass "text/plain"; }
+    if (string_contains(fpath, ".csv")) { pass "text/csv"; }
+    if (string_contains(fpath, ".png")) { pass "image/png"; }
+    if (string_contains(fpath, ".jpg")) { pass "image/jpeg"; }
+    if (string_contains(fpath, ".jpeg")) { pass "image/jpeg"; }
+    if (string_contains(fpath, ".gif")) { pass "image/gif"; }
+    if (string_contains(fpath, ".svg")) { pass "image/svg+xml"; }
+    if (string_contains(fpath, ".ico")) { pass "image/x-icon"; }
+    if (string_contains(fpath, ".webp")) { pass "image/webp"; }
+    if (string_contains(fpath, ".woff2")) { pass "font/woff2"; }
+    if (string_contains(fpath, ".woff")) { pass "font/woff"; }
+    if (string_contains(fpath, ".pdf")) { pass "application/pdf"; }
+    if (string_contains(fpath, ".zip")) { pass "application/zip"; }
+    if (string_contains(fpath, ".wasm")) { pass "application/wasm"; }
+    pass "application/octet-stream";
+};
+
+// ── Path resolution ─────────────────────────────────────────────────────────
+
+pub func:static_resolve = int32(int64:h, string:url_path) {
+    ahset(h, "_error", "");
+    ahset(h, "_resolved", "");
+    ahset(h, "_mime", "");
+
+    if (string_contains(url_path, "..")) {
+        ahset(h, "_error", "path traversal blocked");
+        pass -1i32;
+    }
+    if (string_contains(url_path, "~")) {
+        ahset(h, "_error", "tilde expansion blocked");
+        pass -1i32;
+    }
+
+    string:root = ahget(h, "_root");
+    string:resolved = root;
+
+    if (url_path == "/") {
+        string:idx = ahget(h, "_index");
+        resolved = string_concat(resolved, "/");
+        resolved = string_concat(resolved, idx);
+    }
+    if (url_path != "/") {
+        resolved = string_concat(resolved, url_path);
+    }
+
+    ahset(h, "_resolved", resolved);
+
+    string:mime = raw static_detect_mime(resolved);
+    ahset(h, "_mime", mime);
+    pass 0i32;
+};
+
+pub func:static_resolved_path = string(int64:h) {
+    string:val = ahget(h, "_resolved");
+    pass val;
+};
+
+pub func:static_mime_type = string(int64:h) {
+    string:val = ahget(h, "_mime");
+    pass val;
+};
+
+pub func:static_error = string(int64:h) {
+    string:val = ahget(h, "_error");
+    pass val;
+};
+
+pub func:static_content = string(int64:h) {
+    string:val = ahget(h, "_content");
+    pass val;
+};
+
+pub func:static_length = int64(int64:h) {
+    string:c = ahget(h, "_clen");
+    if (c == "0") { pass 0i64; }
+    if (c == "1") { pass 1i64; }
+    if (c == "2") { pass 2i64; }
+    if (c == "3") { pass 3i64; }
+    if (c == "4") { pass 4i64; }
+    if (c == "5") { pass 5i64; }
+    pass 0i64;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:Static = {
+    func:init        = int64() { pass raw static_reset(); };
+    func:set_root    = int32(int64:h, string:p) { pass raw static_set_root(h, p); };
+    func:get_root    = string(int64:h) { pass raw static_get_root(h); };
+    func:set_idx     = int32(int64:h, string:f) { pass raw static_set_index(h, f); };
+    func:resolve_url = int32(int64:h, string:u) { pass raw static_resolve(h, u); };
+    func:path        = string(int64:h) { pass raw static_resolved_path(h); };
+    func:mime        = string(int64:h) { pass raw static_mime_type(h); };
+    func:err         = string(int64:h) { pass raw static_error(h); };
+    func:detect      = string(string:f) { pass raw static_detect_mime(f); };
+    func:body        = string(int64:h) { pass raw static_content(h); };
+    func:body_len    = int64(int64:h) { pass raw static_length(h); };
+};

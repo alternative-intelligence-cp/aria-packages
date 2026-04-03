@@ -1,0 +1,199 @@
+// aria_cookie.aria — HTTP cookie parsing & building (v0.12.1)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_cookie.aria".*;
+//
+// Cookies stored in ahash. Parse from "Cookie:" header, build "Set-Cookie:" headers.
+// v0.12.1: Rewritten in pure Aria (was C shim).
+//
+// API uses handle-passing: cookie_parse returns a handle, pass it to get/has/count/remove.
+// Builder: cookie_bld_reset returns a handle, pass it to bld_name/value/.../bld_build.
+
+// ── Cookie parsing ──────────────────────────────────────────────────────────
+
+// Parse a "Cookie: name1=val1; name2=val2" header string.
+// Returns the ahash handle containing parsed cookies.
+pub func:cookie_parse = int64(string:header_val) {
+    int64:ht = ahash(256);
+    int64:slen = string_length(header_val);
+    if (slen == 0i64) { pass ht; }
+
+    int64:pos = 0i64;
+
+    while (pos < slen) {
+        // skip leading spaces
+        int64:skip_sp = 1i64;
+        while (skip_sp == 1i64) {
+            if (pos >= slen) { skip_sp = 0i64; }
+            if (pos < slen) {
+                string:ch = string_substring(header_val, pos, pos + 1i64);
+                if (ch == " ") { pos = pos + 1i64; }
+                if (ch != " ") { skip_sp = 0i64; }
+            }
+        }
+
+        if (pos < slen) {
+            string:rest = string_substring(header_val, pos, slen);
+            int64:semi = string_index_of(rest, ";");
+
+            string:pair = rest;
+            if (semi >= 0i64) {
+                pair = string_substring(rest, 0i64, semi);
+            }
+
+            int64:eq = string_index_of(pair, "=");
+            if (eq > 0i64) {
+                string:cname = string_substring(pair, 0i64, eq);
+                string:cval = string_substring(pair, eq + 1i64, string_length(pair));
+                ahset(ht, cname, cval);
+            }
+
+            if (semi >= 0i64) { pos = pos + semi + 1i64; }
+            if (semi < 0i64) { pos = slen; }
+        }
+    }
+
+    pass ht;
+};
+
+pub func:cookie_get = string(int64:ht, string:name) {
+    int64:tag = ahtype(ht, name);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(ht, name);
+    pass val;
+};
+
+pub func:cookie_has = int64(int64:ht, string:name) {
+    int64:tag = ahtype(ht, name);
+    if (tag < 0i64) { pass 0i64; }
+    string:val = ahget(ht, name);
+    if (val == "") { pass 0i64; }
+    pass 1i64;
+};
+
+pub func:cookie_count = int64(int64:ht) {
+    pass ahcount(ht);
+};
+
+pub func:cookie_remove = int64(int64:ht, string:name) {
+    ahset(ht, name, "");
+    pass 1i64;
+};
+
+// ── Cookie builder (Set-Cookie header) ──────────────────────────────────────
+
+// Create a new builder handle with defaults.
+pub func:cookie_bld_reset = int64() {
+    int64:bh = ahash(64);
+    ahset(bh, "_name", "");
+    ahset(bh, "_value", "");
+    ahset(bh, "_domain", "");
+    ahset(bh, "_path", "/");
+    ahset(bh, "_max_age", "-1");
+    ahset(bh, "_secure", "0");
+    ahset(bh, "_httponly", "0");
+    ahset(bh, "_samesite", "Lax");
+    pass bh;
+};
+
+pub func:cookie_bld_name = int64(int64:bh, string:name) {
+    ahset(bh, "_name", name);
+    pass 1i64;
+};
+
+pub func:cookie_bld_value = int64(int64:bh, string:val) {
+    ahset(bh, "_value", val);
+    pass 1i64;
+};
+
+pub func:cookie_bld_domain = int64(int64:bh, string:dom) {
+    ahset(bh, "_domain", dom);
+    pass 1i64;
+};
+
+pub func:cookie_bld_path = int64(int64:bh, string:pth) {
+    ahset(bh, "_path", pth);
+    pass 1i64;
+};
+
+pub func:cookie_bld_max_age = int64(int64:bh, int64:seconds) {
+    string:sec_str = string_from_int(seconds);
+    ahset(bh, "_max_age", sec_str);
+    pass 1i64;
+};
+
+pub func:cookie_bld_secure = int64(int64:bh, int64:flag) {
+    if (flag == 1i64) { ahset(bh, "_secure", "1"); }
+    if (flag == 0i64) { ahset(bh, "_secure", "0"); }
+    pass 1i64;
+};
+
+pub func:cookie_bld_httponly = int64(int64:bh, int64:flag) {
+    if (flag == 1i64) { ahset(bh, "_httponly", "1"); }
+    if (flag == 0i64) { ahset(bh, "_httponly", "0"); }
+    pass 1i64;
+};
+
+pub func:cookie_bld_samesite = int64(int64:bh, string:policy) {
+    ahset(bh, "_samesite", policy);
+    pass 1i64;
+};
+
+pub func:cookie_bld_build = string(int64:bh) {
+    string:nm = ahget(bh, "_name");
+    string:vl = ahget(bh, "_value");
+    string:result = string_concat(nm, string_concat("=", vl));
+
+    string:dom = ahget(bh, "_domain");
+    if (dom != "") {
+        result = string_concat(result, string_concat("; Domain=", dom));
+    }
+
+    string:pth = ahget(bh, "_path");
+    if (pth != "") {
+        result = string_concat(result, string_concat("; Path=", pth));
+    }
+
+    string:ma = ahget(bh, "_max_age");
+    if (ma != "-1") {
+        result = string_concat(result, string_concat("; Max-Age=", ma));
+    }
+
+    string:sec = ahget(bh, "_secure");
+    if (sec == "1") {
+        result = string_concat(result, "; Secure");
+    }
+
+    string:ho = ahget(bh, "_httponly");
+    if (ho == "1") {
+        result = string_concat(result, "; HttpOnly");
+    }
+
+    string:ss = ahget(bh, "_samesite");
+    if (ss != "") {
+        result = string_concat(result, string_concat("; SameSite=", ss));
+    }
+
+    pass result;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Cookie = {
+    func:parse      = int64(string:hdr) { pass raw cookie_parse(hdr); };
+    func:get_val    = string(int64:h, string:name) { pass raw cookie_get(h, name); };
+    func:has_key    = int64(int64:h, string:name) { pass raw cookie_has(h, name); };
+    func:count      = int64(int64:h) { pass raw cookie_count(h); };
+    func:remove_key = int64(int64:h, string:name) { pass raw cookie_remove(h, name); };
+
+    func:bld_reset    = int64() { pass raw cookie_bld_reset(); };
+    func:bld_name     = int64(int64:b, string:n) { pass raw cookie_bld_name(b, n); };
+    func:bld_value    = int64(int64:b, string:v) { pass raw cookie_bld_value(b, v); };
+    func:bld_domain   = int64(int64:b, string:d) { pass raw cookie_bld_domain(b, d); };
+    func:bld_path     = int64(int64:b, string:p) { pass raw cookie_bld_path(b, p); };
+    func:bld_max_age  = int64(int64:b, int64:s) { pass raw cookie_bld_max_age(b, s); };
+    func:bld_secure   = int64(int64:b, int64:f) { pass raw cookie_bld_secure(b, f); };
+    func:bld_httponly  = int64(int64:b, int64:f) { pass raw cookie_bld_httponly(b, f); };
+    func:bld_samesite = int64(int64:b, string:p) { pass raw cookie_bld_samesite(b, p); };
+    func:bld_build    = string(int64:b) { pass raw cookie_bld_build(b); };
+};

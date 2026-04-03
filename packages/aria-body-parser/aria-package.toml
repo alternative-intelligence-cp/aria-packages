@@ -1,0 +1,7 @@
+[package]
+name = "aria-body-parser"
+version = "0.12.1"
+description = "HTTP body parser — URL-encoded and content-type detection — pure Aria"
+type = "pure"
+
+[dependencies]

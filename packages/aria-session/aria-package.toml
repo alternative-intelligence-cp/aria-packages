@@ -1,0 +1,8 @@
+[package]
+name = "aria-session"
+version = "0.12.1"
+description = "Server-side session management for Aria — handle-based, pure Aria"
+license = "MIT"
+categories = ["networking", "middleware"]
+
+[dependencies]

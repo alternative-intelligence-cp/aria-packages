@@ -1,0 +1,8 @@
+[package]
+name = "aria-rate-limit"
+version = "0.12.1"
+description = "Token-bucket rate limiter for Aria — pure Aria"
+license = "MIT"
+categories = ["networking", "middleware"]
+
+[dependencies]

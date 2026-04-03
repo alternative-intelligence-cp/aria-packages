@@ -1,0 +1,93 @@
+// test_aria_cors.aria — 12-test suite for aria-cors (v0.12.1)
+use "../src/aria_cors.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:main = int32() {
+    int32:pass_count = 0i32;
+
+    // T01: create config
+    int64:ch = raw cors_reset();
+    int64:t1 = ahtype(ch, "_origins");
+    if (t1 >= 0i64) { println("[PASS] T01 create config"); pass_count += 1i32; }
+    if (t1 < 0i64) { println("[FAIL] T01"); }
+
+    // T02: allow origin
+    int64:_s2 = raw cors_allow_origin(ch, "http://example.com");
+    int64:a2 = raw cors_is_allowed(ch, "http://example.com");
+    if (a2 == 1i64) { println("[PASS] T02 allow origin"); pass_count += 1i32; }
+    if (a2 != 1i64) { println("[FAIL] T02"); }
+
+    // T03: disallowed origin
+    int64:a3 = raw cors_is_allowed(ch, "http://evil.com");
+    if (a3 == 0i64) { println("[PASS] T03 disallowed origin"); pass_count += 1i32; }
+    if (a3 != 0i64) { println("[FAIL] T03"); }
+
+    // T04: wildcard origin
+    int64:ch4 = raw cors_reset();
+    int64:_s4 = raw cors_allow_origin(ch4, "*");
+    int64:a4 = raw cors_is_allowed(ch4, "http://anything.com");
+    if (a4 == 1i64) { println("[PASS] T04 wildcard origin"); pass_count += 1i32; }
+    if (a4 != 1i64) { println("[FAIL] T04"); }
+
+    // T05: is_preflight — true case
+    int64:p5 = raw cors_is_preflight("OPTIONS", "http://example.com", "POST");
+    if (p5 == 1i64) { println("[PASS] T05 is_preflight=true"); pass_count += 1i32; }
+    if (p5 != 1i64) { println("[FAIL] T05"); }
+
+    // T06: is_preflight — false (not OPTIONS)
+    int64:p6 = raw cors_is_preflight("GET", "http://example.com", "");
+    if (p6 == 0i64) { println("[PASS] T06 is_preflight=false for GET"); pass_count += 1i32; }
+    if (p6 != 0i64) { println("[FAIL] T06"); }
+
+    // T07: headers for allowed origin
+    int64:ch7 = raw cors_reset();
+    int64:_s7a = raw cors_allow_origin(ch7, "http://a.com");
+    string:h7 = raw cors_headers(ch7, "http://a.com");
+    if (string_contains(h7, "Access-Control-Allow-Origin: http://a.com")) { println("[PASS] T07 headers allow-origin"); pass_count += 1i32; }
+    if (string_contains(h7, "Access-Control-Allow-Origin: http://a.com") == false) { println("[FAIL] T07"); }
+
+    // T08: headers for disallowed origin returns empty
+    string:h8 = raw cors_headers(ch7, "http://evil.com");
+    if (h8 == "") { println("[PASS] T08 headers empty for disallowed"); pass_count += 1i32; }
+    if (h8 != "") { println("[FAIL] T08"); }
+
+    // T09: preflight with methods + headers
+    int64:ch9 = raw cors_reset();
+    int64:_s9a = raw cors_allow_origin(ch9, "*");
+    int64:_s9b = raw cors_allow_methods(ch9, "GET, POST, PUT");
+    int64:_s9c = raw cors_allow_headers(ch9, "Content-Type, Authorization");
+    string:pf9 = raw cors_preflight(ch9, "http://x.com");
+    if (string_contains(pf9, "Allow-Methods: GET, POST, PUT")) {
+        if (string_contains(pf9, "Allow-Headers: Content-Type, Authorization")) { println("[PASS] T09 preflight methods+headers"); pass_count += 1i32; }
+        if (string_contains(pf9, "Allow-Headers: Content-Type, Authorization") == false) { println("[FAIL] T09 headers"); }
+    }
+    if (string_contains(pf9, "Allow-Methods: GET, POST, PUT") == false) { println("[FAIL] T09 methods"); }
+
+    // T10: credentials in headers
+    int64:ch10 = raw cors_reset();
+    int64:_s10a = raw cors_allow_origin(ch10, "*");
+    int64:_s10b = raw cors_allow_credentials(ch10, 1i64);
+    string:h10 = raw cors_headers(ch10, "http://b.com");
+    if (string_contains(h10, "Allow-Credentials: true")) { println("[PASS] T10 credentials"); pass_count += 1i32; }
+    if (string_contains(h10, "Allow-Credentials: true") == false) { println("[FAIL] T10"); }
+
+    // T11: max-age in preflight
+    int64:ch11 = raw cors_reset();
+    int64:_s11a = raw cors_allow_origin(ch11, "*");
+    int64:_s11b = raw cors_max_age(ch11, 86400i64);
+    string:pf11 = raw cors_preflight(ch11, "http://c.com");
+    if (string_contains(pf11, "Max-Age: 86400")) { println("[PASS] T11 max-age"); pass_count += 1i32; }
+    if (string_contains(pf11, "Max-Age: 86400") == false) { println("[FAIL] T11"); }
+
+    // T12: expose-headers in response
+    int64:ch12 = raw cors_reset();
+    int64:_s12a = raw cors_allow_origin(ch12, "*");
+    int64:_s12b = raw cors_expose_headers(ch12, "X-Request-Id, X-Trace");
+    string:h12 = raw cors_headers(ch12, "http://d.com");
+    if (string_contains(h12, "Expose-Headers: X-Request-Id, X-Trace")) { println("[PASS] T12 expose-headers"); pass_count += 1i32; }
+    if (string_contains(h12, "Expose-Headers: X-Request-Id, X-Trace") == false) { println("[FAIL] T12"); }
+
+    println("DONE");
+    exit(0i32);
+};

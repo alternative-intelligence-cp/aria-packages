@@ -1,0 +1,8 @@
+[package]
+name = "aria-cookie"
+version = "0.12.1"
+description = "HTTP cookie parsing and serialization for Aria — RFC 6265 compliant, pure Aria"
+license = "MIT"
+categories = ["networking", "middleware"]
+
+[dependencies]
