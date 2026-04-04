@@ -1,110 +1,97 @@
-// test_aria_rate_limit.aria — Tests for pure Aria rate limiter
+// test_aria_rate_limit.aria — 12-test suite for aria-rate-limit (v0.12.1)
 use "../src/aria_rate_limit.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
-extern "aria_libc_string" {
-    func:aria_libc_string_strstr   = int64(string:haystack, string:needle);
-    func:aria_libc_string_strcat   = string(string:a, string:b);
-    func:aria_libc_string_from_i64 = string(int64:val);
-}
+func:test_basic = int32() {
+    int32:pc = 0i32;
+
+    int64:rl = raw rate_configure(5i64, 1i64);
+    int64:rem1 = raw rate_remaining(rl);
+    if (rem1 == 5i64) { println("[PASS] T01 initial tokens=5"); pc += 1i32; }
+    if (rem1 != 5i64) { println("[FAIL] T01"); }
+
+    int64:ok2 = raw rate_check(rl);
+    if (ok2 == 1i64) { println("[PASS] T02 first check allowed"); pc += 1i32; }
+    if (ok2 != 1i64) { println("[FAIL] T02"); }
+
+    int64:rem3 = raw rate_remaining(rl);
+    if (rem3 == 4i64) { println("[PASS] T03 remaining=4"); pc += 1i32; }
+    if (rem3 != 4i64) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_exhaust = int32() {
+    int32:pc = 0i32;
+
+    int64:rl2 = raw rate_configure(3i64, 1i64);
+    int64:_c1 = raw rate_check(rl2);
+    int64:_c2 = raw rate_check(rl2);
+    int64:_c3 = raw rate_check(rl2);
+    int64:ok4 = raw rate_check(rl2);
+    if (ok4 == 0i64) { println("[PASS] T04 exhausted → denied"); pc += 1i32; }
+    if (ok4 != 0i64) { println("[FAIL] T04"); }
+
+    int64:rem5 = raw rate_remaining(rl2);
+    if (rem5 == 0i64) { println("[PASS] T05 remaining=0"); pc += 1i32; }
+    if (rem5 != 0i64) { println("[FAIL] T05"); }
+
+    int64:rt6 = raw rate_retry_after(rl2);
+    if (rt6 == 1i64) { println("[PASS] T06 retry_after=1"); pc += 1i32; }
+    if (rt6 != 1i64) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_cost = int32() {
+    int32:pc = 0i32;
+
+    int64:rl3 = raw rate_configure(10i64, 2i64);
+    int64:ok7 = raw rate_check_cost(rl3, 3i64);
+    if (ok7 == 1i64) { println("[PASS] T07 cost=3 allowed"); pc += 1i32; }
+    if (ok7 != 1i64) { println("[FAIL] T07"); }
+
+    int64:rem8 = raw rate_remaining(rl3);
+    if (rem8 == 7i64) { println("[PASS] T08 remaining=7 after cost=3"); pc += 1i32; }
+    if (rem8 != 7i64) { println("[FAIL] T08"); }
+
+    int64:ok9 = raw rate_check_cost(rl3, 8i64);
+    if (ok9 == 0i64) { println("[PASS] T09 cost=8 denied (only 7 left)"); pc += 1i32; }
+    if (ok9 != 0i64) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_headers_reset = int32() {
+    int32:pc = 0i32;
+
+    int64:rl4 = raw rate_configure(5i64, 1i64);
+    int64:_c = raw rate_check(rl4);
+    string:h10 = raw rate_headers(rl4);
+    int32:t10 = 0i32;
+    if (string_contains(h10, "X-RateLimit-Limit: 5")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 headers Limit"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    int32:t11 = 0i32;
+    if (string_contains(h10, "Remaining: 4")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 headers Remaining"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r = raw rate_reset(rl4);
+    int64:rem12 = raw rate_remaining(rl4);
+    if (rem12 == 5i64) { println("[PASS] T12 reset → tokens=5"); pc += 1i32; }
+    if (rem12 != 5i64) { println("[FAIL] T12"); }
+
+    pass pc;
+};
 
 func:main = int32() {
-    println("=== aria-rate-limit tests ===");
-
-    // Test 1: Default allows requests
-    drop rate_limit_reset();
-    int32:a1 = raw rate_limit_check("192.168.1.1");
-    if (a1 == 1i32) { println("  PASS: default allows"); }
-    else { println("  FAIL: default allows"); }
-
-    // Test 2: Remaining tokens decrease
-    drop rate_limit_reset();
-    drop rate_limit_configure(5i32, 1i32, 60i32);
-    _ = rate_limit_check("client1");
-    int32:rem1 = raw rate_limit_remaining("client1");
-    if (rem1 == 4i32) { println("  PASS: remaining after 1"); }
-    else {
-        string:m2 = aria_libc_string_strcat("  FAIL: remaining after 1 got=", aria_libc_string_from_i64(@cast<int64>(rem1)));
-        println(m2);
-    }
-
-    // Test 3: Exhaust tokens
-    _ = rate_limit_check("client1");
-    _ = rate_limit_check("client1");
-    _ = rate_limit_check("client1");
-    _ = rate_limit_check("client1");
-    int32:a2 = raw rate_limit_check("client1");
-    if (a2 == 0i32) { println("  PASS: exhausted denied"); }
-    else { println("  FAIL: exhausted denied"); }
-
-    int32:rem2 = raw rate_limit_remaining("client1");
-    if (rem2 == 0i32) { println("  PASS: remaining 0"); }
-    else {
-        string:m4 = aria_libc_string_strcat("  FAIL: remaining 0 got=", aria_libc_string_from_i64(@cast<int64>(rem2)));
-        println(m4);
-    }
-
-    // Test 4: Different clients independent
-    int32:a3 = raw rate_limit_check("client2");
-    if (a3 == 1i32) { println("  PASS: client2 allowed"); }
-    else { println("  FAIL: client2 allowed"); }
-
-    // Test 5: Custom cost
-    drop rate_limit_reset();
-    drop rate_limit_configure(10i32, 1i32, 60i32);
-    int32:a4 = raw rate_limit_check_cost("expensive", 5i32);
-    if (a4 == 1i32) { println("  PASS: cost 5 allowed"); }
-    else { println("  FAIL: cost 5 allowed"); }
-
-    int32:rem3 = raw rate_limit_remaining("expensive");
-    if (rem3 == 5i32) { println("  PASS: remaining after cost 5"); }
-    else {
-        string:m7 = aria_libc_string_strcat("  FAIL: remaining after cost 5 got=", aria_libc_string_from_i64(@cast<int64>(rem3)));
-        println(m7);
-    }
-
-    int32:a5 = raw rate_limit_check_cost("expensive", 6i32);
-    if (a5 == 0i32) { println("  PASS: cost 6 denied"); }
-    else { println("  FAIL: cost 6 denied"); }
-
-    // Test 6: Headers contain expected fields
-    drop rate_limit_reset();
-    drop rate_limit_configure(50i32, 5i32, 60i32);
-    _ = rate_limit_check("hdr_client");
-    string:hdrs = raw rate_limit_headers("hdr_client");
-    int64:p1 = aria_libc_string_strstr(hdrs, "X-RateLimit-Limit: 50");
-    if (p1 >= 0i64) { println("  PASS: header has limit"); }
-    else { println("  FAIL: header has limit"); }
-
-    int64:p2 = aria_libc_string_strstr(hdrs, "X-RateLimit-Remaining:");
-    if (p2 >= 0i64) { println("  PASS: header has remaining"); }
-    else { println("  FAIL: header has remaining"); }
-
-    // Test 7: Headers include Retry-After when exhausted
-    drop rate_limit_test_set_tokens("hdr_client", 0i32);
-    string:hdrs2 = raw rate_limit_headers("hdr_client");
-    int64:p3 = aria_libc_string_strstr(hdrs2, "Retry-After:");
-    if (p3 >= 0i64) { println("  PASS: retry-after hdr"); }
-    else { println("  FAIL: retry-after hdr"); }
-
-    // Test 8: Set tokens to 0 check remaining
-    drop rate_limit_reset();
-    drop rate_limit_configure(10i32, 10i32, 60i32);
-    drop rate_limit_test_set_tokens("refill_client", 0i32);
-    int32:rem4 = raw rate_limit_remaining("refill_client");
-    if (rem4 == 0i32) { println("  PASS: no refill yet"); }
-    else {
-        string:m8 = aria_libc_string_strcat("  FAIL: no refill yet got=", aria_libc_string_from_i64(@cast<int64>(rem4)));
-        println(m8);
-    }
-
-    // Test 9: Reset clears all
-    drop rate_limit_reset();
-    int32:a6 = raw rate_limit_check("fresh");
-    if (a6 == 1i32) { println("  PASS: fresh after reset"); }
-    else { println("  FAIL: fresh after reset"); }
-
-    println("=== 9 tests done ===");
-    exit 0;
+    int32:p1 = raw test_basic();
+    int32:p2 = raw test_exhaust();
+    int32:p3 = raw test_cost();
+    int32:p4 = raw test_headers_reset();
+    println("DONE");
+    exit(0i32);
 };

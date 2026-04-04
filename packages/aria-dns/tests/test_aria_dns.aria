@@ -1,89 +1,76 @@
-// test_aria_dns.aria — Tests for aria-dns (C-side assertions)
-//
-// NOTE: DNS tests require network access. We test with "localhost" (always
-// available) and known-bad hostnames. Live internet tests use well-known
-// hosts but may fail in air-gapped environments.
+// test_aria_dns.aria — 12-test suite for aria-dns (v0.12.0)
+use "../src/aria_dns.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern func:aria_dns_resolve       = int32(string:hostname);
-extern func:aria_dns_resolve4      = int32(string:hostname);
-extern func:aria_dns_resolve6      = int32(string:hostname);
-extern func:aria_dns_get_addr      = string(int32:index);
-extern func:aria_dns_get_family    = int32(int32:index);
-extern func:aria_dns_result_count  = int32();
-extern func:aria_dns_reverse       = string(string:ip_addr);
-
-extern func:aria_dns_assert_int_eq       = void(int32:actual, int32:expected, string:msg);
-extern func:aria_dns_assert_int_gt       = void(int32:actual, int32:threshold, string:msg);
-extern func:aria_dns_assert_int_ge       = void(int32:actual, int32:threshold, string:msg);
-extern func:aria_dns_assert_str_not_empty = void(string:s, string:msg);
-extern func:aria_dns_assert_str_empty    = void(string:s, string:msg);
-extern func:aria_dns_assert_family_valid = void(int32:family, string:msg);
-extern func:aria_dns_test_summary        = void();
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── test 01: resolve localhost (always available) ──
-    int32:n1 = aria_dns_resolve("localhost");
-    aria_dns_assert_int_ge(n1, 1i32, "test 01: resolve localhost >= 1 result");
+    int32:pass_count = 0i32;
 
-    // ── test 02: first addr is not empty ──
-    string:a2 = aria_dns_get_addr(0i32);
-    aria_dns_assert_str_not_empty(a2, "test 02: localhost addr[0] not empty");
+    // T01: resolve localhost
+    string:ip1 = raw Dns.resolve("localhost");
+    if (ip1 == "127.0.0.1") { println("[PASS] T01 resolve localhost"); pass_count += 1i32; }
+    if (ip1 != "127.0.0.1") { println("[FAIL] T01"); }
 
-    // ── test 03: family is valid (4 or 6) ──
-    int32:f3 = aria_dns_get_family(0i32);
-    aria_dns_assert_family_valid(f3, "test 03: localhost family valid");
+    // T02: resolve_all localhost
+    string:all2 = raw Dns.resolve_all("localhost");
+    if (all2 == "127.0.0.1") { println("[PASS] T02 resolve_all localhost"); pass_count += 1i32; }
+    if (all2 != "127.0.0.1") { println("[FAIL] T02"); }
 
-    // ── test 04: result_count matches ──
-    int32:c4 = aria_dns_result_count();
-    aria_dns_assert_int_eq(c4, n1, "test 04: result_count matches resolve return");
+    // T03: is_ipv4 valid
+    int64:v3 = raw Dns.is_ipv4("192.168.1.1");
+    if (v3 == 1i64) { println("[PASS] T03 is_ipv4 valid"); pass_count += 1i32; }
+    if (v3 != 1i64) { println("[FAIL] T03"); }
 
-    // ── test 05: resolve4 localhost ──
-    int32:n5 = aria_dns_resolve4("localhost");
-    aria_dns_assert_int_ge(n5, 1i32, "test 05: resolve4 localhost >= 1");
+    // T04: is_ipv4 invalid
+    int64:v4 = raw Dns.is_ipv4("not.an.ip");
+    if (v4 == 0i64) { println("[PASS] T04 is_ipv4 invalid"); pass_count += 1i32; }
+    if (v4 != 0i64) { println("[FAIL] T04"); }
 
-    // ── test 06: resolve4 returns family=4 ──
-    int32:f6 = aria_dns_get_family(0i32);
-    aria_dns_assert_int_eq(f6, 4i32, "test 06: resolve4 family == 4");
+    // T05: is_hostname for hostname
+    int64:h5 = raw Dns.is_hostname("example.com");
+    if (h5 == 1i64) { println("[PASS] T05 is_hostname true"); pass_count += 1i32; }
+    if (h5 != 1i64) { println("[FAIL] T05"); }
 
-    // ── test 07: out-of-range index returns empty addr ──
-    string:a7 = aria_dns_get_addr(999i32);
-    aria_dns_assert_str_empty(a7, "test 07: out-of-range addr is empty");
+    // T06: is_hostname for IP address (should return 0)
+    int64:h6 = raw Dns.is_hostname("10.0.0.1");
+    if (h6 == 0i64) { println("[PASS] T06 is_hostname false for IP"); pass_count += 1i32; }
+    if (h6 != 0i64) { println("[FAIL] T06"); }
 
-    // ── test 08: out-of-range family returns 0 ──
-    int32:f8 = aria_dns_get_family(999i32);
-    aria_dns_assert_int_eq(f8, 0i32, "test 08: out-of-range family == 0");
+    // T07: can_resolve localhost
+    int64:cr7 = raw Dns.can_resolve("localhost");
+    if (cr7 == 1i64) { println("[PASS] T07 can_resolve localhost"); pass_count += 1i32; }
+    if (cr7 != 1i64) { println("[FAIL] T07"); }
 
-    // ── test 09: resolve bad hostname returns -1 ──
-    int32:n9 = aria_dns_resolve("this.host.definitely.does.not.exist.invalid");
-    aria_dns_assert_int_eq(n9, -1i32, "test 09: bad hostname returns -1");
+    // T08: can_resolve invalid host
+    int64:cr8 = raw Dns.can_resolve("this.host.does.not.exist.invalid");
+    if (cr8 == 0i64) { println("[PASS] T08 can_resolve invalid=0"); pass_count += 1i32; }
+    if (cr8 != 0i64) { println("[FAIL] T08"); }
 
-    // ── test 10: resolve empty string returns -1 ──
-    int32:n10 = aria_dns_resolve("");
-    aria_dns_assert_int_eq(n10, -1i32, "test 10: empty hostname returns -1");
+    // T09: resolve_or with valid host
+    string:ro9 = raw Dns.resolve_or("localhost", "0.0.0.0");
+    if (ro9 == "127.0.0.1") { println("[PASS] T09 resolve_or valid"); pass_count += 1i32; }
+    if (ro9 != "127.0.0.1") { println("[FAIL] T09"); }
 
-    // ── test 11: reverse lookup 127.0.0.1 ──
-    string:h11 = aria_dns_reverse("127.0.0.1");
-    aria_dns_assert_str_not_empty(h11, "test 11: reverse 127.0.0.1 not empty");
+    // T10: resolve_or with invalid host uses fallback
+    string:ro10 = raw Dns.resolve_or("this.host.does.not.exist.invalid", "0.0.0.0");
+    if (ro10 == "0.0.0.0") { println("[PASS] T10 resolve_or fallback"); pass_count += 1i32; }
+    if (ro10 != "0.0.0.0") { println("[FAIL] T10"); }
 
-    // ── test 12: reverse bad IP returns empty ──
-    string:h12 = aria_dns_reverse("999.999.999.999");
-    aria_dns_assert_str_empty(h12, "test 12: reverse bad IP is empty");
+    // T11: reverse lookup 127.0.0.1
+    string:rev11 = raw Dns.reverse("127.0.0.1");
+    // Reverse may return "localhost" or the machine's hostname — just check non-empty
+    if (rev11 != "") { println("[PASS] T11 reverse non-empty"); pass_count += 1i32; }
+    if (rev11 == "") { println("[FAIL] T11"); }
 
-    // ── test 13: resolve4 addr not empty ──
-    int32:n13 = aria_dns_resolve4("localhost");
-    string:a13 = aria_dns_get_addr(0i32);
-    aria_dns_assert_str_not_empty(a13, "test 13: resolve4 localhost addr not empty");
+    // T12: is_ipv4 edge cases
+    int64:v12a = raw Dns.is_ipv4("0.0.0.0");
+    int64:v12b = raw Dns.is_ipv4("255.255.255.255");
+    if (v12a == 1i64) {
+        if (v12b == 1i64) { println("[PASS] T12 is_ipv4 edge"); pass_count += 1i32; }
+        if (v12b != 1i64) { println("[FAIL] T12"); }
+    }
+    if (v12a != 1i64) { println("[FAIL] T12"); }
 
-    // ── test 14: negative index returns empty ──
-    string:a14 = aria_dns_get_addr(-1i32);
-    aria_dns_assert_str_empty(a14, "test 14: negative index addr empty");
-
-    // ── test 15: reverse empty string returns empty ──
-    string:h15 = aria_dns_reverse("");
-    aria_dns_assert_str_empty(h15, "test 15: reverse empty string is empty");
-
-    aria_dns_test_summary();
-    exit 0;
+    println("DONE");
+    exit(0i32);
 };

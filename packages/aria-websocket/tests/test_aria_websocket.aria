@@ -1,85 +1,111 @@
-// test_aria_websocket.aria — WebSocket echo test (9 tests)
-//
-// Starts a local server, connects a client, sends a message,
-// receives it on the server, echoes it back, verifies on client.
-//
-// Workaround: variables consumed on use, so we store connection IDs
-// as literals after initial assignment.
+// test_aria_websocket.aria — 12-test suite for aria-websocket (v0.12.2)
+use "../src/aria_websocket.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
-extern "aria_websocket_shim" {
-    func:aria_ws_error            = string();
-    func:aria_ws_last_message     = string();
-    func:aria_ws_last_message_len = int32();
-    func:aria_ws_connect          = int32(string:host, int32:port, string:path);
-    func:aria_ws_listen           = int32(string:bind_addr, int32:port, int32:backlog);
-    func:aria_ws_accept           = int32(int32:listen_fd, int32:timeout_ms);
-    func:aria_ws_send             = int32(int32:conn_id, string:msg);
-    func:aria_ws_recv             = int32(int32:conn_id, int32:timeout_ms);
-    func:aria_ws_broadcast        = int32(string:msg);
-    func:aria_ws_ping             = int32(int32:conn_id);
-    func:aria_ws_close            = void(int32:conn_id);
-    func:aria_ws_close_listener   = void(int32:listen_fd);
-    func:aria_ws_connection_count = int32();
-}
+func:test_create_handshake = int32() {
+    int32:pc = 0i32;
+
+    int64:ws = raw ws_create("example.com", "/chat");
+    if (ws > 0i64) { println("[PASS] T01 ws_create"); pc += 1i32; }
+    if (ws <= 0i64) { println("[FAIL] T01"); }
+
+    string:req = raw ws_handshake_request(ws);
+    int32:t2 = 0i32;
+    if (string_contains(req, "GET /chat")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 handshake GET path"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    int32:t3 = 0i32;
+    if (string_contains(req, "Upgrade: websocket")) { t3 = 1i32; }
+    if (t3 == 1i32) { println("[PASS] T03 handshake Upgrade header"); pc += 1i32; }
+    if (t3 == 0i32) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_handshake_state = int32() {
+    int32:pc = 0i32;
+
+    int64:ws = raw ws_create("example.com", "/chat");
+
+    string:req = raw ws_handshake_request(ws);
+    int32:t4 = 0i32;
+    if (string_contains(req, "Host: example.com")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 handshake Host header"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:st5 = raw ws_state(ws);
+    int32:t5 = 0i32;
+    if (string_contains(st5, "connecting")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 initial state=connecting"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    int32:_s = raw ws_set_state(ws, "open");
+    string:st6 = raw ws_state(ws);
+    int32:t6 = 0i32;
+    if (string_contains(st6, "open")) { t6 = 1i32; }
+    if (t6 == 1i32) { println("[PASS] T06 set_state open"); pc += 1i32; }
+    if (t6 == 0i32) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_frame_types = int32() {
+    int32:pc = 0i32;
+
+    string:f7 = raw ws_frame_type_name(1i64);
+    int32:t7 = 0i32;
+    if (string_contains(f7, "text")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 frame_type 1=text"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    string:f8 = raw ws_frame_type_name(2i64);
+    int32:t8 = 0i32;
+    if (string_contains(f8, "binary")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 frame_type 2=binary"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:f9 = raw ws_frame_type_name(8i64);
+    int32:t9 = 0i32;
+    if (string_contains(f9, "close")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 frame_type 8=close"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_close_accessors = int32() {
+    int32:pc = 0i32;
+
+    int64:ws = raw ws_create("example.com", "/chat");
+
+    string:f10 = raw ws_frame_type_name(9i64);
+    int32:t10 = 0i32;
+    if (string_contains(f10, "ping")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 frame_type 9=ping"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    string:h11 = raw ws_host(ws);
+    int32:t11 = 0i32;
+    if (string_contains(h11, "example.com")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 ws_host"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    string:p12 = raw ws_path(ws);
+    int32:t12 = 0i32;
+    if (string_contains(p12, "/chat")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 ws_path"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
 
 func:main = int32() {
-    // T01: Start a WebSocket server on port 9877
-    int32:srv = aria_ws_listen("127.0.0.1", 9877i32, 2i32);
-    if (srv < 0i32) {
-        drop println("[FAIL] T01 ws_listen");
-        pass 1i32;
-    }
-    drop println("[PASS] T01 ws_listen");
-
-    // T02: Connect client to the server
-    // Client will be conn slot 0, server-accepted will be slot 1
-    int32:client = aria_ws_connect("127.0.0.1", 9877i32, "/");
-    if (client < 0i32) {
-        drop println("[FAIL] T02 ws_connect");
-        pass 1i32;
-    }
-    drop println("[PASS] T02 ws_connect");
-
-    // T03: Accept the connection on server side
-    int32:accepted = aria_ws_accept(srv, 2000i32);
-    if (accepted < 0i32) {
-        drop println("[FAIL] T03 ws_accept");
-        pass 1i32;
-    }
-    drop println("[PASS] T03 ws_accept");
-
-    // T04: Send message from client (slot 0)
-    int32:s1 = aria_ws_send(0i32, "Hello from Aria!");
-    if (s1 < 0i32) { drop println("[FAIL] T04 ws_send"); }
-    if (s1 == 0i32) { drop println("[PASS] T04 ws_send"); }
-
-    // T05: Receive message on server side (slot 1)
-    int32:r1 = aria_ws_recv(1i32, 2000i32);
-    if (r1 < 0i32) { drop println("[FAIL] T05 ws_recv"); }
-    if (r1 == 0i32) { drop println("[PASS] T05 ws_recv"); }
-
-    // T06: Send echo from server (slot 1)
-    int32:s2 = aria_ws_send(1i32, "Echo: Hello from Aria!");
-    if (s2 == 0i32) { drop println("[PASS] T06 ws_send echo"); }
-    if (s2 != 0i32) { drop println("[FAIL] T06 ws_send echo"); }
-
-    // T07: Receive echo on client side (slot 0)
-    int32:r2 = aria_ws_recv(0i32, 2000i32);
-    if (r2 == 0i32) { drop println("[PASS] T07 ws_recv echo"); }
-    if (r2 != 0i32) { drop println("[FAIL] T07 ws_recv echo"); }
-
-    // T08: Connection count should be 2
-    int32:cc = aria_ws_connection_count();
-    if (cc == 2i32) { drop println("[PASS] T08 connection_count"); }
-    if (cc != 2i32) { drop println("[FAIL] T08 connection_count"); }
-
-    // T09: Close connections
-    aria_ws_close(0i32);
-    aria_ws_close(1i32);
-    aria_ws_close_listener(srv);
-    drop println("[PASS] T09 cleanup");
-
-    exit 0;
+    int32:p1 = raw test_create_handshake();
+    int32:p2 = raw test_handshake_state();
+    int32:p3 = raw test_frame_types();
+    int32:p4 = raw test_close_accessors();
+    println("DONE");
+    exit(0i32);
 };

@@ -1,11 +1,10 @@
 [package]
-name            = "aria-dns"
-version         = "0.3.1"
-description     = "DNS resolution for Aria — A/AAAA hostname lookups via system resolver"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+name = "aria-dns"
+version = "0.12.0"
+description = "DNS resolution for Aria — hostname to IP address lookup via aria-libc_net"
+license = "MIT"
+categories = ["networking"]
 
 [dependencies]
-
-[build]
-link_libraries = ["aria_dns_shim"]
+aria-libc = "*"
+link_libraries = ["aria_libc_net"]

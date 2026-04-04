@@ -1,6 +1,6 @@
 // test_aria_http.aria — Init, config & URL encoding tests (no network)
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 extern func:aria_http_init           = int32();
 extern func:aria_http_set_timeout    = void(int32:seconds);
@@ -29,5 +29,5 @@ func:main = int32() {
     aria_http_assert_int_eq(1i32, 1i32, "test 08: cleanup");
 
     aria_http_test_summary();
-    exit 0;
+    exit(0i32);
 };

@@ -1,0 +1,295 @@
+// aria_glob.aria — Glob pattern matching (v0.12.3)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_glob.aria".*;
+//
+// Supports: * (any non-/ chars), ** (any chars including /),
+// ? (one non-/ char), and literal character matching.
+
+// ── Create ──────────────────────────────────────────────────────────────────
+
+pub func:glob_create = int64(string:pattern) {
+    int64:h = ahash(0);
+    ahset(h, "_pat", pattern);
+
+    int64:plen = string_length(pattern);
+    int64:segs = 1i64;
+    int32:wc = 0i32;
+    int32:rec = 0i32;
+    int64:i = 0i64;
+
+    while (i < plen) {
+        string:ch = string_substring(pattern, i, i + 1i64);
+
+        int32:is_slash = 0i32;
+        if (ch == "/") { is_slash = 1i32; }
+        if (is_slash == 1i32) { segs = segs + 1i64; }
+
+        int32:is_star = 0i32;
+        if (ch == "*") { is_star = 1i32; }
+        if (is_star == 1i32) {
+            wc = 1i32;
+            int64:ni = i + 1i64;
+            if (ni < plen) {
+                string:nch = string_substring(pattern, ni, ni + 1i64);
+                int32:ns = 0i32;
+                if (nch == "*") { ns = 1i32; }
+                if (ns == 1i32) { rec = 1i32; }
+            }
+        }
+
+        int32:is_q = 0i32;
+        if (ch == "?") { is_q = 1i32; }
+        if (is_q == 1i32) { wc = 1i32; }
+
+        i = i + 1i64;
+    }
+
+    if (wc == 1i32) { ahset(h, "_wild", "1"); }
+    if (wc == 0i32) { ahset(h, "_wild", "0"); }
+    if (rec == 1i32) { ahset(h, "_rec", "1"); }
+    if (rec == 0i32) { ahset(h, "_rec", "0"); }
+    ahset(h, "_segs", string_from_int(segs));
+
+    pass h;
+};
+
+// ── Match ───────────────────────────────────────────────────────────────────
+
+pub func:glob_match = int64(int64:h, string:path) {
+    string:pat = ahget(h, "_pat");
+    int64:plen = string_length(pat);
+    int64:slen = string_length(path);
+    int64:pi = 0i64;
+    int64:si = 0i64;
+    // Primary backtrack bookmark
+    int64:bk_pi = 0i64;
+    int64:bk_si = 0i64;
+    int64:bk_dbl = 0i64;
+    int32:has_bk = 0i32;
+    // Double-star fallback bookmark
+    int64:db_pi = 0i64;
+    int64:db_si = 0i64;
+    int32:has_db = 0i32;
+    // Result state
+    int64:matched = 0i64;
+    int64:done = 0i64;
+    int64:mx = (plen + 1i64) * (slen + 1i64) + plen + slen + 10i64;
+    int64:it = 0i64;
+
+    while (it < mx) {
+        if (done == 0i64) {
+            int32:need_bk = 0i32;
+            int32:si_end = 0i32;
+            if (si >= slen) { si_end = 1i32; }
+            int32:pi_end = 0i32;
+            if (pi >= plen) { pi_end = 1i32; }
+
+            // Both exhausted → match
+            if (si_end == 1i32) {
+                if (pi_end == 1i32) {
+                    matched = 1i64;
+                    done = 1i64;
+                }
+            }
+
+            // Path done, pattern has trailing chars → eat *s
+            if (done == 0i64) {
+                if (si_end == 1i32) {
+                    if (pi_end == 0i32) {
+                        string:tc = string_substring(pat, pi, pi + 1i64);
+                        int32:ts = 0i32;
+                        if (tc == "*") { ts = 1i32; }
+                        if (ts == 1i32) { pi = pi + 1i64; }
+                        if (ts == 0i32) { need_bk = 1i32; }
+                    }
+                }
+            }
+
+            // Pattern done, path has more → need backtrack
+            if (done == 0i64) {
+                if (pi_end == 1i32) {
+                    if (si_end == 0i32) { need_bk = 1i32; }
+                }
+            }
+
+            // Both active → match characters
+            if (done == 0i64) {
+                if (need_bk == 0i32) {
+                    if (si_end == 0i32) {
+                        if (pi_end == 0i32) {
+                            string:pc = string_substring(pat, pi, pi + 1i64);
+                            string:sc = string_substring(path, si, si + 1i64);
+                            int32:handled = 0i32;
+
+                            // Check star
+                            int32:ps = 0i32;
+                            if (pc == "*") { ps = 1i32; }
+                            if (ps == 1i32) {
+                                int32:ds = 0i32;
+                                int64:pn = pi + 1i64;
+                                if (pn < plen) {
+                                    string:pc2 = string_substring(pat, pn, pn + 1i64);
+                                    int32:p2s = 0i32;
+                                    if (pc2 == "*") { p2s = 1i32; }
+                                    if (p2s == 1i32) { ds = 1i32; }
+                                }
+                                if (ds == 1i32) {
+                                    int64:aft = pi + 2i64;
+                                    db_pi = aft;
+                                    db_si = si;
+                                    has_db = 1i32;
+                                    bk_pi = aft;
+                                    bk_si = si;
+                                    bk_dbl = 1i64;
+                                    has_bk = 1i32;
+                                    pi = aft;
+                                    if (pi < plen) {
+                                        string:pc3 = string_substring(pat, pi, pi + 1i64);
+                                        int32:p3s = 0i32;
+                                        if (pc3 == "/") { p3s = 1i32; }
+                                        if (p3s == 1i32) {
+                                            pi = pi + 1i64;
+                                            db_pi = pi;
+                                            bk_pi = pi;
+                                        }
+                                    }
+                                }
+                                if (ds == 0i32) {
+                                    bk_pi = pi + 1i64;
+                                    bk_si = si;
+                                    bk_dbl = 0i64;
+                                    has_bk = 1i32;
+                                    pi = pi + 1i64;
+                                }
+                                handled = 1i32;
+                            }
+
+                            // Check ?
+                            if (handled == 0i32) {
+                                int32:pq = 0i32;
+                                if (pc == "?") { pq = 1i32; }
+                                if (pq == 1i32) {
+                                    int32:sc_sl = 0i32;
+                                    if (sc == "/") { sc_sl = 1i32; }
+                                    if (sc_sl == 0i32) {
+                                        pi = pi + 1i64;
+                                        si = si + 1i64;
+                                        handled = 1i32;
+                                    }
+                                }
+                            }
+
+                            // Literal match
+                            if (handled == 0i32) {
+                                int32:eq = 0i32;
+                                if (pc == sc) { eq = 1i32; }
+                                if (eq == 1i32) {
+                                    pi = pi + 1i64;
+                                    si = si + 1i64;
+                                    handled = 1i32;
+                                }
+                            }
+
+                            // Mismatch
+                            if (handled == 0i32) { need_bk = 1i32; }
+                        }
+                    }
+                }
+            }
+
+            // Handle backtrack
+            if (done == 0i64) {
+                if (need_bk == 1i32) {
+                    int32:bk_ok = 0i32;
+                    if (has_bk == 1i32) {
+                        int32:can = 1i32;
+                        if (bk_dbl == 0i64) {
+                            if (bk_si < slen) {
+                                string:bc = string_substring(path, bk_si, bk_si + 1i64);
+                                int32:bs = 0i32;
+                                if (bc == "/") { bs = 1i32; }
+                                if (bs == 1i32) { can = 0i32; }
+                            }
+                            if (bk_si >= slen) { can = 0i32; }
+                        }
+                        if (bk_dbl == 1i64) {
+                            if (bk_si >= slen) { can = 0i32; }
+                        }
+                        if (can == 1i32) {
+                            bk_si = bk_si + 1i64;
+                            si = bk_si;
+                            pi = bk_pi;
+                            bk_ok = 1i32;
+                        }
+                    }
+                    if (bk_ok == 0i32) {
+                        if (has_db == 1i32) {
+                            db_si = db_si + 1i64;
+                            if (db_si > slen) {
+                                done = 1i64;
+                                matched = 0i64;
+                            }
+                            if (done == 0i64) {
+                                si = db_si;
+                                pi = db_pi;
+                                has_bk = 0i32;
+                                bk_ok = 1i32;
+                            }
+                        }
+                    }
+                    if (bk_ok == 0i32) {
+                        if (done == 0i64) {
+                            done = 1i64;
+                            matched = 0i64;
+                        }
+                    }
+                }
+            }
+        }
+        it = it + 1i64;
+    }
+
+    pass matched;
+};
+
+// ── Accessors ───────────────────────────────────────────────────────────────
+
+pub func:glob_pattern = string(int64:h) {
+    string:v = ahget(h, "_pat");
+    pass v;
+};
+
+pub func:glob_is_recursive = int64(int64:h) {
+    string:v = ahget(h, "_rec");
+    int64:result = 0i64;
+    int32:r = 0i32;
+    if (string_contains(v, "1")) { r = 1i32; }
+    if (r == 1i32) { result = 1i64; }
+    pass result;
+};
+
+pub func:glob_has_wildcard = int64(int64:h) {
+    string:v = ahget(h, "_wild");
+    int64:result = 0i64;
+    int32:w = 0i32;
+    if (string_contains(v, "1")) { w = 1i32; }
+    if (w == 1i32) { result = 1i64; }
+    pass result;
+};
+
+pub func:glob_segment_count = string(int64:h) {
+    string:v = ahget(h, "_segs");
+    pass v;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:Glob = {
+    func:init     = int64(string:pat) { pass raw glob_create(pat); };
+    func:match_path = int64(int64:h, string:p) { pass raw glob_match(h, p); };
+    func:pat      = string(int64:h) { pass raw glob_pattern(h); };
+    func:is_rec   = int64(int64:h) { pass raw glob_is_recursive(h); };
+    func:has_wild = int64(int64:h) { pass raw glob_has_wildcard(h); };
+    func:segs     = string(int64:h) { pass raw glob_segment_count(h); };
+};

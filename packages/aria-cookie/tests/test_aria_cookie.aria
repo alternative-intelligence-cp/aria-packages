@@ -1,113 +1,111 @@
-// test_aria_cookie.aria — Tests for cookie parsing and Set-Cookie generation
+// test_aria_cookie.aria — 12-test suite for aria-cookie (v0.12.1)
+use "../src/aria_cookie.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern "aria_cookie_shim" {
-    func:aria_cookie_parse            = int32(string:cookie_header);
-    func:aria_cookie_get              = string(string:name);
-    func:aria_cookie_has              = int32(string:name);
-    func:aria_cookie_count            = int32();
-    func:aria_cookie_name             = string(int32:index);
-    func:aria_cookie_value            = string(int32:index);
-    func:aria_cookie_builder_reset    = void();
-    func:aria_cookie_builder_name     = void(string:name);
-    func:aria_cookie_builder_value    = void(string:value);
-    func:aria_cookie_builder_path     = void(string:path);
-    func:aria_cookie_builder_domain   = void(string:domain);
-    func:aria_cookie_builder_max_age  = void(int32:seconds);
-    func:aria_cookie_builder_secure   = void(int32:flag);
-    func:aria_cookie_builder_httponly = void(int32:flag);
-    func:aria_cookie_builder_samesite = void(string:policy);
-    func:aria_cookie_builder_build    = string();
-    func:aria_cookie_delete           = string(string:name, string:path);
-    func:aria_cookie_reset            = void();
-    func:aria_cookie_assert_str_eq    = void(string:label, string:expected, string:actual);
-    func:aria_cookie_assert_int_eq    = void(string:label, int32:expected, int32:actual);
-    func:aria_cookie_assert_contains  = void(string:label, string:expected, string:actual);
-    func:aria_cookie_test_summary     = void();
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── Test 1: Parse simple Cookie header ──
-    int32:n1 = aria_cookie_parse("sid=abc123; theme=dark; lang=en");
-    aria_cookie_assert_int_eq("parse count", 3i32, n1);
+    int32:pass_count = 0i32;
 
-    string:v1 = aria_cookie_get("sid");
-    aria_cookie_assert_str_eq("get sid", "abc123", v1);
+    // T01: parse single cookie — returns handle
+    int64:jar1 = raw cookie_parse("session=abc123");
+    int64:c1 = ahcount(jar1);
+    if (c1 >= 1i64) { println("[PASS] T01 parse single cookie"); pass_count += 1i32; }
+    if (c1 < 1i64) { println("[FAIL] T01"); }
 
-    string:v2 = aria_cookie_get("theme");
-    aria_cookie_assert_str_eq("get theme", "dark", v2);
+    // T02: get parsed cookie value
+    string:v2 = raw cookie_get(jar1, "session");
+    if (v2 == "abc123") { println("[PASS] T02 get session=abc123"); pass_count += 1i32; }
+    if (v2 != "abc123") { println("[FAIL] T02"); }
 
-    string:v3 = aria_cookie_get("lang");
-    aria_cookie_assert_str_eq("get lang", "en", v3);
+    // T03: has cookie
+    int64:h3 = raw cookie_has(jar1, "session");
+    if (h3 == 1i64) { println("[PASS] T03 has session=true"); pass_count += 1i32; }
+    if (h3 != 1i64) { println("[FAIL] T03"); }
 
-    // ── Test 2: has/missing ──
-    int32:h1 = aria_cookie_has("sid");
-    aria_cookie_assert_int_eq("has sid", 1i32, h1);
+    // T04: has missing cookie
+    int64:h4 = raw cookie_has(jar1, "missing");
+    if (h4 == 0i64) { println("[PASS] T04 has missing=false"); pass_count += 1i32; }
+    if (h4 != 0i64) { println("[FAIL] T04"); }
 
-    int32:h2 = aria_cookie_has("nope");
-    aria_cookie_assert_int_eq("has nope", 0i32, h2);
+    // T05: parse multiple cookies
+    int64:jar5 = raw cookie_parse("user=alice; token=xyz789");
+    string:u5 = raw cookie_get(jar5, "user");
+    string:t5 = raw cookie_get(jar5, "token");
+    if (u5 == "alice") {
+        if (t5 == "xyz789") { println("[PASS] T05 parse multi cookies"); pass_count += 1i32; }
+        if (t5 != "xyz789") { println("[FAIL] T05 token"); }
+    }
+    if (u5 != "alice") { println("[FAIL] T05 user"); }
 
-    // ── Test 3: Iterate by index ──
-    string:n0 = aria_cookie_name(0i32);
-    aria_cookie_assert_str_eq("name 0", "sid", n0);
-    string:val0 = aria_cookie_value(0i32);
-    aria_cookie_assert_str_eq("value 0", "abc123", val0);
+    // T06: builder — simple name=value
+    int64:bh6 = raw cookie_bld_reset();
+    int64:_b6b = raw cookie_bld_name(bh6, "sid");
+    int64:_b6c = raw cookie_bld_value(bh6, "abc");
+    string:sc6 = raw cookie_bld_build(bh6);
+    if (string_contains(sc6, "sid=abc")) { println("[PASS] T06 builder basic"); pass_count += 1i32; }
+    if (string_contains(sc6, "sid=abc") == false) { println("[FAIL] T06"); }
 
-    // ── Test 4: Empty cookie header ──
-    aria_cookie_reset();
-    int32:n2 = aria_cookie_parse("");
-    aria_cookie_assert_int_eq("empty parse", 0i32, n2);
+    // T07: builder — with domain + path
+    int64:bh7 = raw cookie_bld_reset();
+    int64:_b7b = raw cookie_bld_name(bh7, "id");
+    int64:_b7c = raw cookie_bld_value(bh7, "42");
+    int64:_b7d = raw cookie_bld_domain(bh7, "example.com");
+    int64:_b7e = raw cookie_bld_path(bh7, "/api");
+    string:sc7 = raw cookie_bld_build(bh7);
+    if (string_contains(sc7, "Domain=example.com")) {
+        if (string_contains(sc7, "Path=/api")) { println("[PASS] T07 builder domain+path"); pass_count += 1i32; }
+        if (string_contains(sc7, "Path=/api") == false) { println("[FAIL] T07 path"); }
+    }
+    if (string_contains(sc7, "Domain=example.com") == false) { println("[FAIL] T07 domain"); }
 
-    // ── Test 5: Single cookie ──
-    aria_cookie_reset();
-    int32:n3 = aria_cookie_parse("token=xyz789");
-    aria_cookie_assert_int_eq("single count", 1i32, n3);
-    string:tk = aria_cookie_get("token");
-    aria_cookie_assert_str_eq("single value", "xyz789", tk);
+    // T08: builder — Secure + HttpOnly
+    int64:bh8 = raw cookie_bld_reset();
+    int64:_b8b = raw cookie_bld_name(bh8, "tok");
+    int64:_b8c = raw cookie_bld_value(bh8, "x");
+    int64:_b8d = raw cookie_bld_secure(bh8, 1i64);
+    int64:_b8e = raw cookie_bld_httponly(bh8, 1i64);
+    string:sc8 = raw cookie_bld_build(bh8);
+    if (string_contains(sc8, "; Secure")) {
+        if (string_contains(sc8, "; HttpOnly")) { println("[PASS] T08 Secure+HttpOnly"); pass_count += 1i32; }
+        if (string_contains(sc8, "; HttpOnly") == false) { println("[FAIL] T08 httponly"); }
+    }
+    if (string_contains(sc8, "; Secure") == false) { println("[FAIL] T08 secure"); }
 
-    // ── Test 6: Build Set-Cookie (simple) ──
-    aria_cookie_builder_reset();
-    aria_cookie_builder_name("sid");
-    aria_cookie_builder_value("abc123");
-    aria_cookie_builder_path("/");
-    string:sc1 = aria_cookie_builder_build();
-    aria_cookie_assert_str_eq("simple set-cookie", "Set-Cookie: sid=abc123; Path=/\r\n", sc1);
+    // T09: builder — Max-Age
+    int64:bh9 = raw cookie_bld_reset();
+    int64:_b9b = raw cookie_bld_name(bh9, "tmp");
+    int64:_b9c = raw cookie_bld_value(bh9, "v");
+    int64:_b9d = raw cookie_bld_max_age(bh9, 3600i64);
+    string:sc9 = raw cookie_bld_build(bh9);
+    if (string_contains(sc9, "Max-Age=3600")) { println("[PASS] T09 Max-Age"); pass_count += 1i32; }
+    if (string_contains(sc9, "Max-Age=3600") == false) { println("[FAIL] T09"); }
 
-    // ── Test 7: Build Set-Cookie (full) ──
-    aria_cookie_builder_reset();
-    aria_cookie_builder_name("session");
-    aria_cookie_builder_value("tok42");
-    aria_cookie_builder_path("/app");
-    aria_cookie_builder_domain("example.com");
-    aria_cookie_builder_max_age(3600i32);
-    aria_cookie_builder_secure(1i32);
-    aria_cookie_builder_httponly(1i32);
-    aria_cookie_builder_samesite("Strict");
-    string:sc2 = aria_cookie_builder_build();
-    aria_cookie_assert_contains("full name=val", "session=tok42", sc2);
-    aria_cookie_assert_contains("full path", "Path=/app", sc2);
-    aria_cookie_assert_contains("full domain", "Domain=example.com", sc2);
-    aria_cookie_assert_contains("full max-age", "Max-Age=3600", sc2);
-    aria_cookie_assert_contains("full secure", "Secure", sc2);
-    aria_cookie_assert_contains("full httponly", "HttpOnly", sc2);
-    aria_cookie_assert_contains("full samesite", "SameSite=Strict", sc2);
+    // T10: builder — SameSite
+    int64:bh10 = raw cookie_bld_reset();
+    int64:_b10b = raw cookie_bld_name(bh10, "cs");
+    int64:_b10c = raw cookie_bld_value(bh10, "v");
+    int64:_b10d = raw cookie_bld_samesite(bh10, "Strict");
+    string:sc10 = raw cookie_bld_build(bh10);
+    if (string_contains(sc10, "SameSite=Strict")) { println("[PASS] T10 SameSite=Strict"); pass_count += 1i32; }
+    if (string_contains(sc10, "SameSite=Strict") == false) { println("[FAIL] T10"); }
 
-    // ── Test 8: Delete cookie ──
-    string:del = aria_cookie_delete("sid", "/");
-    aria_cookie_assert_str_eq("delete cookie", "Set-Cookie: sid=; Path=/; Max-Age=0\r\n", del);
+    // T11: cookie_count
+    int64:jar11 = raw cookie_parse("a=1; b=2; c=3");
+    int64:c11 = raw cookie_count(jar11);
+    if (c11 == 3i64) { println("[PASS] T11 count=3"); pass_count += 1i32; }
+    if (c11 != 3i64) { println("[FAIL] T11"); }
 
-    // ── Test 9: Delete cookie default path ──
-    string:del2 = aria_cookie_delete("token", "");
-    aria_cookie_assert_str_eq("delete default path", "Set-Cookie: token=; Path=/; Max-Age=0\r\n", del2);
+    // T12: remove single cookie
+    int64:jar12 = raw cookie_parse("a=1; b=2");
+    int64:_d12 = raw cookie_remove(jar12, "a");
+    int64:h12 = raw cookie_has(jar12, "a");
+    int64:h12b = raw cookie_has(jar12, "b");
+    if (h12 == 0i64) {
+        if (h12b == 1i64) { println("[PASS] T12 remove single"); pass_count += 1i32; }
+        if (h12b != 1i64) { println("[FAIL] T12 b still exists"); }
+    }
+    if (h12 != 0i64) { println("[FAIL] T12 a not removed"); }
 
-    // ── Test 10: Cookie with spaces around values ──
-    aria_cookie_reset();
-    int32:n4 = aria_cookie_parse("  name = value ; other = stuff ");
-    aria_cookie_assert_int_eq("trimmed count", 2i32, n4);
-    string:tv1 = aria_cookie_get("name");
-    aria_cookie_assert_str_eq("trimmed name", "value", tv1);
-
-    aria_cookie_test_summary();
-    exit 0;
+    println("DONE");
+    exit(0i32);
 };

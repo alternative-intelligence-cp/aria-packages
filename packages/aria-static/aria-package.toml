@@ -1,7 +1,8 @@
 [package]
 name = "aria-static"
-version = "0.2.9"
-description = "Static file serving for Aria HTTP servers"
+version = "0.12.1"
+description = "Static file path resolution and MIME type detection for Aria — pure Aria"
+license = "MIT"
+categories = ["networking", "middleware"]
 
 [dependencies]
-link_libraries = ["aria_static_shim"]

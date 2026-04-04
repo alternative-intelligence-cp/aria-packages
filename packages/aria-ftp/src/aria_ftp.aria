@@ -1,97 +1,158 @@
-// aria_ftp.aria — FTP client session management for Aria
+// aria_ftp.aria — FTP protocol command builder & reply parser (v0.12.2)
 //
-// Handle-based FTP session with URL building, directory navigation,
-// credentials, and mode settings (passive/binary).
-// Requires: libaria_ftp_shim.so
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_ftp.aria".*;
+//
+// Builds FTP command strings and parses FTP reply lines.
+// Actual socket I/O is handled by aria-socket at the application level.
 
-extern "aria_ftp_shim" {
-    func:aria_ftp_session_create  = int64(string:host, int32:port);
-    func:aria_ftp_session_destroy = void(int64:handle);
-    func:aria_ftp_set_credentials = int32(int64:handle, string:user, string:pass);
-    func:aria_ftp_set_passive     = int32(int64:handle, int32:passive);
-    func:aria_ftp_set_binary      = int32(int64:handle, int32:bin_mode);
-    func:aria_ftp_is_passive      = int32(int64:handle);
-    func:aria_ftp_is_binary       = int32(int64:handle);
-}
+// ── Session ─────────────────────────────────────────────────────────────────
 
-extern "aria_ftp_shim" {
-    func:aria_ftp_cwd         = int32(int64:handle, string:path);
-    func:aria_ftp_pwd         = string(int64:handle);
-    func:aria_ftp_cdup        = int32(int64:handle);
-    func:aria_ftp_build_url   = string(int64:handle, string:filepath);
-    func:aria_ftp_get_host    = string(int64:handle);
-    func:aria_ftp_get_port    = int32(int64:handle);
-    func:aria_ftp_get_username = string(int64:handle);
-}
-
-// ── public API ──────────────────────────────────────────────────────
-
-pub func:ftp_session_create = int64(string:host, int32:port) {
-    int64:h = aria_ftp_session_create(host, port);
+pub func:ftp_create = int64() {
+    int64:h = ahash(256);
+    ahset(h, "_last_cmd", "");
+    ahset(h, "_reply_code", "");
+    ahset(h, "_reply_msg", "");
+    ahset(h, "_reply_class", "");
     pass h;
 };
 
-pub func:ftp_session_destroy = NIL(int64:handle) {
-    aria_ftp_session_destroy(handle);
-    pass NIL;
+// ── Commands ────────────────────────────────────────────────────────────────
+
+pub func:ftp_cmd_user = string(int64:h, string:user) {
+    ahset(h, "_last_cmd", "USER");
+    string:cmd = string_concat("USER ", user);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_set_credentials = int32(int64:handle, string:user, string:pass_str) {
-    int32:r = aria_ftp_set_credentials(handle, user, pass_str);
-    pass r;
+pub func:ftp_cmd_pass = string(int64:h, string:pw) {
+    ahset(h, "_last_cmd", "PASS");
+    string:cmd = string_concat("PASS ", pw);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_set_passive = int32(int64:handle, int32:passive) {
-    int32:r = aria_ftp_set_passive(handle, passive);
-    pass r;
+pub func:ftp_cmd_cwd = string(int64:h, string:dir) {
+    ahset(h, "_last_cmd", "CWD");
+    string:cmd = string_concat("CWD ", dir);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_set_binary = int32(int64:handle, int32:bin_mode) {
-    int32:r = aria_ftp_set_binary(handle, bin_mode);
-    pass r;
+pub func:ftp_cmd_pwd = string(int64:h) {
+    ahset(h, "_last_cmd", "PWD");
+    pass "PWD\n";
 };
 
-pub func:ftp_is_passive = int32(int64:handle) {
-    int32:r = aria_ftp_is_passive(handle);
-    pass r;
+pub func:ftp_cmd_list = string(int64:h) {
+    ahset(h, "_last_cmd", "LIST");
+    pass "LIST\n";
 };
 
-pub func:ftp_is_binary = int32(int64:handle) {
-    int32:r = aria_ftp_is_binary(handle);
-    pass r;
+pub func:ftp_cmd_retr = string(int64:h, string:fname) {
+    ahset(h, "_last_cmd", "RETR");
+    string:cmd = string_concat("RETR ", fname);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_cwd = int32(int64:handle, string:path) {
-    int32:r = aria_ftp_cwd(handle, path);
-    pass r;
+pub func:ftp_cmd_stor = string(int64:h, string:fname) {
+    ahset(h, "_last_cmd", "STOR");
+    string:cmd = string_concat("STOR ", fname);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_pwd = string(int64:handle) {
-    string:r = aria_ftp_pwd(handle);
-    pass r;
+pub func:ftp_cmd_dele = string(int64:h, string:fname) {
+    ahset(h, "_last_cmd", "DELE");
+    string:cmd = string_concat("DELE ", fname);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_cdup = int32(int64:handle) {
-    int32:r = aria_ftp_cdup(handle);
-    pass r;
+pub func:ftp_cmd_mkd = string(int64:h, string:dir) {
+    ahset(h, "_last_cmd", "MKD");
+    string:cmd = string_concat("MKD ", dir);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_build_url = string(int64:handle, string:filepath) {
-    string:r = aria_ftp_build_url(handle, filepath);
-    pass r;
+pub func:ftp_cmd_type = string(int64:h, string:tc) {
+    ahset(h, "_last_cmd", "TYPE");
+    string:cmd = string_concat("TYPE ", tc);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:ftp_get_host = string(int64:handle) {
-    string:r = aria_ftp_get_host(handle);
-    pass r;
+pub func:ftp_cmd_pasv = string(int64:h) {
+    ahset(h, "_last_cmd", "PASV");
+    pass "PASV\n";
 };
 
-pub func:ftp_get_port = int32(int64:handle) {
-    int32:r = aria_ftp_get_port(handle);
-    pass r;
+pub func:ftp_cmd_quit = string(int64:h) {
+    ahset(h, "_last_cmd", "QUIT");
+    pass "QUIT\n";
 };
 
-pub func:ftp_get_username = string(int64:handle) {
-    string:r = aria_ftp_get_username(handle);
-    pass r;
+// ── Reply parsing ───────────────────────────────────────────────────────────
+
+pub func:ftp_parse_reply = int32(int64:h, string:line_str) {
+    int64:slen = string_length(line_str);
+    if (slen < 3i64) { pass 1i32; }
+    string:code = string_substring(line_str, 0i64, 3i64);
+    string:cls = string_substring(line_str, 0i64, 1i64);
+    ahset(h, "_reply_code", code);
+    ahset(h, "_reply_class", cls);
+    if (slen > 4i64) {
+        string:msg = string_substring(line_str, 4i64, slen);
+        ahset(h, "_reply_msg", msg);
+    }
+    if (slen <= 4i64) {
+        ahset(h, "_reply_msg", "");
+    }
+    pass 0i32;
+};
+
+pub func:ftp_reply_code = string(int64:h) {
+    string:v = ahget(h, "_reply_code");
+    pass v;
+};
+
+pub func:ftp_reply_class = string(int64:h) {
+    string:v = ahget(h, "_reply_class");
+    pass v;
+};
+
+pub func:ftp_reply_msg = string(int64:h) {
+    string:v = ahget(h, "_reply_msg");
+    pass v;
+};
+
+pub func:ftp_last_cmd = string(int64:h) {
+    string:v = ahget(h, "_last_cmd");
+    pass v;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:FTP = {
+    func:init       = int64() { pass raw ftp_create(); };
+    func:user       = string(int64:h, string:u) { pass raw ftp_cmd_user(h, u); };
+    func:pw         = string(int64:h, string:p) { pass raw ftp_cmd_pass(h, p); };
+    func:cd         = string(int64:h, string:d) { pass raw ftp_cmd_cwd(h, d); };
+    func:pwd        = string(int64:h) { pass raw ftp_cmd_pwd(h); };
+    func:dir        = string(int64:h) { pass raw ftp_cmd_list(h); };
+    func:get        = string(int64:h, string:f) { pass raw ftp_cmd_retr(h, f); };
+    func:put        = string(int64:h, string:f) { pass raw ftp_cmd_stor(h, f); };
+    func:del        = string(int64:h, string:f) { pass raw ftp_cmd_dele(h, f); };
+    func:mkdir      = string(int64:h, string:d) { pass raw ftp_cmd_mkd(h, d); };
+    func:mode       = string(int64:h, string:t) { pass raw ftp_cmd_type(h, t); };
+    func:passive    = string(int64:h) { pass raw ftp_cmd_pasv(h); };
+    func:bye        = string(int64:h) { pass raw ftp_cmd_quit(h); };
+    func:parse      = int32(int64:h, string:l) { pass raw ftp_parse_reply(h, l); };
+    func:code       = string(int64:h) { pass raw ftp_reply_code(h); };
+    func:cls        = string(int64:h) { pass raw ftp_reply_class(h); };
+    func:msg        = string(int64:h) { pass raw ftp_reply_msg(h); };
+    func:last       = string(int64:h) { pass raw ftp_last_cmd(h); };
 };

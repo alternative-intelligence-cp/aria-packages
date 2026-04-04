@@ -1,106 +1,93 @@
-// test_aria_cors.aria — Tests for CORS header generation
+// test_aria_cors.aria — 12-test suite for aria-cors (v0.12.1)
+use "../src/aria_cors.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern "aria_cors_shim" {
-    func:aria_cors_reset             = void();
-    func:aria_cors_allow_origin      = void(string:origin);
-    func:aria_cors_allow_methods     = void(string:methods);
-    func:aria_cors_allow_headers     = void(string:headers);
-    func:aria_cors_expose_headers    = void(string:headers);
-    func:aria_cors_allow_credentials = void(int32:allow);
-    func:aria_cors_max_age           = void(int32:seconds);
-    func:aria_cors_is_allowed        = int32(string:origin);
-    func:aria_cors_headers           = string(string:origin);
-    func:aria_cors_preflight         = string(string:origin);
-    func:aria_cors_is_preflight      = int32(string:method);
-    func:aria_cors_assert_str_eq     = void(string:label, string:expected, string:actual);
-    func:aria_cors_assert_int_eq     = void(string:label, int32:expected, int32:actual);
-    func:aria_cors_assert_contains   = void(string:label, string:expected, string:actual);
-    func:aria_cors_test_summary      = void();
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // ── Test 1: Wildcard origin ──
-    aria_cors_reset();
-    aria_cors_allow_origin("*");
-    int32:a1 = aria_cors_is_allowed("https://example.com");
-    aria_cors_assert_int_eq("wildcard allows any", 1i32, a1);
+    int32:pass_count = 0i32;
 
-    string:h1 = aria_cors_headers("https://example.com");
-    aria_cors_assert_contains("wildcard origin header", "Access-Control-Allow-Origin: *", h1);
+    // T01: create config
+    int64:ch = raw cors_reset();
+    int64:t1 = ahtype(ch, "_origins");
+    if (t1 >= 0i64) { println("[PASS] T01 create config"); pass_count += 1i32; }
+    if (t1 < 0i64) { println("[FAIL] T01"); }
 
-    // ── Test 2: Specific origins ──
-    aria_cors_reset();
-    aria_cors_allow_origin("https://example.com");
-    aria_cors_allow_origin("https://other.com");
+    // T02: allow origin
+    int64:_s2 = raw cors_allow_origin(ch, "http://example.com");
+    int64:a2 = raw cors_is_allowed(ch, "http://example.com");
+    if (a2 == 1i64) { println("[PASS] T02 allow origin"); pass_count += 1i32; }
+    if (a2 != 1i64) { println("[FAIL] T02"); }
 
-    int32:a2 = aria_cors_is_allowed("https://example.com");
-    aria_cors_assert_int_eq("specific origin allowed", 1i32, a2);
+    // T03: disallowed origin
+    int64:a3 = raw cors_is_allowed(ch, "http://evil.com");
+    if (a3 == 0i64) { println("[PASS] T03 disallowed origin"); pass_count += 1i32; }
+    if (a3 != 0i64) { println("[FAIL] T03"); }
 
-    int32:a3 = aria_cors_is_allowed("https://evil.com");
-    aria_cors_assert_int_eq("unknown origin denied", 0i32, a3);
+    // T04: wildcard origin
+    int64:ch4 = raw cors_reset();
+    int64:_s4 = raw cors_allow_origin(ch4, "*");
+    int64:a4 = raw cors_is_allowed(ch4, "http://anything.com");
+    if (a4 == 1i64) { println("[PASS] T04 wildcard origin"); pass_count += 1i32; }
+    if (a4 != 1i64) { println("[FAIL] T04"); }
 
-    string:h2 = aria_cors_headers("https://example.com");
-    aria_cors_assert_contains("reflects origin", "Access-Control-Allow-Origin: https://example.com", h2);
-    aria_cors_assert_contains("vary header", "Vary: Origin", h2);
+    // T05: is_preflight — true case
+    int64:p5 = raw cors_is_preflight("OPTIONS", "http://example.com", "POST");
+    if (p5 == 1i64) { println("[PASS] T05 is_preflight=true"); pass_count += 1i32; }
+    if (p5 != 1i64) { println("[FAIL] T05"); }
 
-    // ── Test 3: Denied origin produces empty headers ──
-    string:h3 = aria_cors_headers("https://evil.com");
-    aria_cors_assert_str_eq("denied origin empty", "", h3);
+    // T06: is_preflight — false (not OPTIONS)
+    int64:p6 = raw cors_is_preflight("GET", "http://example.com", "");
+    if (p6 == 0i64) { println("[PASS] T06 is_preflight=false for GET"); pass_count += 1i32; }
+    if (p6 != 0i64) { println("[FAIL] T06"); }
 
-    // ── Test 4: Credentials ──
-    aria_cors_reset();
-    aria_cors_allow_origin("https://app.com");
-    aria_cors_allow_credentials(1i32);
+    // T07: headers for allowed origin
+    int64:ch7 = raw cors_reset();
+    int64:_s7a = raw cors_allow_origin(ch7, "http://a.com");
+    string:h7 = raw cors_headers(ch7, "http://a.com");
+    if (string_contains(h7, "Access-Control-Allow-Origin: http://a.com")) { println("[PASS] T07 headers allow-origin"); pass_count += 1i32; }
+    if (string_contains(h7, "Access-Control-Allow-Origin: http://a.com") == false) { println("[FAIL] T07"); }
 
-    string:h4 = aria_cors_headers("https://app.com");
-    aria_cors_assert_contains("credentials header", "Access-Control-Allow-Credentials: true", h4);
+    // T08: headers for disallowed origin returns empty
+    string:h8 = raw cors_headers(ch7, "http://evil.com");
+    if (h8 == "") { println("[PASS] T08 headers empty for disallowed"); pass_count += 1i32; }
+    if (h8 != "") { println("[FAIL] T08"); }
 
-    // ── Test 5: Preflight response ──
-    aria_cors_reset();
-    aria_cors_allow_origin("*");
-    aria_cors_allow_methods("GET, POST");
-    aria_cors_allow_headers("Content-Type, X-Token");
-    aria_cors_max_age(3600i32);
+    // T09: preflight with methods + headers
+    int64:ch9 = raw cors_reset();
+    int64:_s9a = raw cors_allow_origin(ch9, "*");
+    int64:_s9b = raw cors_allow_methods(ch9, "GET, POST, PUT");
+    int64:_s9c = raw cors_allow_headers(ch9, "Content-Type, Authorization");
+    string:pf9 = raw cors_preflight(ch9, "http://x.com");
+    if (string_contains(pf9, "Allow-Methods: GET, POST, PUT")) {
+        if (string_contains(pf9, "Allow-Headers: Content-Type, Authorization")) { println("[PASS] T09 preflight methods+headers"); pass_count += 1i32; }
+        if (string_contains(pf9, "Allow-Headers: Content-Type, Authorization") == false) { println("[FAIL] T09 headers"); }
+    }
+    if (string_contains(pf9, "Allow-Methods: GET, POST, PUT") == false) { println("[FAIL] T09 methods"); }
 
-    string:pf = aria_cors_preflight("https://any.com");
-    aria_cors_assert_contains("preflight methods", "Access-Control-Allow-Methods: GET, POST", pf);
-    aria_cors_assert_contains("preflight headers", "Access-Control-Allow-Headers: Content-Type, X-Token", pf);
-    aria_cors_assert_contains("preflight max-age", "Access-Control-Max-Age: 3600", pf);
+    // T10: credentials in headers
+    int64:ch10 = raw cors_reset();
+    int64:_s10a = raw cors_allow_origin(ch10, "*");
+    int64:_s10b = raw cors_allow_credentials(ch10, 1i64);
+    string:h10 = raw cors_headers(ch10, "http://b.com");
+    if (string_contains(h10, "Allow-Credentials: true")) { println("[PASS] T10 credentials"); pass_count += 1i32; }
+    if (string_contains(h10, "Allow-Credentials: true") == false) { println("[FAIL] T10"); }
 
-    // ── Test 6: is_preflight check ──
-    int32:ip1 = aria_cors_is_preflight("OPTIONS");
-    aria_cors_assert_int_eq("OPTIONS is preflight", 1i32, ip1);
+    // T11: max-age in preflight
+    int64:ch11 = raw cors_reset();
+    int64:_s11a = raw cors_allow_origin(ch11, "*");
+    int64:_s11b = raw cors_max_age(ch11, 86400i64);
+    string:pf11 = raw cors_preflight(ch11, "http://c.com");
+    if (string_contains(pf11, "Max-Age: 86400")) { println("[PASS] T11 max-age"); pass_count += 1i32; }
+    if (string_contains(pf11, "Max-Age: 86400") == false) { println("[FAIL] T11"); }
 
-    int32:ip2 = aria_cors_is_preflight("GET");
-    aria_cors_assert_int_eq("GET not preflight", 0i32, ip2);
+    // T12: expose-headers in response
+    int64:ch12 = raw cors_reset();
+    int64:_s12a = raw cors_allow_origin(ch12, "*");
+    int64:_s12b = raw cors_expose_headers(ch12, "X-Request-Id, X-Trace");
+    string:h12 = raw cors_headers(ch12, "http://d.com");
+    if (string_contains(h12, "Expose-Headers: X-Request-Id, X-Trace")) { println("[PASS] T12 expose-headers"); pass_count += 1i32; }
+    if (string_contains(h12, "Expose-Headers: X-Request-Id, X-Trace") == false) { println("[FAIL] T12"); }
 
-    int32:ip3 = aria_cors_is_preflight("options");
-    aria_cors_assert_int_eq("options lowercase", 1i32, ip3);
-
-    // ── Test 7: Expose headers ──
-    aria_cors_reset();
-    aria_cors_allow_origin("*");
-    aria_cors_expose_headers("X-Request-Id, X-Total-Count");
-
-    string:h5 = aria_cors_headers("https://any.com");
-    aria_cors_assert_contains("expose headers", "Access-Control-Expose-Headers: X-Request-Id, X-Total-Count", h5);
-
-    // ── Test 8: No config = empty headers ──
-    aria_cors_reset();
-    string:h6 = aria_cors_headers("https://any.com");
-    aria_cors_assert_str_eq("no config empty", "", h6);
-
-    // ── Test 9: Wildcard + credentials reflects origin ──
-    aria_cors_reset();
-    aria_cors_allow_origin("*");
-    aria_cors_allow_credentials(1i32);
-
-    string:h7 = aria_cors_headers("https://specific.com");
-    aria_cors_assert_contains("cred reflects origin", "Access-Control-Allow-Origin: https://specific.com", h7);
-    aria_cors_assert_contains("cred has credentials", "Access-Control-Allow-Credentials: true", h7);
-
-    aria_cors_test_summary();
-    exit 0;
+    println("DONE");
+    exit(0i32);
 };

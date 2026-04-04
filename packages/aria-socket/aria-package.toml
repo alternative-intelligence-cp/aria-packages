@@ -1,8 +1,10 @@
 [package]
 name = "aria-socket"
-version = "0.1.0"
-description = "TCP and UDP socket abstractions for Aria"
+version = "0.12.0"
+description = "TCP and UDP socket abstractions for Aria — backed by aria-libc_net"
 license = "MIT"
+categories = ["networking"]
 
 [dependencies]
-link_libraries = ["aria_socket_shim"]
+aria-libc = "*"
+link_libraries = ["aria_libc_net"]

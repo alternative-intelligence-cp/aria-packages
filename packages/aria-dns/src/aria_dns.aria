@@ -1,52 +1,68 @@
-// aria_dns.aria — DNS resolution for Aria
+// aria_dns.aria — DNS resolution for Aria (v0.12.0)
 //
-// Hostname→IP resolution via system resolver (getaddrinfo).
-// Supports IPv4, IPv6, and reverse lookups.
-// Requires: libaria_dns_shim.so
+// Backed by aria-libc_net.
+// Import with: use "aria_dns.aria".*;
+//
+// Provides hostname resolution, reverse lookup, multi-result resolve,
+// and IP validation utilities.
+//
+// v0.12.0: New package for networking foundation.
 
-extern "aria_dns_shim" {
-    func:aria_dns_resolve       = int32(string:hostname);
-    func:aria_dns_resolve4      = int32(string:hostname);
-    func:aria_dns_resolve6      = int32(string:hostname);
-    func:aria_dns_get_addr      = string(int32:index);
-    func:aria_dns_get_family    = int32(int32:index);
-    func:aria_dns_result_count  = int32();
-    func:aria_dns_reverse       = string(string:ip_addr);
+extern "aria_libc_net" {
+    func:aria_libc_net_resolve        = string(string:hostname);
+    func:aria_libc_net_resolve_all    = string(string:hostname);
+    func:aria_libc_net_reverse_lookup = string(string:ip_addr);
+    func:aria_libc_net_is_ipv4        = int64(string:addr);
 }
 
-// ── public API ──────────────────────────────────────────────────────
+// ── core resolution ─────────────────────────────────────────────────────────
 
-pub func:dns_resolve = int32(string:hostname) {
-    int32:n = aria_dns_resolve(hostname);
-    pass n;
+pub func:dns_resolve = string(string:hostname) {
+    pass aria_libc_net_resolve(hostname);
 };
 
-pub func:dns_resolve4 = int32(string:hostname) {
-    int32:n = aria_dns_resolve4(hostname);
-    pass n;
-};
-
-pub func:dns_resolve6 = int32(string:hostname) {
-    int32:n = aria_dns_resolve6(hostname);
-    pass n;
-};
-
-pub func:dns_get_addr = string(int32:index) {
-    string:a = aria_dns_get_addr(index);
-    pass a;
-};
-
-pub func:dns_get_family = int32(int32:index) {
-    int32:f = aria_dns_get_family(index);
-    pass f;
-};
-
-pub func:dns_result_count = int32() {
-    int32:n = aria_dns_result_count();
-    pass n;
+pub func:dns_resolve_all = string(string:hostname) {
+    pass aria_libc_net_resolve_all(hostname);
 };
 
 pub func:dns_reverse = string(string:ip_addr) {
-    string:h = aria_dns_reverse(ip_addr);
-    pass h;
+    pass aria_libc_net_reverse_lookup(ip_addr);
+};
+
+// ── validators ──────────────────────────────────────────────────────────────
+
+pub func:dns_is_ipv4 = int64(string:addr) {
+    pass aria_libc_net_is_ipv4(addr);
+};
+
+pub func:dns_is_hostname = int64(string:addr) {
+    int64:ip = aria_libc_net_is_ipv4(addr);
+    if (ip == 1i64) { pass 0i64; }
+    pass 1i64;
+};
+
+// ── convenience ─────────────────────────────────────────────────────────────
+
+pub func:dns_resolve_or = string(string:hostname, string:fallback) {
+    string:resolved = aria_libc_net_resolve(hostname);
+    if (resolved == "") { pass fallback; }
+    pass resolved;
+};
+
+pub func:dns_can_resolve = int64(string:hostname) {
+    string:resolved = aria_libc_net_resolve(hostname);
+    if (resolved == "") { pass 0i64; }
+    pass 1i64;
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Dns = {
+    func:resolve      = string(string:host) { pass raw dns_resolve(host); };
+    func:resolve_all  = string(string:host) { pass raw dns_resolve_all(host); };
+    func:reverse      = string(string:ip) { pass raw dns_reverse(ip); };
+    func:is_ipv4      = int64(string:addr) { pass raw dns_is_ipv4(addr); };
+    func:is_hostname  = int64(string:addr) { pass raw dns_is_hostname(addr); };
+    func:resolve_or   = string(string:host, string:fb) { pass raw dns_resolve_or(host, fb); };
+    func:can_resolve  = int64(string:host) { pass raw dns_can_resolve(host); };
 };

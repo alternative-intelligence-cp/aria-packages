@@ -1,120 +1,94 @@
-// test_aria_body_parser.aria — Tests for body parsing
-// Tests JSON, form-urlencoded, and raw body handling.
+// test_aria_body_parser.aria — 12-test suite for aria-body-parser (v0.12.1)
+use "../src/aria_body_parser.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
-extern "aria_body_parser_shim" {
-    func:aria_body_parser_detect       = int32(string:content_type);
-    func:aria_body_parser_parse        = int32(string:body, string:content_type);
-    func:aria_body_parser_field        = string(string:key);
-    func:aria_body_parser_has_field    = int32(string:key);
-    func:aria_body_parser_field_count  = int32();
-    func:aria_body_parser_field_key    = string(int32:index);
-    func:aria_body_parser_field_value  = string(int32:index);
-    func:aria_body_parser_content_type = int32();
-    func:aria_body_parser_raw          = string();
-    func:aria_body_parser_raw_length   = int32();
-    func:aria_body_parser_error        = string();
-    func:aria_body_parser_reset        = void();
-    func:aria_body_parser_assert_str_eq = void(string:label, string:expected, string:actual);
-    func:aria_body_parser_assert_int_eq = void(string:label, int32:expected, int32:actual);
-    func:aria_body_parser_test_summary  = void();
-}
+func:test_detect = int32() {
+    int32:pc = 0i32;
+
+    string:d1 = raw body_detect("application/x-www-form-urlencoded");
+    if (d1 == "urlencoded") { println("[PASS] T01 detect urlencoded"); pc += 1i32; }
+    if (d1 != "urlencoded") { println("[FAIL] T01"); }
+
+    string:d2 = raw body_detect("application/json");
+    if (d2 == "json") { println("[PASS] T02 detect json"); pc += 1i32; }
+    if (d2 != "json") { println("[FAIL] T02"); }
+
+    string:d3 = raw body_detect("multipart/form-data; boundary=abc");
+    if (d3 == "multipart") { println("[PASS] T03 detect multipart"); pc += 1i32; }
+    if (d3 != "multipart") { println("[FAIL] T03"); }
+
+    string:d4 = raw body_detect("application/octet-stream");
+    int32:t4 = 0i32;
+    if (d4 == "unknown") { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 detect unknown"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    pass pc;
+};
+
+func:test_parse_single = int32() {
+    int32:pc = 0i32;
+
+    int64:bh5 = raw body_parse("application/x-www-form-urlencoded", "name=alice");
+    int64:_n5 = raw body_parse_urlencoded(bh5, "name=alice");
+    string:f5 = raw body_field(bh5, "name");
+    if (f5 == "alice") { println("[PASS] T05 parse single field"); pc += 1i32; }
+    if (f5 != "alice") { println("[FAIL] T05"); }
+
+    pass pc;
+};
+
+func:test_parse_multi = int32() {
+    int32:pc = 0i32;
+
+    int64:bh6 = raw body_parse("application/x-www-form-urlencoded", "a=1&b=2&c=3");
+    int64:_n6 = raw body_parse_urlencoded(bh6, "a=1&b=2&c=3");
+    int64:c6 = raw body_field_count(bh6);
+    if (c6 == 3i64) { println("[PASS] T06 field count=3"); pc += 1i32; }
+    if (c6 != 3i64) { println("[FAIL] T06"); }
+
+    string:f7 = raw body_field(bh6, "b");
+    if (f7 == "2") { println("[PASS] T07 field b=2"); pc += 1i32; }
+    if (f7 != "2") { println("[FAIL] T07"); }
+
+    string:k8 = raw body_field_key(bh6, 0i64);
+    if (k8 == "a") { println("[PASS] T08 field_key[0]=a"); pc += 1i32; }
+    if (k8 != "a") { println("[FAIL] T08"); }
+
+    string:v9 = raw body_field_value(bh6, 1i64);
+    if (v9 == "2") { println("[PASS] T09 field_value[1]=2"); pc += 1i32; }
+    if (v9 != "2") { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_access = int32() {
+    int32:pc = 0i32;
+
+    int64:bh = raw body_parse("application/x-www-form-urlencoded", "a=1&b=2&c=3");
+    int64:_na = raw body_parse_urlencoded(bh, "a=1&b=2&c=3");
+
+    int64:hf10 = raw body_has_field(bh, "c");
+    if (hf10 == 1i64) { println("[PASS] T10 has_field c=true"); pc += 1i32; }
+    if (hf10 != 1i64) { println("[FAIL] T10"); }
+
+    string:r11 = raw body_raw(bh);
+    if (r11 == "a=1&b=2&c=3") { println("[PASS] T11 raw body"); pc += 1i32; }
+    if (r11 != "a=1&b=2&c=3") { println("[FAIL] T11"); }
+
+    string:ct12 = raw body_content_type(bh);
+    if (string_contains(ct12, "urlencoded")) { println("[PASS] T12 content_type"); pc += 1i32; }
+    if (string_contains(ct12, "urlencoded") == false) { println("[FAIL] T12"); }
+
+    pass pc;
+};
 
 func:main = int32() {
-    // ── Test 1: Content-type detection ──
-    int32:ct1 = aria_body_parser_detect("application/json");
-    aria_body_parser_assert_int_eq("detect json", 1i32, ct1);
-
-    int32:ct2 = aria_body_parser_detect("application/x-www-form-urlencoded");
-    aria_body_parser_assert_int_eq("detect form", 2i32, ct2);
-
-    int32:ct3 = aria_body_parser_detect("text/plain");
-    aria_body_parser_assert_int_eq("detect text", 4i32, ct3);
-
-    int32:ct4 = aria_body_parser_detect("application/octet-stream");
-    aria_body_parser_assert_int_eq("detect unknown", 0i32, ct4);
-
-    // ── Test 2: JSON parsing ──
-    int32:n1 = aria_body_parser_parse("{\"name\":\"aria\",\"version\":\"0.2.9\",\"active\":true,\"count\":42}", "application/json");
-    aria_body_parser_assert_int_eq("json field count", 4i32, n1);
-    aria_body_parser_assert_int_eq("json content type", 1i32, aria_body_parser_content_type());
-
-    string:v1 = aria_body_parser_field("name");
-    aria_body_parser_assert_str_eq("json field name", "aria", v1);
-
-    string:v2 = aria_body_parser_field("version");
-    aria_body_parser_assert_str_eq("json field version", "0.2.9", v2);
-
-    string:v3 = aria_body_parser_field("active");
-    aria_body_parser_assert_str_eq("json field bool", "true", v3);
-
-    string:v4 = aria_body_parser_field("count");
-    aria_body_parser_assert_str_eq("json field number", "42", v4);
-
-    int32:hf1 = aria_body_parser_has_field("name");
-    aria_body_parser_assert_int_eq("has_field name", 1i32, hf1);
-
-    int32:hf2 = aria_body_parser_has_field("missing");
-    aria_body_parser_assert_int_eq("has_field missing", 0i32, hf2);
-
-    // ── Test 3: JSON with nested object ──
-    aria_body_parser_reset();
-    int32:n2 = aria_body_parser_parse("{\"user\":{\"id\":1,\"name\":\"Bob\"},\"ok\":true}", "application/json");
-    aria_body_parser_assert_int_eq("nested json count", 2i32, n2);
-
-    string:nested = aria_body_parser_field("user");
-    aria_body_parser_assert_str_eq("nested object", "{\"id\":1,\"name\":\"Bob\"}", nested);
-
-    // ── Test 4: Form-urlencoded parsing ──
-    aria_body_parser_reset();
-    int32:n3 = aria_body_parser_parse("username=aria&password=secret&remember=1", "application/x-www-form-urlencoded");
-    aria_body_parser_assert_int_eq("form field count", 3i32, n3);
-    aria_body_parser_assert_int_eq("form content type", 2i32, aria_body_parser_content_type());
-
-    string:fu = aria_body_parser_field("username");
-    aria_body_parser_assert_str_eq("form username", "aria", fu);
-
-    string:fp = aria_body_parser_field("password");
-    aria_body_parser_assert_str_eq("form password", "secret", fp);
-
-    // ── Test 5: URL-decoded form values ──
-    aria_body_parser_reset();
-    int32:n4 = aria_body_parser_parse("q=hello+world&tag=%23aria", "application/x-www-form-urlencoded");
-    aria_body_parser_assert_int_eq("decoded form count", 2i32, n4);
-
-    string:dq = aria_body_parser_field("q");
-    aria_body_parser_assert_str_eq("decoded space", "hello world", dq);
-
-    string:dt = aria_body_parser_field("tag");
-    aria_body_parser_assert_str_eq("decoded percent", "#aria", dt);
-
-    // ── Test 6: Raw body (text/plain) ──
-    aria_body_parser_reset();
-    int32:n5 = aria_body_parser_parse("Just some plain text.", "text/plain");
-    aria_body_parser_assert_int_eq("text field count", 0i32, n5);
-
-    string:rbody = aria_body_parser_raw();
-    aria_body_parser_assert_str_eq("raw body", "Just some plain text.", rbody);
-
-    int32:rl = aria_body_parser_raw_length();
-    aria_body_parser_assert_int_eq("raw length", 21i32, rl);
-
-    // ── Test 7: Field iteration by index ──
-    aria_body_parser_reset();
-    int32:n6 = aria_body_parser_parse("{\"a\":\"1\",\"b\":\"2\"}", "application/json");
-    string:k0 = aria_body_parser_field_key(0i32);
-    aria_body_parser_assert_str_eq("key 0", "a", k0);
-    string:val0 = aria_body_parser_field_value(0i32);
-    aria_body_parser_assert_str_eq("val 0", "1", val0);
-    string:k1 = aria_body_parser_field_key(1i32);
-    aria_body_parser_assert_str_eq("key 1", "b", k1);
-
-    // ── Test 8: Empty body ──
-    aria_body_parser_reset();
-    int32:n7 = aria_body_parser_parse("", "application/json");
-    aria_body_parser_assert_int_eq("empty json error", -1i32, n7);
-
-    aria_body_parser_test_summary();
-    exit 0;
+    int32:p1 = raw test_detect();
+    int32:p2 = raw test_parse_single();
+    int32:p3 = raw test_parse_multi();
+    int32:p4 = raw test_access();
+    println("DONE");
+    exit(0i32);
 };

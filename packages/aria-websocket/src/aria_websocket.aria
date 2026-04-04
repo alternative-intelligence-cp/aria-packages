@@ -1,118 +1,157 @@
-// aria_websocket.aria — WebSocket client and server for Aria
+// aria_websocket.aria — WebSocket protocol layer (v0.12.2)
 //
-// Connect to WebSocket servers, run your own WebSocket server,
-// send/receive text messages, broadcast, ping/pong.
-// Requires: libaria_websocket_shim.so (no external deps beyond libc)
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_websocket.aria".*;
 //
-// Client usage:
-//   int32:conn = ws_connect("echo.example.com", 8080i32, "/ws");
-//   drop(ws_send(conn, "Hello!"));
-//   int32:r = ws_recv(conn, 5000i32);
-//   string:msg = ws_message();
-//   ws_close(conn);
-//
-// Server usage:
-//   int32:srv = ws_listen("0.0.0.0", 9001i32, 5i32);
-//   int32:client = ws_accept(srv, 10000i32);
-//   int32:r = ws_recv(client, 5000i32);
-//   string:msg = ws_message();
-//   drop(ws_send(client, "Echo: "));
-//   ws_close(client);
-//   ws_close_listener(srv);
+// Handles WebSocket handshake building, connection state tracking,
+// and frame type identification. Actual socket I/O is handled by
+// aria-socket at the application level.
 
-// ── extern declarations (C shim) ────────────────────────────────────
+// ── Connection ──────────────────────────────────────────────────────────────
 
-extern "aria_websocket_shim" {
-    func:aria_ws_error            = string();
-    func:aria_ws_last_message     = string();
-    func:aria_ws_last_message_len = int32();
-
-    // client
-    func:aria_ws_connect          = int32(string:host, int32:port, string:path);
-
-    // server
-    func:aria_ws_listen           = int32(string:bind_addr, int32:port, int32:backlog);
-    func:aria_ws_accept           = int32(int32:listen_fd, int32:timeout_ms);
-
-    // messaging
-    func:aria_ws_send             = int32(int32:conn_id, string:msg);
-    func:aria_ws_recv             = int32(int32:conn_id, int32:timeout_ms);
-    func:aria_ws_broadcast        = int32(string:msg);
-    func:aria_ws_ping             = int32(int32:conn_id);
-
-    // lifecycle
-    func:aria_ws_close            = void(int32:conn_id);
-    func:aria_ws_close_listener   = void(int32:listen_fd);
-    func:aria_ws_connection_count = int32();
-}
-
-// ── public API: error / message access ──────────────────────────────
-
-pub func:ws_error = string() {
-    pass aria_ws_error();
+pub func:ws_create = int64(string:host, string:uri_path) {
+    int64:h = ahash(256);
+    ahset(h, "_host", host);
+    ahset(h, "_path", uri_path);
+    ahset(h, "_state", "connecting");
+    ahset(h, "_close_code", "");
+    ahset(h, "_close_reason", "");
+    ahset(h, "_protocol", "");
+    ahset(h, "_extensions", "");
+    pass h;
 };
 
-pub func:ws_message = string() {
-    pass aria_ws_last_message();
+// ── Handshake ───────────────────────────────────────────────────────────────
+
+pub func:ws_handshake_request = string(int64:h) {
+    string:host_val = ahget(h, "_host");
+    string:path_val = ahget(h, "_path");
+    string:req = string_concat("GET ", path_val);
+    req = string_concat(req, " HTTP/1.1\nHost: ");
+    req = string_concat(req, host_val);
+    req = string_concat(req, "\nUpgrade: websocket");
+    req = string_concat(req, "\nConnection: Upgrade");
+    req = string_concat(req, "\nSec-WebSocket-Version: 13");
+    req = string_concat(req, "\n");
+    pass req;
 };
 
-pub func:ws_message_len = int32() {
-    pass aria_ws_last_message_len();
+pub func:ws_check_accept = int64(int64:h, string:response) {
+    int32:t1 = 0i32;
+    if (string_contains(response, "101")) { t1 = 1i32; }
+    if (t1 == 0i32) { pass 0i64; }
+    int32:t2 = 0i32;
+    if (string_contains(response, "Switching Protocols")) { t2 = 1i32; }
+    if (t2 == 0i32) { pass 0i64; }
+    ahset(h, "_state", "open");
+    pass 1i64;
 };
 
-// ── public API: client ──────────────────────────────────────────────
+// ── State ───────────────────────────────────────────────────────────────────
 
-pub func:ws_connect = int32(string:host, int32:port, string:path) {
-    int32:r = aria_ws_connect(host, port, path);
-    pass r;
+pub func:ws_set_state = int32(int64:h, string:new_state) {
+    ahset(h, "_state", new_state);
+    pass 0i32;
 };
 
-// ── public API: server ──────────────────────────────────────────────
-
-pub func:ws_listen = int32(string:bind_addr, int32:port, int32:backlog) {
-    int32:r = aria_ws_listen(bind_addr, port, backlog);
-    pass r;
+pub func:ws_state = string(int64:h) {
+    string:v = ahget(h, "_state");
+    pass v;
 };
 
-pub func:ws_accept = int32(int32:listen_fd, int32:timeout_ms) {
-    int32:r = aria_ws_accept(listen_fd, timeout_ms);
-    pass r;
+pub func:ws_host = string(int64:h) {
+    string:v = ahget(h, "_host");
+    pass v;
 };
 
-// ── public API: messaging ───────────────────────────────────────────
-
-pub func:ws_send = int32(int32:conn_id, string:msg) {
-    int32:r = aria_ws_send(conn_id, msg);
-    pass r;
+pub func:ws_path = string(int64:h) {
+    string:v = ahget(h, "_path");
+    pass v;
 };
 
-pub func:ws_recv = int32(int32:conn_id, int32:timeout_ms) {
-    int32:r = aria_ws_recv(conn_id, timeout_ms);
-    pass r;
+// ── Frame type identification ───────────────────────────────────────────────
+
+pub func:ws_frame_type_name = string(int64:opcode) {
+    if (opcode == 0i64) { pass "continuation"; }
+    if (opcode == 1i64) { pass "text"; }
+    if (opcode == 2i64) { pass "binary"; }
+    if (opcode == 8i64) { pass "close"; }
+    if (opcode == 9i64) { pass "ping"; }
+    if (opcode == 10i64) { pass "pong"; }
+    pass "unknown";
 };
 
-pub func:ws_broadcast = int32(string:msg) {
-    int32:r = aria_ws_broadcast(msg);
-    pass r;
+pub func:ws_is_control_frame = int64(int64:opcode) {
+    if (opcode == 8i64) { pass 1i64; }
+    if (opcode == 9i64) { pass 1i64; }
+    if (opcode == 10i64) { pass 1i64; }
+    pass 0i64;
 };
 
-pub func:ws_ping = int32(int32:conn_id) {
-    int32:r = aria_ws_ping(conn_id);
-    pass r;
+pub func:ws_is_data_frame = int64(int64:opcode) {
+    if (opcode == 0i64) { pass 1i64; }
+    if (opcode == 1i64) { pass 1i64; }
+    if (opcode == 2i64) { pass 1i64; }
+    pass 0i64;
 };
 
-// ── public API: lifecycle ───────────────────────────────────────────
+// ── Close handling ──────────────────────────────────────────────────────────
 
-pub func:ws_close = NIL(int32:conn_id) {
-    aria_ws_close(conn_id);
-    pass NIL;
+pub func:ws_set_close = int32(int64:h, string:code, string:reason) {
+    ahset(h, "_close_code", code);
+    ahset(h, "_close_reason", reason);
+    ahset(h, "_state", "closing");
+    pass 0i32;
 };
 
-pub func:ws_close_listener = NIL(int32:listen_fd) {
-    aria_ws_close_listener(listen_fd);
-    pass NIL;
+pub func:ws_close_code = string(int64:h) {
+    string:v = ahget(h, "_close_code");
+    pass v;
 };
 
-pub func:ws_connection_count = int32() {
-    pass aria_ws_connection_count();
+pub func:ws_close_reason = string(int64:h) {
+    string:v = ahget(h, "_close_reason");
+    pass v;
+};
+
+// ── Subprotocol & extensions ────────────────────────────────────────────────
+
+pub func:ws_set_protocol = int32(int64:h, string:proto) {
+    ahset(h, "_protocol", proto);
+    pass 0i32;
+};
+
+pub func:ws_protocol = string(int64:h) {
+    string:v = ahget(h, "_protocol");
+    pass v;
+};
+
+pub func:ws_set_extensions = int32(int64:h, string:ext) {
+    ahset(h, "_extensions", ext);
+    pass 0i32;
+};
+
+pub func:ws_extensions = string(int64:h) {
+    string:v = ahget(h, "_extensions");
+    pass v;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:WebSocket = {
+    func:init       = int64(string:host, string:path) { pass raw ws_create(host, path); };
+    func:handshake  = string(int64:h) { pass raw ws_handshake_request(h); };
+    func:accept     = int64(int64:h, string:r) { pass raw ws_check_accept(h, r); };
+    func:set_state  = int32(int64:h, string:s) { pass raw ws_set_state(h, s); };
+    func:get_state  = string(int64:h) { pass raw ws_state(h); };
+    func:get_host   = string(int64:h) { pass raw ws_host(h); };
+    func:get_path   = string(int64:h) { pass raw ws_path(h); };
+    func:frame_name = string(int64:op) { pass raw ws_frame_type_name(op); };
+    func:is_ctrl    = int64(int64:op) { pass raw ws_is_control_frame(op); };
+    func:is_data    = int64(int64:op) { pass raw ws_is_data_frame(op); };
+    func:set_close  = int32(int64:h, string:c, string:r) { pass raw ws_set_close(h, c, r); };
+    func:get_close_code   = string(int64:h) { pass raw ws_close_code(h); };
+    func:get_close_reason = string(int64:h) { pass raw ws_close_reason(h); };
+    func:set_proto  = int32(int64:h, string:p) { pass raw ws_set_protocol(h, p); };
+    func:get_proto  = string(int64:h) { pass raw ws_protocol(h); };
 };

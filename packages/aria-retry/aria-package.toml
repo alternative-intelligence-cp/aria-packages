@@ -1,0 +1,13 @@
+[package]
+name = "aria-retry"
+version = "0.12.3"
+description = "Retry with exponential backoff — configurable attempts, delay, cap"
+license = "MIT"
+
+[build]
+type = "pure"
+
+[dependencies]
+
+[metadata]
+categories = ["resilience", "networking"]

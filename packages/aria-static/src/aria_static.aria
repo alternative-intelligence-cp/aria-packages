@@ -1,349 +1,144 @@
-// aria_static.aria — Pure Aria static file serving
+// aria_static.aria — Static file path resolver + MIME detection (v0.12.1)
 //
-// Slot 14: state (5312 bytes)
-//   [0]:    root_len     [8]:    root (256)
-//   [264]:  idx_len      [272]:  idx (256)
-//   [528]:  res_len      [536]:  resolved (4096)
-//   [4632]: mime_len     [4640]: mime (128)
-//   [4768]: err_len      [4776]: error (512)
-//   [5288]: file_ptr     [5296]: file_len
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_static.aria".*;
+//
+// Resolves URL paths to safe filesystem paths and detects MIME types.
+// File I/O requires aria-libc; this module handles routing and types.
 
-extern "aria_libc_mem" {
-    func:aria_libc_mem_malloc      = int64(int64:size);
-    func:aria_libc_mem_free        = void(int64:ptr);
-    func:aria_libc_mem_zero        = void(int64:ptr, int64:n);
-    func:aria_libc_mem_read_i64    = int64(int64:ptr, int64:offset);
-    func:aria_libc_mem_write_i64   = void(int64:ptr, int64:offset, int64:val);
-    func:aria_libc_mem_get_global  = int64(int32:idx);
-    func:aria_libc_mem_set_global  = void(int32:idx, int64:val);
-}
+// ── Configuration ───────────────────────────────────────────────────────────
 
-extern "aria_libc_mem" {
-    func:aria_libc_mem_write_byte = void(int64:ptr, int64:offset, int32:val);
-}
-
-extern "aria_libc_string" {
-    func:aria_libc_string_strlen            = int64(string:s);
-    func:aria_libc_string_strcmp             = int64(string:a, string:b);
-    func:aria_libc_string_strcasecmp        = int64(string:a, string:b);
-    func:aria_libc_string_strstr            = int64(string:hay, string:needle);
-    func:aria_libc_string_substr            = string(string:s, int64:start, int64:sz);
-    func:aria_libc_string_last_char_indexof = int64(string:s, int32:ch);
-    func:aria_libc_string_copy_to_buf       = void(int64:dst, int64:doff, string:src, int64:soff, int64:sz);
-}
-
-extern "aria_libc_string" {
-    func:aria_libc_string_from_buf = string(int64:buf, int64:off, int64:sz);
-    func:aria_libc_string_byte_at  = int32(string:s, int64:pos);
-}
-
-extern "aria_libc_io" {
-    func:aria_libc_io_fopen  = int64(string:path, string:mode);
-    func:aria_libc_io_fclose = int32(int64:handle);
-    func:aria_libc_io_fread  = int64(int64:buf, int64:size, int64:count, int64:handle);
-    func:aria_libc_io_fseek  = int32(int64:handle, int64:offset, int32:whence);
-    func:aria_libc_io_ftell  = int64(int64:handle);
-}
-
-// ── init ────────────────────────────────────────────────────────
-
-func:_s_init = NIL() {
-    int64:meta = aria_libc_mem_get_global(14i32);
-    if (meta == 0i64) {
-        int64:m = aria_libc_mem_malloc(5312i64);
-        aria_libc_mem_zero(m, 5312i64);
-        aria_libc_mem_set_global(14i32, m);
-        aria_libc_mem_write_i64(m, 0i64, 8i64);
-        aria_libc_string_copy_to_buf(m, 8i64, "./public", 0i64, 8i64);
-        aria_libc_mem_write_i64(m, 264i64, 10i64);
-        aria_libc_string_copy_to_buf(m, 272i64, "index.html", 0i64, 10i64);
-    }
-    pass NIL;
+pub func:static_reset = int64() {
+    int64:h = ahash(256);
+    ahset(h, "_root", "/var/www");
+    ahset(h, "_index", "index.html");
+    ahset(h, "_resolved", "");
+    ahset(h, "_mime", "");
+    ahset(h, "_error", "");
+    ahset(h, "_content", "");
+    ahset(h, "_clen", "0");
+    pass h;
 };
 
-func:_s_set_error = NIL(string:msg) {
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:el = aria_libc_string_strlen(msg);
-    if (el > 511i64) { el = 511i64; }
-    aria_libc_mem_write_i64(meta, 4768i64, el);
-    aria_libc_string_copy_to_buf(meta, 4776i64, msg, 0i64, el);
-    aria_libc_mem_write_byte(meta, 4776i64 + el, 0i32);
-    pass NIL;
+pub func:static_set_root = int32(int64:h, string:root_path) {
+    ahset(h, "_root", root_path);
+    pass 0i32;
 };
 
-// ── MIME detection ──────────────────────────────────────────────
+pub func:static_get_root = string(int64:h) {
+    string:val = ahget(h, "_root");
+    pass val;
+};
 
-func:_s_mime_str = string(string:path) {
-    int64:pl = aria_libc_string_strlen(path);
-    int64:dot_p = aria_libc_string_last_char_indexof(path, 46i32);
-    if (dot_p < 0i64) { pass "application/octet-stream"; }
-    int64:slash_p = aria_libc_string_last_char_indexof(path, 47i32);
-    if (slash_p > dot_p) { pass "application/octet-stream"; }
+pub func:static_set_index = int32(int64:h, string:idx_file) {
+    ahset(h, "_index", idx_file);
+    pass 0i32;
+};
 
-    string:ext = aria_libc_string_substr(path, dot_p, pl - dot_p);
-    int64:c = aria_libc_string_strcasecmp(ext, ".html");
-    if (c == 0i64) { pass "text/html"; }
-    c = aria_libc_string_strcasecmp(ext, ".htm");
-    if (c == 0i64) { pass "text/html"; }
-    c = aria_libc_string_strcasecmp(ext, ".css");
-    if (c == 0i64) { pass "text/css"; }
-    c = aria_libc_string_strcasecmp(ext, ".js");
-    if (c == 0i64) { pass "application/javascript"; }
-    c = aria_libc_string_strcasecmp(ext, ".json");
-    if (c == 0i64) { pass "application/json"; }
-    c = aria_libc_string_strcasecmp(ext, ".xml");
-    if (c == 0i64) { pass "application/xml"; }
-    c = aria_libc_string_strcasecmp(ext, ".txt");
-    if (c == 0i64) { pass "text/plain"; }
-    c = aria_libc_string_strcasecmp(ext, ".md");
-    if (c == 0i64) { pass "text/markdown"; }
-    c = aria_libc_string_strcasecmp(ext, ".csv");
-    if (c == 0i64) { pass "text/csv"; }
-    c = aria_libc_string_strcasecmp(ext, ".png");
-    if (c == 0i64) { pass "image/png"; }
-    c = aria_libc_string_strcasecmp(ext, ".jpg");
-    if (c == 0i64) { pass "image/jpeg"; }
-    c = aria_libc_string_strcasecmp(ext, ".jpeg");
-    if (c == 0i64) { pass "image/jpeg"; }
-    c = aria_libc_string_strcasecmp(ext, ".gif");
-    if (c == 0i64) { pass "image/gif"; }
-    c = aria_libc_string_strcasecmp(ext, ".svg");
-    if (c == 0i64) { pass "image/svg+xml"; }
-    c = aria_libc_string_strcasecmp(ext, ".ico");
-    if (c == 0i64) { pass "image/x-icon"; }
-    c = aria_libc_string_strcasecmp(ext, ".webp");
-    if (c == 0i64) { pass "image/webp"; }
-    c = aria_libc_string_strcasecmp(ext, ".woff");
-    if (c == 0i64) { pass "font/woff"; }
-    c = aria_libc_string_strcasecmp(ext, ".woff2");
-    if (c == 0i64) { pass "font/woff2"; }
-    c = aria_libc_string_strcasecmp(ext, ".ttf");
-    if (c == 0i64) { pass "font/ttf"; }
-    c = aria_libc_string_strcasecmp(ext, ".otf");
-    if (c == 0i64) { pass "font/otf"; }
-    c = aria_libc_string_strcasecmp(ext, ".pdf");
-    if (c == 0i64) { pass "application/pdf"; }
-    c = aria_libc_string_strcasecmp(ext, ".zip");
-    if (c == 0i64) { pass "application/zip"; }
-    c = aria_libc_string_strcasecmp(ext, ".gz");
-    if (c == 0i64) { pass "application/gzip"; }
-    c = aria_libc_string_strcasecmp(ext, ".wasm");
-    if (c == 0i64) { pass "application/wasm"; }
-    c = aria_libc_string_strcasecmp(ext, ".mp3");
-    if (c == 0i64) { pass "audio/mpeg"; }
-    c = aria_libc_string_strcasecmp(ext, ".mp4");
-    if (c == 0i64) { pass "video/mp4"; }
-    c = aria_libc_string_strcasecmp(ext, ".webm");
-    if (c == 0i64) { pass "video/webm"; }
+// ── MIME detection ──────────────────────────────────────────────────────────
+
+pub func:static_detect_mime = string(string:fpath) {
+    if (string_contains(fpath, ".html")) { pass "text/html"; }
+    if (string_contains(fpath, ".htm")) { pass "text/html"; }
+    if (string_contains(fpath, ".css")) { pass "text/css"; }
+    if (string_contains(fpath, ".js")) { pass "application/javascript"; }
+    if (string_contains(fpath, ".json")) { pass "application/json"; }
+    if (string_contains(fpath, ".xml")) { pass "application/xml"; }
+    if (string_contains(fpath, ".txt")) { pass "text/plain"; }
+    if (string_contains(fpath, ".csv")) { pass "text/csv"; }
+    if (string_contains(fpath, ".png")) { pass "image/png"; }
+    if (string_contains(fpath, ".jpg")) { pass "image/jpeg"; }
+    if (string_contains(fpath, ".jpeg")) { pass "image/jpeg"; }
+    if (string_contains(fpath, ".gif")) { pass "image/gif"; }
+    if (string_contains(fpath, ".svg")) { pass "image/svg+xml"; }
+    if (string_contains(fpath, ".ico")) { pass "image/x-icon"; }
+    if (string_contains(fpath, ".webp")) { pass "image/webp"; }
+    if (string_contains(fpath, ".woff2")) { pass "font/woff2"; }
+    if (string_contains(fpath, ".woff")) { pass "font/woff"; }
+    if (string_contains(fpath, ".pdf")) { pass "application/pdf"; }
+    if (string_contains(fpath, ".zip")) { pass "application/zip"; }
+    if (string_contains(fpath, ".wasm")) { pass "application/wasm"; }
     pass "application/octet-stream";
 };
 
-func:_s_store_mime = NIL(string:m) {
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:ml = aria_libc_string_strlen(m);
-    if (ml > 127i64) { ml = 127i64; }
-    aria_libc_mem_write_i64(meta, 4632i64, ml);
-    aria_libc_string_copy_to_buf(meta, 4640i64, m, 0i64, ml);
-    aria_libc_mem_write_byte(meta, 4640i64 + ml, 0i32);
-    pass NIL;
-};
+// ── Path resolution ─────────────────────────────────────────────────────────
 
-// ── public API ──────────────────────────────────────────────────
+pub func:static_resolve = int32(int64:h, string:url_path) {
+    ahset(h, "_error", "");
+    ahset(h, "_resolved", "");
+    ahset(h, "_mime", "");
 
-pub func:static_set_root = NIL(string:root) {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:rl = aria_libc_string_strlen(root);
-    if (rl > 255i64) { rl = 255i64; }
-    aria_libc_mem_write_i64(meta, 0i64, rl);
-    aria_libc_string_copy_to_buf(meta, 8i64, root, 0i64, rl);
-    aria_libc_mem_write_byte(meta, 8i64 + rl, 0i32);
-    pass NIL;
-};
-
-pub func:static_get_root = string() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:rl = aria_libc_mem_read_i64(meta, 0i64);
-    pass aria_libc_string_from_buf(meta, 8i64, rl);
-};
-
-pub func:static_set_index = NIL(string:filename) {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:il = aria_libc_string_strlen(filename);
-    if (il > 255i64) { il = 255i64; }
-    aria_libc_mem_write_i64(meta, 264i64, il);
-    aria_libc_string_copy_to_buf(meta, 272i64, filename, 0i64, il);
-    aria_libc_mem_write_byte(meta, 272i64 + il, 0i32);
-    pass NIL;
-};
-
-pub func:static_resolve = int32(string:url_path) {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-
-    // Path traversal check
-    int64:dd = aria_libc_string_strstr(url_path, "..");
-    if (dd >= 0i64) {
-        drop _s_set_error("Path traversal detected");
-        pass 0i32;
+    if (string_contains(url_path, "..")) {
+        ahset(h, "_error", "path traversal blocked");
+        pass -1i32;
+    }
+    if (string_contains(url_path, "~")) {
+        ahset(h, "_error", "tilde expansion blocked");
+        pass -1i32;
     }
 
-    // Build path: root + url_path
-    int64:rlen = aria_libc_mem_read_i64(meta, 0i64);
-    string:root_s = aria_libc_string_from_buf(meta, 8i64, rlen);
-    aria_libc_string_copy_to_buf(meta, 536i64, root_s, 0i64, rlen);
+    string:root = ahget(h, "_root");
+    string:resolved = root;
 
-    int64:pos = rlen;
-    int32:fb = aria_libc_string_byte_at(url_path, 0i64);
-    if (fb != 47i32) {
-        aria_libc_string_copy_to_buf(meta, 536i64 + pos, "/", 0i64, 1i64);
-        pos = pos + 1i64;
+    if (url_path == "/") {
+        string:idx = ahget(h, "_index");
+        resolved = string_concat(resolved, "/");
+        resolved = string_concat(resolved, idx);
+    }
+    if (url_path != "/") {
+        resolved = string_concat(resolved, url_path);
     }
 
-    int64:ulen = aria_libc_string_strlen(url_path);
-    aria_libc_string_copy_to_buf(meta, 536i64 + pos, url_path, 0i64, ulen);
-    pos = pos + ulen;
-    aria_libc_mem_write_byte(meta, 536i64 + pos, 0i32);
-    aria_libc_mem_write_i64(meta, 528i64, pos);
+    ahset(h, "_resolved", resolved);
 
-    // Try to open
-    string:full = aria_libc_string_from_buf(meta, 536i64, pos);
-    int64:fh = aria_libc_io_fopen(full, "r");
-
-    if (fh == 0i64) {
-        // Try with index appended
-        aria_libc_string_copy_to_buf(meta, 536i64 + pos, "/", 0i64, 1i64);
-        int64:ilen = aria_libc_mem_read_i64(meta, 264i64);
-        string:idx_s = aria_libc_string_from_buf(meta, 272i64, ilen);
-        aria_libc_string_copy_to_buf(meta, 536i64 + pos + 1i64, idx_s, 0i64, ilen);
-        int64:pos2 = pos + 1i64 + ilen;
-        aria_libc_mem_write_byte(meta, 536i64 + pos2, 0i32);
-        string:full2 = aria_libc_string_from_buf(meta, 536i64, pos2);
-        fh = aria_libc_io_fopen(full2, "r");
-        if (fh == 0i64) {
-            drop _s_set_error("File not found");
-            pass 0i32;
-        }
-        pos = pos2;
-        aria_libc_mem_write_i64(meta, 528i64, pos);
-    }
-
-    int32:_fc1 = aria_libc_io_fclose(fh);
-
-    // Detect MIME from url_path (safe — not from g_buf)
-    string:m = raw _s_mime_str(url_path);
-    drop _s_store_mime(m);
-
-    pass 1i32;
+    string:mime = raw static_detect_mime(resolved);
+    ahset(h, "_mime", mime);
+    pass 0i32;
 };
 
-pub func:static_mime = string() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:ml = aria_libc_mem_read_i64(meta, 4632i64);
-    if (ml == 0i64) { pass ""; }
-    pass aria_libc_string_from_buf(meta, 4640i64, ml);
+pub func:static_resolved_path = string(int64:h) {
+    string:val = ahget(h, "_resolved");
+    pass val;
 };
 
-pub func:static_read = int32() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:rn = aria_libc_mem_read_i64(meta, 528i64);
-    if (rn == 0i64) {
-        drop _s_set_error("No file resolved");
-        pass 0i32 - 1i32;
-    }
-
-    string:rpath = aria_libc_string_from_buf(meta, 536i64, rn);
-    int64:fh = aria_libc_io_fopen(rpath, "rb");
-    if (fh == 0i64) {
-        drop _s_set_error("Cannot open file");
-        pass 0i32 - 1i32;
-    }
-
-    int32:_sk1 = aria_libc_io_fseek(fh, 0i64, 2i32);
-    int64:sz = aria_libc_io_ftell(fh);
-    int32:_sk2 = aria_libc_io_fseek(fh, 0i64, 0i32);
-
-    if (sz < 0i64) { sz = 0i64; }
-    if (sz > 1048576i64) {
-        int32:_fc2 = aria_libc_io_fclose(fh);
-        drop _s_set_error("File too large");
-        pass 0i32 - 1i32;
-    }
-
-    // Free old buffer
-    int64:old = aria_libc_mem_read_i64(meta, 5288i64);
-    if (old != 0i64) { aria_libc_mem_free(old); }
-
-    // Allocate and read
-    int64:buf = aria_libc_mem_malloc(sz + 1i64);
-    aria_libc_mem_zero(buf, sz + 1i64);
-    int64:nr = aria_libc_io_fread(buf, 1i64, sz, fh);
-    int32:_fc3 = aria_libc_io_fclose(fh);
-
-    aria_libc_mem_write_byte(buf, nr, 0i32);
-    aria_libc_mem_write_i64(meta, 5288i64, buf);
-    aria_libc_mem_write_i64(meta, 5296i64, nr);
-
-    pass @cast<int32>(nr);
+pub func:static_mime_type = string(int64:h) {
+    string:val = ahget(h, "_mime");
+    pass val;
 };
 
-pub func:static_content = string() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:fp = aria_libc_mem_read_i64(meta, 5288i64);
-    if (fp == 0i64) { pass ""; }
-    int64:fl = aria_libc_mem_read_i64(meta, 5296i64);
-    pass aria_libc_string_from_buf(fp, 0i64, fl);
+pub func:static_error = string(int64:h) {
+    string:val = ahget(h, "_error");
+    pass val;
 };
 
-pub func:static_length = int32() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:fl = aria_libc_mem_read_i64(meta, 5296i64);
-    pass @cast<int32>(fl);
+pub func:static_content = string(int64:h) {
+    string:val = ahget(h, "_content");
+    pass val;
 };
 
-pub func:static_resolved_path = string() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:rl = aria_libc_mem_read_i64(meta, 528i64);
-    if (rl == 0i64) { pass ""; }
-    pass aria_libc_string_from_buf(meta, 536i64, rl);
+pub func:static_length = int64(int64:h) {
+    string:c = ahget(h, "_clen");
+    if (c == "0") { pass 0i64; }
+    if (c == "1") { pass 1i64; }
+    if (c == "2") { pass 2i64; }
+    if (c == "3") { pass 3i64; }
+    if (c == "4") { pass 4i64; }
+    if (c == "5") { pass 5i64; }
+    pass 0i64;
 };
 
-pub func:static_detect_mime = string(string:path) {
-    drop _s_init();
-    string:m = raw _s_mime_str(path);
-    drop _s_store_mime(m);
-    pass m;
-};
+// ── Type wrapper ────────────────────────────────────────────────────────────
 
-pub func:static_error = string() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-    int64:el = aria_libc_mem_read_i64(meta, 4768i64);
-    if (el == 0i64) { pass ""; }
-    pass aria_libc_string_from_buf(meta, 4776i64, el);
-};
-
-pub func:static_file_reset = NIL() {
-    drop _s_init();
-    int64:meta = aria_libc_mem_get_global(14i32);
-
-    int64:fp = aria_libc_mem_read_i64(meta, 5288i64);
-    if (fp != 0i64) { aria_libc_mem_free(fp); }
-
-    aria_libc_mem_zero(meta, 5312i64);
-
-    // Restore defaults
-    aria_libc_mem_write_i64(meta, 0i64, 8i64);
-    aria_libc_string_copy_to_buf(meta, 8i64, "./public", 0i64, 8i64);
-    aria_libc_mem_write_i64(meta, 264i64, 10i64);
-    aria_libc_string_copy_to_buf(meta, 272i64, "index.html", 0i64, 10i64);
-
-    pass NIL;
+Type:Static = {
+    func:init        = int64() { pass raw static_reset(); };
+    func:set_root    = int32(int64:h, string:p) { pass raw static_set_root(h, p); };
+    func:get_root    = string(int64:h) { pass raw static_get_root(h); };
+    func:set_idx     = int32(int64:h, string:f) { pass raw static_set_index(h, f); };
+    func:resolve_url = int32(int64:h, string:u) { pass raw static_resolve(h, u); };
+    func:path        = string(int64:h) { pass raw static_resolved_path(h); };
+    func:mime        = string(int64:h) { pass raw static_mime_type(h); };
+    func:err         = string(int64:h) { pass raw static_error(h); };
+    func:detect      = string(string:f) { pass raw static_detect_mime(f); };
+    func:body        = string(int64:h) { pass raw static_content(h); };
+    func:body_len    = int64(int64:h) { pass raw static_length(h); };
 };

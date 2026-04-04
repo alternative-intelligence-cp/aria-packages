@@ -1,0 +1,203 @@
+// aria_socket.aria — TCP/UDP socket abstractions (v0.12.0)
+//
+// Ported from ad-hoc extern shim to aria-libc_net.
+// Import with: use "aria_socket.aria".*;
+//
+// Socket FDs are passed as int64 handles.
+// All operations return int64 status (>= 0 success, < 0 error).
+//
+// v0.12.0: Migrated to aria_libc_net shim.
+
+extern "aria_libc_net" {
+    // creation
+    func:aria_libc_net_socket_tcp       = int64();
+    func:aria_libc_net_socket_udp       = int64();
+
+    // options
+    func:aria_libc_net_setsockopt_reuse = int64(int64:fd);
+    func:aria_libc_net_set_nonblocking  = int64(int64:fd);
+    func:aria_libc_net_set_blocking     = int64(int64:fd);
+    func:aria_libc_net_set_timeout      = int64(int64:fd, int64:seconds);
+
+    // bind / listen / accept / connect
+    func:aria_libc_net_bind    = int64(int64:fd, string:addr, int64:port);
+    func:aria_libc_net_listen  = int64(int64:fd, int64:backlog);
+    func:aria_libc_net_accept  = int64(int64:fd);
+    func:aria_libc_net_connect = int64(int64:fd, string:host, int64:port);
+
+    // TCP send / recv
+    func:aria_libc_net_send     = int64(int64:fd, string:data, int64:len);
+    func:aria_libc_net_send_str = int64(int64:fd, string:data);
+    func:aria_libc_net_recv     = string(int64:fd, int64:max_len);
+
+    // UDP sendto / recvfrom
+    func:aria_libc_net_sendto   = int64(int64:fd, string:data, int64:len, string:host, int64:port);
+    func:aria_libc_net_recvfrom = string(int64:fd);
+
+    // poll
+    func:aria_libc_net_poll_read  = int64(int64:fd, int64:timeout_ms);
+    func:aria_libc_net_poll_write = int64(int64:fd, int64:timeout_ms);
+
+    // close / error
+    func:aria_libc_net_close       = int64(int64:fd);
+    func:aria_libc_net_errno       = int64();
+    func:aria_libc_net_strerror    = string();
+    func:aria_libc_net_recv_length = int64();
+
+    // DNS
+    func:aria_libc_net_resolve = string(string:hostname);
+
+    // peer info
+    func:aria_libc_net_getpeername = string(int64:fd);
+    func:aria_libc_net_getpeerport = int64(int64:fd);
+}
+
+// ── TCP ─────────────────────────────────────────────────────────────────────
+
+pub func:socket_tcp_create = int64() {
+    pass aria_libc_net_socket_tcp();
+};
+
+pub func:socket_tcp_connect = int64(string:host, int64:port) {
+    int64:fd = aria_libc_net_socket_tcp();
+    if (fd < 0i64) { pass -1i64; }
+    int64:rv = aria_libc_net_connect(fd, host, port);
+    if (rv < 1i64) { aria_libc_net_close(fd); pass -1i64; }
+    pass fd;
+};
+
+pub func:socket_tcp_listen = int64(string:addr, int64:port, int64:backlog) {
+    int64:fd = aria_libc_net_socket_tcp();
+    if (fd < 0i64) { pass -1i64; }
+    int64:reuse = aria_libc_net_setsockopt_reuse(fd);
+    int64:bnd = aria_libc_net_bind(fd, addr, port);
+    if (bnd < 1i64) { aria_libc_net_close(fd); pass -1i64; }
+    int64:lst = aria_libc_net_listen(fd, backlog);
+    if (lst < 1i64) { aria_libc_net_close(fd); pass -1i64; }
+    pass fd;
+};
+
+pub func:socket_tcp_accept = int64(int64:listen_fd) {
+    pass aria_libc_net_accept(listen_fd);
+};
+
+// ── UDP ─────────────────────────────────────────────────────────────────────
+
+pub func:socket_udp_create = int64() {
+    pass aria_libc_net_socket_udp();
+};
+
+pub func:socket_udp_bind = int64(int64:fd, string:addr, int64:port) {
+    pass aria_libc_net_bind(fd, addr, port);
+};
+
+pub func:socket_udp_sendto = int64(int64:fd, string:data, int64:len, string:host, int64:port) {
+    pass aria_libc_net_sendto(fd, data, len, host, port);
+};
+
+pub func:socket_udp_recvfrom = string(int64:fd) {
+    pass aria_libc_net_recvfrom(fd);
+};
+
+// ── Send / Recv ─────────────────────────────────────────────────────────────
+
+pub func:socket_send = int64(int64:fd, string:data, int64:len) {
+    pass aria_libc_net_send(fd, data, len);
+};
+
+pub func:socket_send_str = int64(int64:fd, string:data) {
+    pass aria_libc_net_send_str(fd, data);
+};
+
+pub func:socket_recv = string(int64:fd, int64:max_len) {
+    pass aria_libc_net_recv(fd, max_len);
+};
+
+pub func:socket_recv_length = int64() {
+    pass aria_libc_net_recv_length();
+};
+
+// ── Poll / Options ──────────────────────────────────────────────────────────
+
+pub func:socket_poll_read = int64(int64:fd, int64:timeout_ms) {
+    pass aria_libc_net_poll_read(fd, timeout_ms);
+};
+
+pub func:socket_poll_write = int64(int64:fd, int64:timeout_ms) {
+    pass aria_libc_net_poll_write(fd, timeout_ms);
+};
+
+pub func:socket_set_nonblocking = int64(int64:fd) {
+    pass aria_libc_net_set_nonblocking(fd);
+};
+
+pub func:socket_set_blocking = int64(int64:fd) {
+    pass aria_libc_net_set_blocking(fd);
+};
+
+pub func:socket_set_timeout = int64(int64:fd, int64:seconds) {
+    pass aria_libc_net_set_timeout(fd, seconds);
+};
+
+// ── Close / Error / DNS ─────────────────────────────────────────────────────
+
+pub func:socket_close = int64(int64:fd) {
+    pass aria_libc_net_close(fd);
+};
+
+pub func:socket_err_code = int64() {
+    pass aria_libc_net_errno();
+};
+
+pub func:socket_err_msg = string() {
+    pass aria_libc_net_strerror();
+};
+
+pub func:socket_resolve = string(string:hostname) {
+    pass aria_libc_net_resolve(hostname);
+};
+
+pub func:socket_getpeername = string(int64:fd) {
+    pass aria_libc_net_getpeername(fd);
+};
+
+pub func:socket_getpeerport = int64(int64:fd) {
+    pass aria_libc_net_getpeerport(fd);
+};
+
+// ── Type wrapper ───────────────────────────────────────────────────────────
+
+Type:Socket = {
+    // TCP
+    func:tcp_create  = int64() { pass raw socket_tcp_create(); };
+    func:tcp_connect = int64(string:host, int64:port) { pass raw socket_tcp_connect(host, port); };
+    func:tcp_listen  = int64(string:addr, int64:port, int64:backlog) { pass raw socket_tcp_listen(addr, port, backlog); };
+    func:tcp_accept  = int64(int64:fd) { pass raw socket_tcp_accept(fd); };
+
+    // UDP
+    func:udp_create   = int64() { pass raw socket_udp_create(); };
+    func:udp_bind     = int64(int64:fd, string:addr, int64:port) { pass raw socket_udp_bind(fd, addr, port); };
+    func:udp_sendto   = int64(int64:fd, string:data, int64:len, string:host, int64:port) { pass raw socket_udp_sendto(fd, data, len, host, port); };
+    func:udp_recvfrom = string(int64:fd) { pass raw socket_udp_recvfrom(fd); };
+
+    // send / recv
+    func:send_data = int64(int64:fd, string:data, int64:len) { pass raw socket_send(fd, data, len); };
+    func:send_str  = int64(int64:fd, string:data) { pass raw socket_send_str(fd, data); };
+    func:recv_data = string(int64:fd, int64:max_len) { pass raw socket_recv(fd, max_len); };
+    func:recv_len  = int64() { pass raw socket_recv_length(); };
+
+    // poll / options
+    func:poll_read      = int64(int64:fd, int64:ms) { pass raw socket_poll_read(fd, ms); };
+    func:poll_wr        = int64(int64:fd, int64:ms) { pass raw socket_poll_write(fd, ms); };
+    func:set_nonblock   = int64(int64:fd) { pass raw socket_set_nonblocking(fd); };
+    func:set_block      = int64(int64:fd) { pass raw socket_set_blocking(fd); };
+    func:set_tmout      = int64(int64:fd, int64:sec) { pass raw socket_set_timeout(fd, sec); };
+
+    // close / error / DNS
+    func:close_fd    = int64(int64:fd) { pass raw socket_close(fd); };
+    func:err_code    = int64() { pass raw socket_err_code(); };
+    func:err_msg     = string() { pass raw socket_err_msg(); };
+    func:resolve_dns = string(string:host) { pass raw socket_resolve(host); };
+    func:peer_addr   = string(int64:fd) { pass raw socket_getpeername(fd); };
+    func:peer_port   = int64(int64:fd) { pass raw socket_getpeerport(fd); };
+};

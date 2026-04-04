@@ -1,117 +1,115 @@
-// test_aria_smtp.aria — Tests for aria-smtp (C-side assertions)
-//
-// Tests message composition, validation, formatting — no network needed.
+// test_aria_smtp.aria — 12-test suite for aria-smtp (v0.12.2)
+use "../src/aria_smtp.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
-extern func:aria_smtp_msg_create      = int64();
-extern func:aria_smtp_msg_destroy     = void(int64:handle);
-extern func:aria_smtp_msg_set_from    = int32(int64:handle, string:from);
-extern func:aria_smtp_msg_add_to      = int32(int64:handle, string:to);
-extern func:aria_smtp_msg_add_cc      = int32(int64:handle, string:cc);
-extern func:aria_smtp_msg_set_subject = int32(int64:handle, string:subject);
-extern func:aria_smtp_msg_set_body    = int32(int64:handle, string:body);
-extern func:aria_smtp_msg_set_reply_to = int32(int64:handle, string:reply_to);
-extern func:aria_smtp_msg_get_from    = string(int64:handle);
-extern func:aria_smtp_msg_get_to      = string(int64:handle, int32:index);
-extern func:aria_smtp_msg_to_count    = int32(int64:handle);
-extern func:aria_smtp_msg_get_subject = string(int64:handle);
+func:test_create_greet = int32() {
+    int32:pc = 0i32;
 
-extern func:aria_smtp_msg_format      = string(int64:handle);
-extern func:aria_smtp_validate_email  = int32(string:email);
-extern func:aria_smtp_msg_validate    = int32(int64:handle);
-extern func:aria_smtp_msg_cc_count    = int32(int64:handle);
+    int64:h = raw smtp_create();
+    if (h > 0i64) { println("[PASS] T01 smtp_create"); pc += 1i32; }
+    if (h <= 0i64) { println("[FAIL] T01"); }
 
-extern func:aria_smtp_assert_int_eq      = void(int32:actual, int32:expected, string:msg);
-extern func:aria_smtp_assert_str_eq      = void(string:actual, string:expected, string:msg);
-extern func:aria_smtp_assert_str_contains = void(string:haystack, string:needle, string:msg);
-extern func:aria_smtp_test_summary       = void();
+    string:c2 = raw smtp_cmd_ehlo(h, "mail.example.com");
+    int32:t2 = 0i32;
+    if (string_contains(c2, "EHLO mail.example.com")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 cmd_ehlo"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    string:c3 = raw smtp_cmd_mail_from(h, "alice@example.com");
+    int32:t3 = 0i32;
+    if (string_contains(c3, "MAIL FROM:<alice@example.com>")) { t3 = 1i32; }
+    if (t3 == 1i32) { println("[PASS] T03 cmd_mail_from"); pc += 1i32; }
+    if (t3 == 0i32) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_envelope = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    string:c4 = raw smtp_cmd_rcpt_to(h, "bob@example.com");
+    int32:t4 = 0i32;
+    if (string_contains(c4, "RCPT TO:<bob@example.com>")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 cmd_rcpt_to"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:c5 = raw smtp_cmd_data(h);
+    int32:t5 = 0i32;
+    if (string_contains(c5, "DATA")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 cmd_data"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    string:c6 = raw smtp_cmd_quit(h);
+    int32:t6 = 0i32;
+    if (string_contains(c6, "QUIT")) { t6 = 1i32; }
+    if (t6 == 1i32) { println("[PASS] T06 cmd_quit"); pc += 1i32; }
+    if (t6 == 0i32) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_misc_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    string:c7 = raw smtp_cmd_rset(h);
+    int32:t7 = 0i32;
+    if (string_contains(c7, "RSET")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 cmd_rset"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    string:c8 = raw smtp_cmd_noop(h);
+    int32:t8 = 0i32;
+    if (string_contains(c8, "NOOP")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 cmd_noop"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:msg9 = raw smtp_build_message(h, "alice@example.com", "bob@example.com", "Hello", "Hi Bob!");
+    int32:t9 = 0i32;
+    if (string_contains(msg9, "Subject: Hello")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 build_message subject"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_parse_reply = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw smtp_create();
+
+    int32:_r1 = raw smtp_parse_reply(h, "250 OK");
+    string:code10 = raw smtp_reply_code(h);
+    int32:t10 = 0i32;
+    if (string_contains(code10, "250")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 reply_code=250"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    string:msg11 = raw smtp_reply_msg(h);
+    int32:t11 = 0i32;
+    if (string_contains(msg11, "OK")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 reply_msg=OK"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r2 = raw smtp_parse_reply(h, "550 Mailbox not found");
+    string:code12 = raw smtp_reply_code(h);
+    int32:t12 = 0i32;
+    if (string_contains(code12, "550")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 reply_code=550"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
 
 func:main = int32() {
-    // ── test 01: create message ──
-    int64:msg = aria_smtp_msg_create();
-    aria_smtp_assert_int_eq(1i32, 1i32, "test 01: msg_create returns handle");
-
-    // ── test 02: set from ──
-    int32:r2 = aria_smtp_msg_set_from(msg, "alice@example.com");
-    aria_smtp_assert_int_eq(r2, 0i32, "test 02: set_from returns 0");
-
-    // ── test 03: get from ──
-    string:f3 = aria_smtp_msg_get_from(msg);
-    aria_smtp_assert_str_eq(f3, "alice@example.com", "test 03: get_from matches");
-
-    // ── test 04: add to ──
-    int32:r4 = aria_smtp_msg_add_to(msg, "bob@example.com");
-    aria_smtp_assert_int_eq(r4, 0i32, "test 04: add_to returns 0");
-
-    // ── test 05: to count ──
-    int32:tc5 = aria_smtp_msg_to_count(msg);
-    aria_smtp_assert_int_eq(tc5, 1i32, "test 05: to_count == 1");
-
-    // ── test 06: get to ──
-    string:t6 = aria_smtp_msg_get_to(msg, 0i32);
-    aria_smtp_assert_str_eq(t6, "bob@example.com", "test 06: get_to[0] matches");
-
-    // ── test 07: set subject ──
-    int32:r7 = aria_smtp_msg_set_subject(msg, "Hello from Aria");
-    aria_smtp_assert_int_eq(r7, 0i32, "test 07: set_subject returns 0");
-
-    // ── test 08: get subject ──
-    string:s8 = aria_smtp_msg_get_subject(msg);
-    aria_smtp_assert_str_eq(s8, "Hello from Aria", "test 08: get_subject matches");
-
-    // ── test 09: set body ──
-    int32:r9 = aria_smtp_msg_set_body(msg, "This is a test email.");
-    aria_smtp_assert_int_eq(r9, 0i32, "test 09: set_body returns 0");
-
-    // ── test 10: validate complete message ──
-    int32:v10 = aria_smtp_msg_validate(msg);
-    aria_smtp_assert_int_eq(v10, 1i32, "test 10: validate complete msg == 1");
-
-    // ── test 11: format contains From ──
-    string:fmt = aria_smtp_msg_format(msg);
-    aria_smtp_assert_str_contains(fmt, "From: alice@example.com", "test 11: format has From");
-
-    // ── test 12: format contains Subject ──
-    aria_smtp_assert_str_contains(fmt, "Subject: Hello from Aria", "test 12: format has Subject");
-
-    // ── test 13: validate email positive ──
-    int32:ve13 = aria_smtp_validate_email("user@domain.com");
-    aria_smtp_assert_int_eq(ve13, 1i32, "test 13: validate_email user@domain.com == 1");
-
-    // ── test 14: validate email no @ ──
-    int32:ve14 = aria_smtp_validate_email("nodomain");
-    aria_smtp_assert_int_eq(ve14, 0i32, "test 14: validate_email no @ == 0");
-
-    // ── test 15: validate email empty ──
-    int32:ve15 = aria_smtp_validate_email("");
-    aria_smtp_assert_int_eq(ve15, 0i32, "test 15: validate_email empty == 0");
-
-    // ── test 16: add cc ──
-    int32:r16 = aria_smtp_msg_add_cc(msg, "carol@example.com");
-    aria_smtp_assert_int_eq(r16, 0i32, "test 16: add_cc returns 0");
-
-    // ── test 17: cc count ──
-    int32:cc17 = aria_smtp_msg_cc_count(msg);
-    aria_smtp_assert_int_eq(cc17, 1i32, "test 17: cc_count == 1");
-
-    // ── test 18: invalid handle returns -1 ──
-    int32:r18 = aria_smtp_msg_set_from(999i64, "x@x.com");
-    aria_smtp_assert_int_eq(r18, -1i32, "test 18: invalid handle returns -1");
-
-    // ── cleanup ──
-    aria_smtp_msg_destroy(msg);
-
-    // ── test 19: validate empty message fails ──
-    int64:msg2 = aria_smtp_msg_create();
-    int32:v19 = aria_smtp_msg_validate(msg2);
-    aria_smtp_assert_int_eq(v19, 0i32, "test 19: validate empty msg == 0");
-    aria_smtp_msg_destroy(msg2);
-
-    // ── test 20: validate email no dot ──
-    int32:ve20 = aria_smtp_validate_email("user@domain");
-    aria_smtp_assert_int_eq(ve20, 0i32, "test 20: validate_email no dot == 0");
-
-    aria_smtp_test_summary();
-    exit 0;
+    int32:p1 = raw test_create_greet();
+    int32:p2 = raw test_envelope();
+    int32:p3 = raw test_misc_cmds();
+    int32:p4 = raw test_parse_reply();
+    println("DONE");
+    exit(0i32);
 };

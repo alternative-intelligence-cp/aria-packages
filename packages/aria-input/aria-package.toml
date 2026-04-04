@@ -1,15 +1,13 @@
 [package]
 name = "aria-input"
-version = "0.2.0"
-authors = ["Aria Language Project"]
+version = "0.12.2"
+description = "Key mapping and button state manager — bitmask ops, bindings, press/release detection"
 license = "MIT"
-description = "Raw keyboard input for Aria virtual console — key detection with SNES-style button mapping via C shim"
-keywords = ["input", "keyboard", "console", "gamepad", "ffi"]
-categories = ["utilities"]
+
+[build]
+type = "pure"
 
 [dependencies]
 
-[build]
-type = "library"
-entry = "src/aria_input.aria"
-link_libraries = ["aria_input"]
+[metadata]
+categories = ["terminal", "input"]

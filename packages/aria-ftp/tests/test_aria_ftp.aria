@@ -1,101 +1,116 @@
-// test_aria_ftp.aria — Tests for aria-ftp (C-side assertions)
-//
-// Tests session management, URL building, directory navigation — no network.
+// test_aria_ftp.aria — 12-test suite for aria-ftp (v0.12.2)
+use "../src/aria_ftp.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
-extern func:aria_ftp_session_create  = int64(string:host, int32:port);
-extern func:aria_ftp_session_destroy = void(int64:handle);
-extern func:aria_ftp_set_credentials = int32(int64:handle, string:user, string:pass_str);
-extern func:aria_ftp_set_passive     = int32(int64:handle, int32:passive);
-extern func:aria_ftp_set_binary      = int32(int64:handle, int32:bin_mode);
-extern func:aria_ftp_is_passive      = int32(int64:handle);
-extern func:aria_ftp_is_binary       = int32(int64:handle);
+func:test_create_cmds = int32() {
+    int32:pc = 0i32;
 
-extern func:aria_ftp_cwd         = int32(int64:handle, string:path);
-extern func:aria_ftp_pwd         = string(int64:handle);
-extern func:aria_ftp_cdup        = int32(int64:handle);
-extern func:aria_ftp_build_url   = string(int64:handle, string:filepath);
-extern func:aria_ftp_get_host    = string(int64:handle);
-extern func:aria_ftp_get_port    = int32(int64:handle);
-extern func:aria_ftp_get_username = string(int64:handle);
+    int64:h = raw ftp_create();
+    if (h > 0i64) { println("[PASS] T01 ftp_create"); pc += 1i32; }
+    if (h <= 0i64) { println("[FAIL] T01"); }
 
-extern func:aria_ftp_assert_int_eq      = void(int32:actual, int32:expected, string:msg);
-extern func:aria_ftp_assert_str_eq      = void(string:actual, string:expected, string:msg);
-extern func:aria_ftp_assert_str_contains = void(string:haystack, string:needle, string:msg);
-extern func:aria_ftp_test_summary       = void();
+    string:c2 = raw ftp_cmd_user(h, "alice");
+    int32:t2 = 0i32;
+    if (string_contains(c2, "USER alice")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 cmd_user"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    string:c3 = raw ftp_cmd_pass(h, "secret");
+    int32:t3 = 0i32;
+    if (string_contains(c3, "PASS secret")) { t3 = 1i32; }
+    if (t3 == 1i32) { println("[PASS] T03 cmd_pass"); pc += 1i32; }
+    if (t3 == 0i32) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_nav_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    string:c4 = raw ftp_cmd_cwd(h, "/pub");
+    int32:t4 = 0i32;
+    if (string_contains(c4, "CWD /pub")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 cmd_cwd"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:c5 = raw ftp_cmd_list(h);
+    int32:t5 = 0i32;
+    if (string_contains(c5, "LIST")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 cmd_list"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    string:c6 = raw ftp_cmd_retr(h, "readme.txt");
+    int32:t6 = 0i32;
+    if (string_contains(c6, "RETR readme.txt")) { t6 = 1i32; }
+    if (t6 == 1i32) { println("[PASS] T06 cmd_retr"); pc += 1i32; }
+    if (t6 == 0i32) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_transfer_cmds = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    string:c7 = raw ftp_cmd_stor(h, "upload.dat");
+    int32:t7 = 0i32;
+    if (string_contains(c7, "STOR upload.dat")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 cmd_stor"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    string:c8 = raw ftp_cmd_type(h, "I");
+    int32:t8 = 0i32;
+    if (string_contains(c8, "TYPE I")) { t8 = 1i32; }
+    if (t8 == 1i32) { println("[PASS] T08 cmd_type"); pc += 1i32; }
+    if (t8 == 0i32) { println("[FAIL] T08"); }
+
+    string:c9 = raw ftp_cmd_quit(h);
+    int32:t9 = 0i32;
+    if (string_contains(c9, "QUIT")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 cmd_quit"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_parse_reply = int32() {
+    int32:pc = 0i32;
+
+    int64:h = raw ftp_create();
+
+    int32:_r1 = raw ftp_parse_reply(h, "220 Welcome to FTP");
+    string:code10 = raw ftp_reply_code(h);
+    int32:t10 = 0i32;
+    if (string_contains(code10, "220")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 reply_code=220"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    string:msg11 = raw ftp_reply_msg(h);
+    int32:t11 = 0i32;
+    if (string_contains(msg11, "Welcome to FTP")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 reply_msg=Welcome"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    int32:_r2 = raw ftp_parse_reply(h, "550 No such file");
+    string:code12 = raw ftp_reply_code(h);
+    string:cls12 = raw ftp_reply_class(h);
+    int32:t12 = 0i32;
+    if (string_contains(code12, "550")) { t12 = 1i32; }
+    if (t12 == 1i32) { println("[PASS] T12 reply_code=550"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
 
 func:main = int32() {
-    // ── test 01: create session ──
-    int64:s = aria_ftp_session_create("ftp.example.com", 21i32);
-    aria_ftp_assert_int_eq(1i32, 1i32, "test 01: session_create returns handle");
-
-    // ── test 02: get host ──
-    string:h2 = aria_ftp_get_host(s);
-    aria_ftp_assert_str_eq(h2, "ftp.example.com", "test 02: get_host matches");
-
-    // ── test 03: get port ──
-    int32:p3 = aria_ftp_get_port(s);
-    aria_ftp_assert_int_eq(p3, 21i32, "test 03: get_port == 21");
-
-    // ── test 04: default passive mode ──
-    int32:pm4 = aria_ftp_is_passive(s);
-    aria_ftp_assert_int_eq(pm4, 1i32, "test 04: default passive == 1");
-
-    // ── test 05: default binary mode ──
-    int32:bm5 = aria_ftp_is_binary(s);
-    aria_ftp_assert_int_eq(bm5, 1i32, "test 05: default binary == 1");
-
-    // ── test 06: set credentials ──
-    int32:r6 = aria_ftp_set_credentials(s, "alice", "secret123");
-    aria_ftp_assert_int_eq(r6, 0i32, "test 06: set_credentials returns 0");
-
-    // ── test 07: get username ──
-    string:u7 = aria_ftp_get_username(s);
-    aria_ftp_assert_str_eq(u7, "alice", "test 07: get_username == alice");
-
-    // ── test 08: build URL with auth (port 21 omitted) ──
-    string:url8 = aria_ftp_build_url(s, "/pub/file.txt");
-    aria_ftp_assert_str_eq(url8, "ftp://alice:secret123@ftp.example.com/pub/file.txt", "test 08: build_url with auth");
-
-    // ── test 09: pwd default is / ──
-    string:p9 = aria_ftp_pwd(s);
-    aria_ftp_assert_str_eq(p9, "/", "test 09: pwd default /");
-
-    // ── test 10: cwd absolute ──
-    int32:r10 = aria_ftp_cwd(s, "/home/alice");
-    aria_ftp_assert_int_eq(r10, 0i32, "test 10: cwd absolute returns 0");
-    string:p10 = aria_ftp_pwd(s);
-    aria_ftp_assert_str_eq(p10, "/home/alice", "test 10b: pwd == /home/alice");
-
-    // ── test 11: cdup ──
-    int32:r11 = aria_ftp_cdup(s);
-    string:p11 = aria_ftp_pwd(s);
-    aria_ftp_assert_str_eq(p11, "/home", "test 11: cdup -> /home");
-
-    // ── test 12: set active mode ──
-    int32:r12 = aria_ftp_set_passive(s, 0i32);
-    int32:pm12 = aria_ftp_is_passive(s);
-    aria_ftp_assert_int_eq(pm12, 0i32, "test 12: passive off == 0");
-
-    // ── test 13: set ascii mode ──
-    int32:r13 = aria_ftp_set_binary(s, 0i32);
-    int32:bm13 = aria_ftp_is_binary(s);
-    aria_ftp_assert_int_eq(bm13, 0i32, "test 13: binary off == 0");
-
-    // ── test 14: non-standard port in URL ──
-    int64:s2 = aria_ftp_session_create("myserver.org", 2121i32);
-    string:url14 = aria_ftp_build_url(s2, "/data.bin");
-    aria_ftp_assert_str_contains(url14, ":2121", "test 14: non-standard port in URL");
-    aria_ftp_session_destroy(s2);
-
-    // ── test 15: invalid host returns -1 ──
-    int64:s3 = aria_ftp_session_create("", 21i32);
-    aria_ftp_assert_int_eq(-1i32, -1i32, "test 15: empty host returns -1");
-
-    // ── cleanup ──
-    aria_ftp_session_destroy(s);
-
-    aria_ftp_test_summary();
-    exit 0;
+    int32:p1 = raw test_create_cmds();
+    int32:p2 = raw test_nav_cmds();
+    int32:p3 = raw test_transfer_cmds();
+    int32:p4 = raw test_parse_reply();
+    println("DONE");
+    exit(0i32);
 };

@@ -1,6 +1,6 @@
 // test_aria_http_get.aria — GET & HEAD against local test server (:8888)
 
-func:failsafe = int32(tbb32:err) { exit 1; };
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 extern func:aria_http_init              = int32();
 extern func:aria_http_get               = int32(string:url);
@@ -34,5 +34,5 @@ func:main = int32() {
     aria_http_assert_body_contains("aria-dev", "test 08: body contains aria-dev");
 
     aria_http_test_summary();
-    exit 0;
+    exit(0i32);
 };

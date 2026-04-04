@@ -1,118 +1,141 @@
-// aria_smtp.aria — SMTP email composition for Aria
+// aria_smtp.aria — SMTP protocol command builder & reply parser (v0.12.2)
 //
-// Handle-based message builder with formatting and validation.
-// Supports From, To, Cc, Reply-To, Subject, Body, and RFC 2822 output.
-// Requires: libaria_smtp_shim.so
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_smtp.aria".*;
+//
+// Builds SMTP command strings, constructs email messages, and parses replies.
+// Actual socket I/O is handled by aria-socket at the application level.
 
-extern "aria_smtp_shim" {
-    func:aria_smtp_msg_create     = int64();
-    func:aria_smtp_msg_destroy    = void(int64:handle);
-    func:aria_smtp_msg_set_from   = int32(int64:handle, string:from);
-    func:aria_smtp_msg_add_to     = int32(int64:handle, string:to);
-    func:aria_smtp_msg_add_cc     = int32(int64:handle, string:cc);
-    func:aria_smtp_msg_set_subject = int32(int64:handle, string:subject);
-    func:aria_smtp_msg_set_body   = int32(int64:handle, string:body);
-}
+// ── Session ─────────────────────────────────────────────────────────────────
 
-extern "aria_smtp_shim" {
-    func:aria_smtp_msg_set_reply_to = int32(int64:handle, string:reply_to);
-    func:aria_smtp_msg_get_from     = string(int64:handle);
-    func:aria_smtp_msg_get_to       = string(int64:handle, int32:index);
-    func:aria_smtp_msg_to_count     = int32(int64:handle);
-    func:aria_smtp_msg_get_subject  = string(int64:handle);
-    func:aria_smtp_msg_get_body     = string(int64:handle);
-    func:aria_smtp_msg_cc_count     = int32(int64:handle);
-}
-
-extern "aria_smtp_shim" {
-    func:aria_smtp_msg_format       = string(int64:handle);
-    func:aria_smtp_validate_email   = int32(string:email);
-    func:aria_smtp_msg_validate     = int32(int64:handle);
-}
-
-// ── public API ──────────────────────────────────────────────────────
-
-pub func:smtp_msg_create = int64() {
-    int64:h = aria_smtp_msg_create();
+pub func:smtp_create = int64() {
+    int64:h = ahash(256);
+    ahset(h, "_last_cmd", "");
+    ahset(h, "_reply_code", "");
+    ahset(h, "_reply_msg", "");
+    ahset(h, "_reply_class", "");
     pass h;
 };
 
-pub func:smtp_msg_destroy = NIL(int64:handle) {
-    aria_smtp_msg_destroy(handle);
-    pass NIL;
+// ── Commands ────────────────────────────────────────────────────────────────
+
+pub func:smtp_cmd_ehlo = string(int64:h, string:domain) {
+    ahset(h, "_last_cmd", "EHLO");
+    string:cmd = string_concat("EHLO ", domain);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:smtp_msg_set_from = int32(int64:handle, string:from) {
-    int32:r = aria_smtp_msg_set_from(handle, from);
-    pass r;
+pub func:smtp_cmd_helo = string(int64:h, string:domain) {
+    ahset(h, "_last_cmd", "HELO");
+    string:cmd = string_concat("HELO ", domain);
+    cmd = string_concat(cmd, "\n");
+    pass cmd;
 };
 
-pub func:smtp_msg_add_to = int32(int64:handle, string:to) {
-    int32:r = aria_smtp_msg_add_to(handle, to);
-    pass r;
+pub func:smtp_cmd_mail_from = string(int64:h, string:addr) {
+    ahset(h, "_last_cmd", "MAIL");
+    string:cmd = string_concat("MAIL FROM:<", addr);
+    cmd = string_concat(cmd, ">\n");
+    pass cmd;
 };
 
-pub func:smtp_msg_add_cc = int32(int64:handle, string:cc) {
-    int32:r = aria_smtp_msg_add_cc(handle, cc);
-    pass r;
+pub func:smtp_cmd_rcpt_to = string(int64:h, string:addr) {
+    ahset(h, "_last_cmd", "RCPT");
+    string:cmd = string_concat("RCPT TO:<", addr);
+    cmd = string_concat(cmd, ">\n");
+    pass cmd;
 };
 
-pub func:smtp_msg_set_subject = int32(int64:handle, string:subject) {
-    int32:r = aria_smtp_msg_set_subject(handle, subject);
-    pass r;
+pub func:smtp_cmd_data = string(int64:h) {
+    ahset(h, "_last_cmd", "DATA");
+    pass "DATA\n";
 };
 
-pub func:smtp_msg_set_body = int32(int64:handle, string:body) {
-    int32:r = aria_smtp_msg_set_body(handle, body);
-    pass r;
+pub func:smtp_cmd_quit = string(int64:h) {
+    ahset(h, "_last_cmd", "QUIT");
+    pass "QUIT\n";
 };
 
-pub func:smtp_msg_set_reply_to = int32(int64:handle, string:reply_to) {
-    int32:r = aria_smtp_msg_set_reply_to(handle, reply_to);
-    pass r;
+pub func:smtp_cmd_rset = string(int64:h) {
+    ahset(h, "_last_cmd", "RSET");
+    pass "RSET\n";
 };
 
-pub func:smtp_msg_get_from = string(int64:handle) {
-    string:r = aria_smtp_msg_get_from(handle);
-    pass r;
+pub func:smtp_cmd_noop = string(int64:h) {
+    ahset(h, "_last_cmd", "NOOP");
+    pass "NOOP\n";
 };
 
-pub func:smtp_msg_get_to = string(int64:handle, int32:index) {
-    string:r = aria_smtp_msg_get_to(handle, index);
-    pass r;
+// ── Message builder ─────────────────────────────────────────────────────────
+
+pub func:smtp_build_message = string(int64:h, string:from_addr, string:to_addr, string:subj, string:body_text) {
+    string:msg = string_concat("From: ", from_addr);
+    msg = string_concat(msg, "\nTo: ");
+    msg = string_concat(msg, to_addr);
+    msg = string_concat(msg, "\nSubject: ");
+    msg = string_concat(msg, subj);
+    msg = string_concat(msg, "\n\n");
+    msg = string_concat(msg, body_text);
+    msg = string_concat(msg, "\n.\n");
+    pass msg;
 };
 
-pub func:smtp_msg_to_count = int32(int64:handle) {
-    int32:n = aria_smtp_msg_to_count(handle);
-    pass n;
+// ── Reply parsing ───────────────────────────────────────────────────────────
+
+pub func:smtp_parse_reply = int32(int64:h, string:line_str) {
+    int64:slen = string_length(line_str);
+    if (slen < 3i64) { pass 1i32; }
+    string:code = string_substring(line_str, 0i64, 3i64);
+    string:cls = string_substring(line_str, 0i64, 1i64);
+    ahset(h, "_reply_code", code);
+    ahset(h, "_reply_class", cls);
+    if (slen > 4i64) {
+        string:msg = string_substring(line_str, 4i64, slen);
+        ahset(h, "_reply_msg", msg);
+    }
+    if (slen <= 4i64) {
+        ahset(h, "_reply_msg", "");
+    }
+    pass 0i32;
 };
 
-pub func:smtp_msg_get_subject = string(int64:handle) {
-    string:r = aria_smtp_msg_get_subject(handle);
-    pass r;
+pub func:smtp_reply_code = string(int64:h) {
+    string:v = ahget(h, "_reply_code");
+    pass v;
 };
 
-pub func:smtp_msg_get_body = string(int64:handle) {
-    string:r = aria_smtp_msg_get_body(handle);
-    pass r;
+pub func:smtp_reply_class = string(int64:h) {
+    string:v = ahget(h, "_reply_class");
+    pass v;
 };
 
-pub func:smtp_msg_cc_count = int32(int64:handle) {
-    int32:n = aria_smtp_msg_cc_count(handle);
-    pass n;
+pub func:smtp_reply_msg = string(int64:h) {
+    string:v = ahget(h, "_reply_msg");
+    pass v;
 };
 
-pub func:smtp_msg_format = string(int64:handle) {
-    string:r = aria_smtp_msg_format(handle);
-    pass r;
+pub func:smtp_last_cmd = string(int64:h) {
+    string:v = ahget(h, "_last_cmd");
+    pass v;
 };
 
-pub func:smtp_validate_email = int32(string:email) {
-    int32:r = aria_smtp_validate_email(email);
-    pass r;
-};
+// ── Type wrapper ────────────────────────────────────────────────────────────
 
-pub func:smtp_msg_validate = int32(int64:handle) {
-    int32:r = aria_smtp_msg_validate(handle);
-    pass r;
+Type:SMTP = {
+    func:init       = int64() { pass raw smtp_create(); };
+    func:ehlo       = string(int64:h, string:d) { pass raw smtp_cmd_ehlo(h, d); };
+    func:helo       = string(int64:h, string:d) { pass raw smtp_cmd_helo(h, d); };
+    func:mail_from  = string(int64:h, string:a) { pass raw smtp_cmd_mail_from(h, a); };
+    func:rcpt_to    = string(int64:h, string:a) { pass raw smtp_cmd_rcpt_to(h, a); };
+    func:data       = string(int64:h) { pass raw smtp_cmd_data(h); };
+    func:bye        = string(int64:h) { pass raw smtp_cmd_quit(h); };
+    func:reset      = string(int64:h) { pass raw smtp_cmd_rset(h); };
+    func:noop       = string(int64:h) { pass raw smtp_cmd_noop(h); };
+    func:compose    = string(int64:h, string:f, string:t, string:s, string:b) { pass raw smtp_build_message(h, f, t, s, b); };
+    func:parse      = int32(int64:h, string:l) { pass raw smtp_parse_reply(h, l); };
+    func:code       = string(int64:h) { pass raw smtp_reply_code(h); };
+    func:cls        = string(int64:h) { pass raw smtp_reply_class(h); };
+    func:msg        = string(int64:h) { pass raw smtp_reply_msg(h); };
+    func:last       = string(int64:h) { pass raw smtp_last_cmd(h); };
 };

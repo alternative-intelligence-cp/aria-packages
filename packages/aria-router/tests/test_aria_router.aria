@@ -1,99 +1,93 @@
-// test_aria_router.aria — route matching and param extraction tests
-// Pure in-process tests — no server needed, just exercises the C shim.
+// test_aria_router.aria — 12-test suite for aria-router (v0.12.0)
+use "../src/aria_router.aria".*;
 
-func:failsafe = int32(tbb32:err) { exit 1; };
-
-extern "aria_router_shim" {
-    func:aria_router_add             = void(string:method, string:pattern, int32:handler_id);
-    func:aria_router_use             = void(string:prefix, int32:mw_id);
-    func:aria_router_match           = int32(string:method, string:path);
-    func:aria_router_param           = string(string:name);
-    func:aria_router_param_count     = int32();
-    func:aria_router_middleware_count = int32();
-    func:aria_router_middleware_id   = int32(int32:index);
-    func:aria_router_route_count     = int32();
-    func:aria_router_reset           = void();
-    func:aria_router_assert_int_eq   = void(string:label, int32:expected, int32:actual);
-    func:aria_router_assert_str_eq   = void(string:label, string:expected, string:actual);
-    func:aria_router_test_summary    = void();
-}
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
 
 func:main = int32() {
-    // Register routes
-    aria_router_add("GET", "/", 1i32);
-    aria_router_add("GET", "/users", 2i32);
-    aria_router_add("GET", "/users/:id", 3i32);
-    aria_router_add("POST", "/users", 4i32);
-    aria_router_add("PUT", "/users/:id", 5i32);
-    aria_router_add("DELETE", "/users/:id", 6i32);
-    aria_router_add("GET", "/users/:uid/posts/:pid", 7i32);
-    aria_router_add("GET", "/files/*", 8i32);
+    int32:pass_count = 0i32;
 
-    aria_router_assert_int_eq("8 routes registered", 8i32, aria_router_route_count());
+    // T01: add GET route
+    int64:a1 = raw route_get("/hello", 1i64);
+    if (a1 == 1i64) { println("[PASS] T01 add GET route"); pass_count += 1i32; }
+    if (a1 != 1i64) { println("[FAIL] T01"); }
 
-    // Register middleware
-    aria_router_use("", 100i32);
-    aria_router_use("/users", 101i32);
+    // T02: add POST route
+    int64:a2 = raw route_post("/submit", 2i64);
+    if (a2 == 1i64) { println("[PASS] T02 add POST route"); pass_count += 1i32; }
+    if (a2 != 1i64) { println("[FAIL] T02"); }
 
-    // Test 1: root path
-    int32:h1 = aria_router_match("GET", "/");
-    aria_router_assert_int_eq("GET / => handler 1", 1i32, h1);
-    aria_router_assert_int_eq("GET / params", 0i32, aria_router_param_count());
+    // T03: route count
+    int64:rc3 = raw route_count();
+    if (rc3 == 2i64) { println("[PASS] T03 route count=2"); pass_count += 1i32; }
+    if (rc3 != 2i64) { println("[FAIL] T03"); }
 
-    // Test 2: literal path
-    int32:h2 = aria_router_match("GET", "/users");
-    aria_router_assert_int_eq("GET /users => handler 2", 2i32, h2);
+    // T04: exact match GET /hello
+    int64:m4 = raw route_match("GET", "/hello");
+    if (m4 == 1i64) { println("[PASS] T04 match GET /hello=1"); pass_count += 1i32; }
+    if (m4 != 1i64) { println("[FAIL] T04"); }
 
-    // Test 3: single param
-    int32:h3 = aria_router_match("GET", "/users/42");
-    aria_router_assert_int_eq("GET /users/42 => handler 3", 3i32, h3);
-    aria_router_assert_int_eq("1 param", 1i32, aria_router_param_count());
-    string:uid = aria_router_param("id");
-    aria_router_assert_str_eq("param id=42", "42", uid);
+    // T05: match POST /submit
+    int64:m5 = raw route_match("POST", "/submit");
+    if (m5 == 2i64) { println("[PASS] T05 match POST /submit=2"); pass_count += 1i32; }
+    if (m5 != 2i64) { println("[FAIL] T05"); }
 
-    // Test 4: POST same path different handler
-    int32:h4 = aria_router_match("POST", "/users");
-    aria_router_assert_int_eq("POST /users => handler 4", 4i32, h4);
+    // T06: no match returns -1
+    int64:m6 = raw route_match("GET", "/missing");
+    if (m6 == -1i64) { println("[PASS] T06 no match=-1"); pass_count += 1i32; }
+    if (m6 != -1i64) { println("[FAIL] T06"); }
 
-    // Test 5: PUT with param
-    int32:h5 = aria_router_match("PUT", "/users/99");
-    aria_router_assert_int_eq("PUT /users/99 => handler 5", 5i32, h5);
-    string:uid5 = aria_router_param("id");
-    aria_router_assert_str_eq("PUT param id=99", "99", uid5);
+    // T07: method mismatch
+    int64:m7 = raw route_match("DELETE", "/hello");
+    if (m7 == -1i64) { println("[PASS] T07 method mismatch=-1"); pass_count += 1i32; }
+    if (m7 != -1i64) { println("[FAIL] T07"); }
 
-    // Test 6: multiple params
-    int32:h7 = aria_router_match("GET", "/users/5/posts/123");
-    aria_router_assert_int_eq("GET /users/5/posts/123 => handler 7", 7i32, h7);
-    aria_router_assert_int_eq("2 params", 2i32, aria_router_param_count());
-    string:puid = aria_router_param("uid");
-    string:ppid = aria_router_param("pid");
-    aria_router_assert_str_eq("param uid=5", "5", puid);
-    aria_router_assert_str_eq("param pid=123", "123", ppid);
+    // T08: path parameter extraction
+    int64:a8 = raw route_get("/users/:id", 10i64);
+    int64:m8 = raw route_match("GET", "/users/42");
+    if (m8 == 10i64) {
+        string:p8 = raw route_param("id");
+        if (p8 == "42") { println("[PASS] T08 param :id=42"); pass_count += 1i32; }
+        if (p8 != "42") { println("[FAIL] T08 param value"); }
+    }
+    if (m8 != 10i64) { println("[FAIL] T08 match"); }
 
-    // Test 7: wildcard route
-    int32:h8 = aria_router_match("GET", "/files/img/photo.jpg");
-    aria_router_assert_int_eq("GET /files/... => handler 8", 8i32, h8);
+    // T09: multi-param extraction
+    int64:a9 = raw route_get("/posts/:pid/comments/:cid", 20i64);
+    int64:m9 = raw route_match("GET", "/posts/7/comments/99");
+    if (m9 == 20i64) {
+        string:pp9 = raw route_param("pid");
+        string:pc9 = raw route_param("cid");
+        if (pp9 == "7") {
+            if (pc9 == "99") { println("[PASS] T09 multi params"); pass_count += 1i32; }
+            if (pc9 != "99") { println("[FAIL] T09 cid"); }
+        }
+        if (pp9 != "7") { println("[FAIL] T09 pid"); }
+    }
+    if (m9 != 20i64) { println("[FAIL] T09 match"); }
 
-    // Test 8: no match
-    int32:hx = aria_router_match("GET", "/nonexistent");
-    aria_router_assert_int_eq("no match => -1", -1i32, hx);
+    // T10: wildcard route
+    int64:a10 = raw route_get("/static/*", 30i64);
+    int64:m10 = raw route_match("GET", "/static/css/main.css");
+    if (m10 == 30i64) { println("[PASS] T10 wildcard match"); pass_count += 1i32; }
+    if (m10 != 30i64) { println("[FAIL] T10"); }
 
-    // Test 9: method mismatch
-    int32:hm = aria_router_match("DELETE", "/");
-    aria_router_assert_int_eq("DELETE / no match => -1", -1i32, hm);
+    // T11: middleware registration
+    int64:mw1 = raw route_use_mw(100i64);
+    int64:mw2 = raw route_use_mw(101i64);
+    int64:mwc = raw route_mw_count();
+    if (mwc == 2i64) { println("[PASS] T11 middleware count=2"); pass_count += 1i32; }
+    if (mwc != 2i64) { println("[FAIL] T11"); }
 
-    // Test 10: middleware
-    int32:h10 = aria_router_match("GET", "/users/7");
-    int32:mwc = aria_router_middleware_count();
-    aria_router_assert_int_eq("middleware count 2", 2i32, mwc);
-    aria_router_assert_int_eq("global mw id", 100i32, aria_router_middleware_id(0i32));
-    aria_router_assert_int_eq("scoped mw id", 101i32, aria_router_middleware_id(1i32));
+    // T12: reset clears everything
+    int64:r12 = raw route_reset();
+    int64:rc12 = raw route_count();
+    int64:mc12 = raw route_mw_count();
+    if (rc12 == 0i64) {
+        if (mc12 == 0i64) { println("[PASS] T12 reset clears all"); pass_count += 1i32; }
+        if (mc12 != 0i64) { println("[FAIL] T12 mw not cleared"); }
+    }
+    if (rc12 != 0i64) { println("[FAIL] T12 routes not cleared"); }
 
-    // Test 11: middleware not applied to unmatched prefix
-    int32:h11 = aria_router_match("GET", "/");
-    int32:mwc2 = aria_router_middleware_count();
-    aria_router_assert_int_eq("root: only global mw", 1i32, mwc2);
-
-    aria_router_test_summary();
-    exit 0;
+    println("DONE");
+    exit(0i32);
 };

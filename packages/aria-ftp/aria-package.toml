@@ -1,11 +1,13 @@
 [package]
-name            = "aria-ftp"
-version         = "0.3.1"
-description     = "FTP client for Aria — connect, list, upload, download via FTP protocol"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
+name = "aria-ftp"
+version = "0.12.2"
+description = "FTP protocol command builder and reply parser"
+license = "MIT"
+
+[build]
+type = "pure"
 
 [dependencies]
 
-[build]
-link_libraries = ["aria_ftp_shim"]
+[metadata]
+categories = ["network", "protocol"]

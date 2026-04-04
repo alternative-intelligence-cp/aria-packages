@@ -1,13 +1,13 @@
 [package]
-name            = "aria-websocket"
-version         = "0.2.6"
-description     = "WebSocket client and server for Aria — connect, send, receive, broadcast via libwebsockets"
-license         = "MIT"
-repository      = "https://github.com/alternative-intelligence-cp/aria-packages"
-keywords        = ["websocket", "networking", "realtime", "ws"]
-categories      = ["networking", "web"]
+name = "aria-websocket"
+version = "0.12.2"
+description = "WebSocket protocol layer — handshake builder, state tracking, frame type identification"
+license = "MIT"
+
+[build]
+type = "pure"
 
 [dependencies]
 
-[build]
-link_libraries = ["aria_websocket_shim", "websockets"]
+[metadata]
+categories = ["network", "protocol"]
