@@ -1,0 +1,242 @@
+// aria_lru.aria — LRU cache (v0.12.3)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_lru.aria".*;
+//
+// O(1) get/put using ahash. Eviction tracked via access counter —
+// oldest entry evicted when cache is full.
+// Keys and values are strings. Capacity limited by entry count.
+
+// ── Create ──────────────────────────────────────────────────────────────────
+
+pub func:lru_create = int64(int64:capacity) {
+    int64:h = ahash(0);
+    ahset(h, "_cap", string_from_int(capacity));
+    ahset(h, "_count", "0");
+    ahset(h, "_clock", "0");
+    ahset(h, "_evict_key", "");
+    pass h;
+};
+
+// ── Put ─────────────────────────────────────────────────────────────────────
+
+pub func:lru_put = int32(int64:h, string:key, string:val) {
+    // Check if key exists already
+    string:vkey = string_concat("_v_", key);
+    int64:tag = ahtype(h, vkey);
+
+    // Bump clock
+    string:clk_s = ahget(h, "_clock");
+    int64:clk = 0i64;
+    int64:clen = string_length(clk_s);
+    int64:ci = 0i64;
+    while (ci < clen) {
+        string:cd = string_substring(clk_s, ci, ci + 1i64);
+        clk = clk * 10i64;
+        if (cd == "0") { clk = clk + 0i64; }
+        if (cd == "1") { clk = clk + 1i64; }
+        if (cd == "2") { clk = clk + 2i64; }
+        if (cd == "3") { clk = clk + 3i64; }
+        if (cd == "4") { clk = clk + 4i64; }
+        if (cd == "5") { clk = clk + 5i64; }
+        if (cd == "6") { clk = clk + 6i64; }
+        if (cd == "7") { clk = clk + 7i64; }
+        if (cd == "8") { clk = clk + 8i64; }
+        if (cd == "9") { clk = clk + 9i64; }
+        ci = ci + 1i64;
+    }
+    clk = clk + 1i64;
+    ahset(h, "_clock", string_from_int(clk));
+
+    if (tag >= 0i64) {
+        // Update existing
+        ahset(h, vkey, val);
+        string:tkey = string_concat("_t_", key);
+        ahset(h, tkey, string_from_int(clk));
+        pass 0i32;
+    }
+
+    // Check count vs capacity
+    string:cnt_s = ahget(h, "_count");
+    int64:cnt = 0i64;
+    int64:nlen = string_length(cnt_s);
+    int64:ni = 0i64;
+    while (ni < nlen) {
+        string:nd = string_substring(cnt_s, ni, ni + 1i64);
+        cnt = cnt * 10i64;
+        if (nd == "0") { cnt = cnt + 0i64; }
+        if (nd == "1") { cnt = cnt + 1i64; }
+        if (nd == "2") { cnt = cnt + 2i64; }
+        if (nd == "3") { cnt = cnt + 3i64; }
+        if (nd == "4") { cnt = cnt + 4i64; }
+        if (nd == "5") { cnt = cnt + 5i64; }
+        if (nd == "6") { cnt = cnt + 6i64; }
+        if (nd == "7") { cnt = cnt + 7i64; }
+        if (nd == "8") { cnt = cnt + 8i64; }
+        if (nd == "9") { cnt = cnt + 9i64; }
+        ni = ni + 1i64;
+    }
+
+    string:cap_s = ahget(h, "_cap");
+    int64:cap = 0i64;
+    int64:alen = string_length(cap_s);
+    int64:ai = 0i64;
+    while (ai < alen) {
+        string:ad = string_substring(cap_s, ai, ai + 1i64);
+        cap = cap * 10i64;
+        if (ad == "0") { cap = cap + 0i64; }
+        if (ad == "1") { cap = cap + 1i64; }
+        if (ad == "2") { cap = cap + 2i64; }
+        if (ad == "3") { cap = cap + 3i64; }
+        if (ad == "4") { cap = cap + 4i64; }
+        if (ad == "5") { cap = cap + 5i64; }
+        if (ad == "6") { cap = cap + 6i64; }
+        if (ad == "7") { cap = cap + 7i64; }
+        if (ad == "8") { cap = cap + 8i64; }
+        if (ad == "9") { cap = cap + 9i64; }
+        ai = ai + 1i64;
+    }
+
+    if (cnt >= cap) {
+        // Evict: mark oldest key with _EVICTED_ sentinel
+        // Eviction is tracked by the indexed key list — find oldest timestamp
+        // For simplicity, scan _k_0 through _k_(count-1) for lowest _t_
+        int64:oldest_time = clk;
+        string:oldest_idx = "0";
+        int64:scan = 0i64;
+        while (scan < cnt) {
+            string:scan_kkey = string_concat("_k_", string_from_int(scan));
+            int64:scan_tag = ahtype(h, scan_kkey);
+            if (scan_tag >= 0i64) {
+                string:scan_name = ahget(h, scan_kkey);
+                int32:evicted = 0i32;
+                if (string_contains(scan_name, "_EVICTED_")) { evicted = 1i32; }
+                if (evicted == 0i32) {
+                    string:scan_tkey = string_concat("_t_", scan_name);
+                    string:scan_ts = ahget(h, scan_tkey);
+                    int64:scan_t = 0i64;
+                    int64:stlen = string_length(scan_ts);
+                    int64:sti = 0i64;
+                    while (sti < stlen) {
+                        string:std = string_substring(scan_ts, sti, sti + 1i64);
+                        scan_t = scan_t * 10i64;
+                        if (std == "0") { scan_t = scan_t + 0i64; }
+                        if (std == "1") { scan_t = scan_t + 1i64; }
+                        if (std == "2") { scan_t = scan_t + 2i64; }
+                        if (std == "3") { scan_t = scan_t + 3i64; }
+                        if (std == "4") { scan_t = scan_t + 4i64; }
+                        if (std == "5") { scan_t = scan_t + 5i64; }
+                        if (std == "6") { scan_t = scan_t + 6i64; }
+                        if (std == "7") { scan_t = scan_t + 7i64; }
+                        if (std == "8") { scan_t = scan_t + 8i64; }
+                        if (std == "9") { scan_t = scan_t + 9i64; }
+                        sti = sti + 1i64;
+                    }
+                    if (scan_t < oldest_time) {
+                        oldest_time = scan_t;
+                        oldest_idx = string_from_int(scan);
+                    }
+                }
+            }
+            scan = scan + 1i64;
+        }
+        // Evict the oldest
+        string:evict_kkey = string_concat("_k_", oldest_idx);
+        string:evict_name = ahget(h, evict_kkey);
+        ahset(h, "_evict_key", evict_name);
+        ahset(h, evict_kkey, "_EVICTED_");
+        string:evict_vkey = string_concat("_v_", evict_name);
+        ahset(h, evict_vkey, "_EVICTED_");
+        cnt = cnt - 1i64;
+    }
+
+    // Insert new entry
+    string:idx_key = string_concat("_k_", string_from_int(cnt));
+    ahset(h, idx_key, key);
+    ahset(h, vkey, val);
+    string:tkey = string_concat("_t_", key);
+    ahset(h, tkey, string_from_int(clk));
+    cnt = cnt + 1i64;
+    ahset(h, "_count", string_from_int(cnt));
+    pass 0i32;
+};
+
+// ── Get ─────────────────────────────────────────────────────────────────────
+
+pub func:lru_get = string(int64:h, string:key) {
+    string:vkey = string_concat("_v_", key);
+    int64:tag = ahtype(h, vkey);
+    if (tag < 0i64) { pass ""; }
+    string:val = ahget(h, vkey);
+    int32:is_evicted = 0i32;
+    if (string_contains(val, "_EVICTED_")) { is_evicted = 1i32; }
+    if (is_evicted == 1i32) { pass ""; }
+
+    // Update access time
+    string:clk_s = ahget(h, "_clock");
+    int64:clk = 0i64;
+    int64:clen = string_length(clk_s);
+    int64:ci = 0i64;
+    while (ci < clen) {
+        string:cd = string_substring(clk_s, ci, ci + 1i64);
+        clk = clk * 10i64;
+        if (cd == "0") { clk = clk + 0i64; }
+        if (cd == "1") { clk = clk + 1i64; }
+        if (cd == "2") { clk = clk + 2i64; }
+        if (cd == "3") { clk = clk + 3i64; }
+        if (cd == "4") { clk = clk + 4i64; }
+        if (cd == "5") { clk = clk + 5i64; }
+        if (cd == "6") { clk = clk + 6i64; }
+        if (cd == "7") { clk = clk + 7i64; }
+        if (cd == "8") { clk = clk + 8i64; }
+        if (cd == "9") { clk = clk + 9i64; }
+        ci = ci + 1i64;
+    }
+    clk = clk + 1i64;
+    ahset(h, "_clock", string_from_int(clk));
+    string:tkey = string_concat("_t_", key);
+    ahset(h, tkey, string_from_int(clk));
+    pass val;
+};
+
+// ── Has ─────────────────────────────────────────────────────────────────────
+
+pub func:lru_has = int64(int64:h, string:key) {
+    string:vkey = string_concat("_v_", key);
+    int64:tag = ahtype(h, vkey);
+    if (tag < 0i64) { pass 0i64; }
+    string:val = ahget(h, vkey);
+    int32:is_evicted = 0i32;
+    if (string_contains(val, "_EVICTED_")) { is_evicted = 1i32; }
+    if (is_evicted == 1i32) { pass 0i64; }
+    pass 1i64;
+};
+
+// ── Accessors ───────────────────────────────────────────────────────────────
+
+pub func:lru_count = string(int64:h) {
+    string:v = ahget(h, "_count");
+    pass v;
+};
+
+pub func:lru_capacity = string(int64:h) {
+    string:v = ahget(h, "_cap");
+    pass v;
+};
+
+pub func:lru_last_evicted = string(int64:h) {
+    string:v = ahget(h, "_evict_key");
+    pass v;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:LRU = {
+    func:init     = int64(int64:cap) { pass raw lru_create(cap); };
+    func:put      = int32(int64:h, string:k, string:v) { pass raw lru_put(h, k, v); };
+    func:get      = string(int64:h, string:k) { pass raw lru_get(h, k); };
+    func:has      = int64(int64:h, string:k) { pass raw lru_has(h, k); };
+    func:cnt      = string(int64:h) { pass raw lru_count(h); };
+    func:cap      = string(int64:h) { pass raw lru_capacity(h); };
+    func:evicted  = string(int64:h) { pass raw lru_last_evicted(h); };
+};

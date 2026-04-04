@@ -1,0 +1,124 @@
+// test_aria_lru.aria — 12-test suite for aria-lru (v0.12.3)
+use "../src/aria_lru.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_basic = int32() {
+    int32:pc = 0i32;
+
+    int64:c = raw lru_create(3i64);
+    if (c > 0i64) { println("[PASS] T01 lru_create"); pc += 1i32; }
+    if (c <= 0i64) { println("[FAIL] T01"); }
+
+    int32:_p1 = raw lru_put(c, "a", "100");
+    string:v2 = raw lru_get(c, "a");
+    int32:t2 = 0i32;
+    if (string_contains(v2, "100")) { t2 = 1i32; }
+    if (t2 == 1i32) { println("[PASS] T02 get a=100"); pc += 1i32; }
+    if (t2 == 0i32) { println("[FAIL] T02"); }
+
+    int64:h3 = raw lru_has(c, "a");
+    if (h3 == 1i64) { println("[PASS] T03 has a"); pc += 1i32; }
+    if (h3 != 1i64) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_fill = int32() {
+    int32:pc = 0i32;
+
+    int64:c = raw lru_create(3i64);
+    int32:_p1 = raw lru_put(c, "x", "10");
+    int32:_p2 = raw lru_put(c, "y", "20");
+    int32:_p3 = raw lru_put(c, "z", "30");
+
+    string:cnt4 = raw lru_count(c);
+    int32:t4 = 0i32;
+    if (string_contains(cnt4, "3")) { t4 = 1i32; }
+    if (t4 == 1i32) { println("[PASS] T04 count=3"); pc += 1i32; }
+    if (t4 == 0i32) { println("[FAIL] T04"); }
+
+    string:cap5 = raw lru_capacity(c);
+    int32:t5 = 0i32;
+    if (string_contains(cap5, "3")) { t5 = 1i32; }
+    if (t5 == 1i32) { println("[PASS] T05 capacity=3"); pc += 1i32; }
+    if (t5 == 0i32) { println("[FAIL] T05"); }
+
+    // Miss returns empty
+    int64:h6 = raw lru_has(c, "missing");
+    if (h6 == 0i64) { println("[PASS] T06 has missing=0"); pc += 1i32; }
+    if (h6 != 0i64) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_eviction = int32() {
+    int32:pc = 0i32;
+
+    int64:c = raw lru_create(2i64);
+    int32:_p1 = raw lru_put(c, "a", "1");
+    int32:_p2 = raw lru_put(c, "b", "2");
+    // Cache full. Adding "c" should evict "a" (oldest)
+    int32:_p3 = raw lru_put(c, "c", "3");
+
+    string:ev7 = raw lru_last_evicted(c);
+    int32:t7 = 0i32;
+    if (string_contains(ev7, "a")) { t7 = 1i32; }
+    if (t7 == 1i32) { println("[PASS] T07 evicted a"); pc += 1i32; }
+    if (t7 == 0i32) { println("[FAIL] T07"); }
+
+    int64:h8 = raw lru_has(c, "a");
+    if (h8 == 0i64) { println("[PASS] T08 a evicted, has=0"); pc += 1i32; }
+    if (h8 != 0i64) { println("[FAIL] T08"); }
+
+    string:v9 = raw lru_get(c, "c");
+    int32:t9 = 0i32;
+    if (string_contains(v9, "3")) { t9 = 1i32; }
+    if (t9 == 1i32) { println("[PASS] T09 get c=3 after eviction"); pc += 1i32; }
+    if (t9 == 0i32) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_update_access = int32() {
+    int32:pc = 0i32;
+
+    int64:c = raw lru_create(2i64);
+    int32:_p1 = raw lru_put(c, "a", "1");
+    int32:_p2 = raw lru_put(c, "b", "2");
+    // Access "a" to make it recently used
+    string:_va = raw lru_get(c, "a");
+    // Now add "c" — should evict "b" (older access time)
+    int32:_p3 = raw lru_put(c, "c", "3");
+
+    string:ev10 = raw lru_last_evicted(c);
+    int32:t10 = 0i32;
+    if (string_contains(ev10, "b")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 evicted b (a was accessed)"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    // Update existing key
+    int32:_p4 = raw lru_put(c, "a", "999");
+    string:v11 = raw lru_get(c, "a");
+    int32:t11 = 0i32;
+    if (string_contains(v11, "999")) { t11 = 1i32; }
+    if (t11 == 1i32) { println("[PASS] T11 update a=999"); pc += 1i32; }
+    if (t11 == 0i32) { println("[FAIL] T11"); }
+
+    // get miss returns empty
+    string:v12 = raw lru_get(c, "nonexistent");
+    int64:len12 = string_length(v12);
+    if (len12 == 0i64) { println("[PASS] T12 get miss empty"); pc += 1i32; }
+    if (len12 != 0i64) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_basic();
+    int32:p2 = raw test_fill();
+    int32:p3 = raw test_eviction();
+    int32:p4 = raw test_update_access();
+    println("DONE");
+    exit(0i32);
+};

@@ -1,0 +1,13 @@
+[package]
+name = "aria-glob"
+version = "0.12.3"
+description = "Glob pattern matching — *, **, ? wildcards for file paths"
+license = "MIT"
+
+[build]
+type = "pure"
+
+[dependencies]
+
+[metadata]
+categories = ["filesystem", "pattern-matching"]

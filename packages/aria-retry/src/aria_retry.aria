@@ -1,0 +1,227 @@
+// aria_retry.aria — Retry with exponential backoff (v0.12.3)
+//
+// Pure Aria implementation — no extern dependencies.
+// Import with: use "aria_retry.aria".*;
+//
+// Tracks retry state: attempt count, delays, success/failure.
+// Computes exponential backoff: base_ms * 2^attempt, capped at cap_ms.
+
+// ── Create ──────────────────────────────────────────────────────────────────
+
+pub func:retry_create = int64(int64:max_attempts, int64:base_ms, int64:cap_ms) {
+    int64:h = ahash(0);
+    ahset(h, "_mx", string_from_int(max_attempts));
+    ahset(h, "_base", string_from_int(base_ms));
+    ahset(h, "_cap", string_from_int(cap_ms));
+    ahset(h, "_cur", "0");
+    ahset(h, "_ok", "0");
+    ahset(h, "_exhausted", "0");
+    pass h;
+};
+
+// ── Next Delay ──────────────────────────────────────────────────────────────
+
+pub func:retry_next_delay = string(int64:h) {
+    // Parse current attempt
+    string:cur_s = ahget(h, "_cur");
+    int64:cur = 0i64;
+    int64:cl = string_length(cur_s);
+    int64:ci = 0i64;
+    while (ci < cl) {
+        string:cd = string_substring(cur_s, ci, ci + 1i64);
+        cur = cur * 10i64;
+        if (cd == "0") { cur = cur + 0i64; }
+        if (cd == "1") { cur = cur + 1i64; }
+        if (cd == "2") { cur = cur + 2i64; }
+        if (cd == "3") { cur = cur + 3i64; }
+        if (cd == "4") { cur = cur + 4i64; }
+        if (cd == "5") { cur = cur + 5i64; }
+        if (cd == "6") { cur = cur + 6i64; }
+        if (cd == "7") { cur = cur + 7i64; }
+        if (cd == "8") { cur = cur + 8i64; }
+        if (cd == "9") { cur = cur + 9i64; }
+        ci = ci + 1i64;
+    }
+
+    // Parse base delay
+    string:base_s = ahget(h, "_base");
+    int64:base_val = 0i64;
+    int64:bl = string_length(base_s);
+    int64:bi = 0i64;
+    while (bi < bl) {
+        string:bd = string_substring(base_s, bi, bi + 1i64);
+        base_val = base_val * 10i64;
+        if (bd == "0") { base_val = base_val + 0i64; }
+        if (bd == "1") { base_val = base_val + 1i64; }
+        if (bd == "2") { base_val = base_val + 2i64; }
+        if (bd == "3") { base_val = base_val + 3i64; }
+        if (bd == "4") { base_val = base_val + 4i64; }
+        if (bd == "5") { base_val = base_val + 5i64; }
+        if (bd == "6") { base_val = base_val + 6i64; }
+        if (bd == "7") { base_val = base_val + 7i64; }
+        if (bd == "8") { base_val = base_val + 8i64; }
+        if (bd == "9") { base_val = base_val + 9i64; }
+        bi = bi + 1i64;
+    }
+
+    // Parse cap delay
+    string:cap_s = ahget(h, "_cap");
+    int64:cap_val = 0i64;
+    int64:al = string_length(cap_s);
+    int64:ai = 0i64;
+    while (ai < al) {
+        string:ad = string_substring(cap_s, ai, ai + 1i64);
+        cap_val = cap_val * 10i64;
+        if (ad == "0") { cap_val = cap_val + 0i64; }
+        if (ad == "1") { cap_val = cap_val + 1i64; }
+        if (ad == "2") { cap_val = cap_val + 2i64; }
+        if (ad == "3") { cap_val = cap_val + 3i64; }
+        if (ad == "4") { cap_val = cap_val + 4i64; }
+        if (ad == "5") { cap_val = cap_val + 5i64; }
+        if (ad == "6") { cap_val = cap_val + 6i64; }
+        if (ad == "7") { cap_val = cap_val + 7i64; }
+        if (ad == "8") { cap_val = cap_val + 8i64; }
+        if (ad == "9") { cap_val = cap_val + 9i64; }
+        ai = ai + 1i64;
+    }
+
+    // Compute 2^cur
+    int64:power = 1i64;
+    int64:pi = 0i64;
+    while (pi < cur) {
+        power = power * 2i64;
+        pi = pi + 1i64;
+    }
+
+    // delay = base * 2^cur, capped
+    int64:delay = base_val * power;
+    if (delay > cap_val) { delay = cap_val; }
+
+    pass string_from_int(delay);
+};
+
+// ── Record Failure ──────────────────────────────────────────────────────────
+
+pub func:retry_record_fail = int32(int64:h) {
+    // Parse current attempt
+    string:cur_s = ahget(h, "_cur");
+    int64:cur = 0i64;
+    int64:cl = string_length(cur_s);
+    int64:ci = 0i64;
+    while (ci < cl) {
+        string:cd = string_substring(cur_s, ci, ci + 1i64);
+        cur = cur * 10i64;
+        if (cd == "0") { cur = cur + 0i64; }
+        if (cd == "1") { cur = cur + 1i64; }
+        if (cd == "2") { cur = cur + 2i64; }
+        if (cd == "3") { cur = cur + 3i64; }
+        if (cd == "4") { cur = cur + 4i64; }
+        if (cd == "5") { cur = cur + 5i64; }
+        if (cd == "6") { cur = cur + 6i64; }
+        if (cd == "7") { cur = cur + 7i64; }
+        if (cd == "8") { cur = cur + 8i64; }
+        if (cd == "9") { cur = cur + 9i64; }
+        ci = ci + 1i64;
+    }
+
+    // Parse max attempts
+    string:mx_s = ahget(h, "_mx");
+    int64:mx = 0i64;
+    int64:ml = string_length(mx_s);
+    int64:mi = 0i64;
+    while (mi < ml) {
+        string:md = string_substring(mx_s, mi, mi + 1i64);
+        mx = mx * 10i64;
+        if (md == "0") { mx = mx + 0i64; }
+        if (md == "1") { mx = mx + 1i64; }
+        if (md == "2") { mx = mx + 2i64; }
+        if (md == "3") { mx = mx + 3i64; }
+        if (md == "4") { mx = mx + 4i64; }
+        if (md == "5") { mx = mx + 5i64; }
+        if (md == "6") { mx = mx + 6i64; }
+        if (md == "7") { mx = mx + 7i64; }
+        if (md == "8") { mx = mx + 8i64; }
+        if (md == "9") { mx = mx + 9i64; }
+        mi = mi + 1i64;
+    }
+
+    cur = cur + 1i64;
+    ahset(h, "_cur", string_from_int(cur));
+
+    if (cur >= mx) {
+        ahset(h, "_exhausted", "1");
+    }
+
+    pass 0i32;
+};
+
+// ── Record Success ──────────────────────────────────────────────────────────
+
+pub func:retry_record_ok = int32(int64:h) {
+    ahset(h, "_ok", "1");
+    pass 0i32;
+};
+
+// ── Should Retry ────────────────────────────────────────────────────────────
+
+pub func:retry_should_retry = int64(int64:h) {
+    string:ok_v = ahget(h, "_ok");
+    int32:is_ok = 0i32;
+    if (string_contains(ok_v, "1")) { is_ok = 1i32; }
+    if (is_ok == 1i32) { pass 0i64; }
+
+    string:ex_v = ahget(h, "_exhausted");
+    int32:is_ex = 0i32;
+    if (string_contains(ex_v, "1")) { is_ex = 1i32; }
+    if (is_ex == 1i32) { pass 0i64; }
+
+    pass 1i64;
+};
+
+// ── Succeeded ───────────────────────────────────────────────────────────────
+
+pub func:retry_succeeded = int64(int64:h) {
+    string:ok_v = ahget(h, "_ok");
+    int64:result = 0i64;
+    int32:is_ok = 0i32;
+    if (string_contains(ok_v, "1")) { is_ok = 1i32; }
+    if (is_ok == 1i32) { result = 1i64; }
+    pass result;
+};
+
+// ── Exhausted ───────────────────────────────────────────────────────────────
+
+pub func:retry_exhausted = int64(int64:h) {
+    string:ex_v = ahget(h, "_exhausted");
+    int64:result = 0i64;
+    int32:is_ex = 0i32;
+    if (string_contains(ex_v, "1")) { is_ex = 1i32; }
+    if (is_ex == 1i32) { result = 1i64; }
+    pass result;
+};
+
+// ── Accessors ───────────────────────────────────────────────────────────────
+
+pub func:retry_get_attempt = string(int64:h) {
+    string:v = ahget(h, "_cur");
+    pass v;
+};
+
+pub func:retry_attempts_used = string(int64:h) {
+    string:v = ahget(h, "_cur");
+    pass v;
+};
+
+// ── Type wrapper ────────────────────────────────────────────────────────────
+
+Type:Retry = {
+    func:init       = int64(int64:mx, int64:base, int64:cap) { pass raw retry_create(mx, base, cap); };
+    func:delay      = string(int64:h) { pass raw retry_next_delay(h); };
+    func:rec_fail   = int32(int64:h) { pass raw retry_record_fail(h); };
+    func:rec_ok     = int32(int64:h) { pass raw retry_record_ok(h); };
+    func:can_retry  = int64(int64:h) { pass raw retry_should_retry(h); };
+    func:is_ok      = int64(int64:h) { pass raw retry_succeeded(h); };
+    func:is_done    = int64(int64:h) { pass raw retry_exhausted(h); };
+    func:attempt    = string(int64:h) { pass raw retry_get_attempt(h); };
+    func:used       = string(int64:h) { pass raw retry_attempts_used(h); };
+};

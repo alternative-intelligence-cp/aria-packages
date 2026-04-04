@@ -1,0 +1,112 @@
+// test_aria_glob.aria — 12-test suite for aria-glob (v0.12.3)
+use "../src/aria_glob.aria".*;
+
+func:failsafe = int32(tbb32:err_code) { exit 1i32; };
+
+func:test_basic = int32() {
+    int32:pc = 0i32;
+
+    // T01: Create returns valid handle
+    int64:g1 = raw glob_create("*.txt");
+    if (g1 > 0i64) { println("[PASS] T01 glob_create"); pc += 1i32; }
+    if (g1 <= 0i64) { println("[FAIL] T01"); }
+
+    // T02: Exact literal match
+    int64:g2 = raw glob_create("readme.md");
+    int64:m2 = raw glob_match(g2, "readme.md");
+    if (m2 == 1i64) { println("[PASS] T02 exact match"); pc += 1i32; }
+    if (m2 != 1i64) { println("[FAIL] T02"); }
+
+    // T03: * matches filename
+    int64:m3 = raw glob_match(g1, "hello.txt");
+    if (m3 == 1i64) { println("[PASS] T03 star match"); pc += 1i32; }
+    if (m3 != 1i64) { println("[FAIL] T03"); }
+
+    pass pc;
+};
+
+func:test_wildcard = int32() {
+    int32:pc = 0i32;
+
+    // T04: * doesn't cross /
+    int64:g1 = raw glob_create("*.txt");
+    int64:m4 = raw glob_match(g1, "dir/hello.txt");
+    if (m4 == 0i64) { println("[PASS] T04 star no slash"); pc += 1i32; }
+    if (m4 != 0i64) { println("[FAIL] T04"); }
+
+    // T05: ** crosses /
+    int64:g2 = raw glob_create("**/*.txt");
+    int64:m5 = raw glob_match(g2, "a/b/hello.txt");
+    if (m5 == 1i64) { println("[PASS] T05 dblstar match"); pc += 1i32; }
+    if (m5 != 1i64) { println("[FAIL] T05"); }
+
+    // T06: ** at end matches everything
+    int64:g3 = raw glob_create("src/**");
+    int64:m6 = raw glob_match(g3, "src/a/b/c");
+    if (m6 == 1i64) { println("[PASS] T06 dblstar tail"); pc += 1i32; }
+    if (m6 != 1i64) { println("[FAIL] T06"); }
+
+    pass pc;
+};
+
+func:test_question = int32() {
+    int32:pc = 0i32;
+
+    // T07: ? matches one char
+    int64:g1 = raw glob_create("t?st.txt");
+    int64:m7 = raw glob_match(g1, "test.txt");
+    if (m7 == 1i64) { println("[PASS] T07 question mark"); pc += 1i32; }
+    if (m7 != 1i64) { println("[FAIL] T07"); }
+
+    // T08: ? doesn't match /
+    int64:g2 = raw glob_create("a?b");
+    int64:m8 = raw glob_match(g2, "a/b");
+    if (m8 == 0i64) { println("[PASS] T08 question no slash"); pc += 1i32; }
+    if (m8 != 0i64) { println("[FAIL] T08"); }
+
+    // T09: No match returns 0
+    int64:g3 = raw glob_create("*.aria");
+    int64:m9 = raw glob_match(g3, "test.txt");
+    if (m9 == 0i64) { println("[PASS] T09 no match"); pc += 1i32; }
+    if (m9 != 0i64) { println("[FAIL] T09"); }
+
+    pass pc;
+};
+
+func:test_meta = int32() {
+    int32:pc = 0i32;
+
+    // T10: glob_pattern returns stored pattern
+    int64:g1 = raw glob_create("**/*.aria");
+    string:p10 = raw glob_pattern(g1);
+    int32:t10 = 0i32;
+    if (string_contains(p10, "**/*.aria")) { t10 = 1i32; }
+    if (t10 == 1i32) { println("[PASS] T10 pattern"); pc += 1i32; }
+    if (t10 == 0i32) { println("[FAIL] T10"); }
+
+    // T11: is_recursive
+    int64:r11 = raw glob_is_recursive(g1);
+    if (r11 == 1i64) { println("[PASS] T11 is_recursive"); pc += 1i32; }
+    if (r11 != 1i64) { println("[FAIL] T11"); }
+
+    // T12: has_wildcard + segment_count
+    int64:w12 = raw glob_has_wildcard(g1);
+    string:s12 = raw glob_segment_count(g1);
+    int32:t12 = 0i32;
+    if (w12 == 1i64) {
+        if (string_contains(s12, "2")) { t12 = 1i32; }
+    }
+    if (t12 == 1i32) { println("[PASS] T12 wildcard+segs"); pc += 1i32; }
+    if (t12 == 0i32) { println("[FAIL] T12"); }
+
+    pass pc;
+};
+
+func:main = int32() {
+    int32:p1 = raw test_basic();
+    int32:p2 = raw test_wildcard();
+    int32:p3 = raw test_question();
+    int32:p4 = raw test_meta();
+    println("DONE");
+    exit(0i32);
+};

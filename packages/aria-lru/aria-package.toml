@@ -1,0 +1,13 @@
+[package]
+name = "aria-lru"
+version = "0.12.3"
+description = "LRU cache with O(1) get/put — eviction by access time"
+license = "MIT"
+
+[build]
+type = "pure"
+
+[dependencies]
+
+[metadata]
+categories = ["data-structures", "cache"]
